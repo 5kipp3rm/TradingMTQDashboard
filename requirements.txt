@@ -1,0 +1,59 @@
+# Python dependencies for TradingMTQ
+
+# Core MT5 Integration
+MetaTrader5>=5.0.5430
+
+# Configuration & Environment
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+
+# Data Processing
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Logging
+colorlog>=6.7.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+
+# Code Quality
+black>=23.7.0
+flake8>=6.1.0
+mypy>=1.5.1
+
+# Phase 2+ Dependencies (comment out until needed)
+# Technical Analysis
+# ta==0.11.0
+# pandas-ta==0.3.14b
+
+# Backtesting
+# backtrader==1.9.78.123
+
+# Visualization
+# matplotlib==3.8.0
+# plotly==5.17.0
+
+# Phase 3+ Dependencies (ML/AI)
+# tensorflow==2.13.0
+# torch==2.1.0
+# scikit-learn==1.3.0
+# xgboost==2.0.0
+# lightgbm==4.1.0
+# optuna==3.3.0
+
+# Phase 4+ Dependencies (LLM)
+# openai==1.3.0
+# anthropic==0.5.0
+# langchain==0.0.330
+# chromadb==0.4.15
+
+# Phase 5+ Dependencies (Web/API)
+# fastapi==0.104.1
+# uvicorn==0.24.0
+# websockets==12.0
+# redis==5.0.1
+# psycopg2-binary==2.9.9
+# sqlalchemy==2.0.23

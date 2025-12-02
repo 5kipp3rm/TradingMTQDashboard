@@ -1,0 +1,35 @@
+mt5:
+  # Connection settings
+  connection:
+    timeout: 60000  # milliseconds
+    retry_attempts: 3
+    retry_delay: 5  # seconds
+  
+  # Trading settings
+  trading:
+    default_lot: 0.01
+    max_lot: 1.0
+    magic_number: 234000
+    slippage: 20  # points
+    
+  # Symbols to monitor (Phase 1 - Major pairs)
+  symbols:
+    forex:
+      - EURUSD
+      - GBPUSD
+      - USDJPY
+      - AUDUSD
+      - USDCAD
+      - EURJPY
+      - GBPJPY
+      - AUDJPY
+    
+  # Default timeframe for analysis
+  timeframe: M1  # 1 minute for Phase 1 testing
+  
+  # Risk management (basic Phase 1 settings)
+  risk:
+    max_daily_loss: 100.0  # Account currency
+    max_daily_trades: 20
+    max_positions_total: 3
+    max_positions_per_symbol: 1
