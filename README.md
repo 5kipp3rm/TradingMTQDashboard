@@ -31,54 +31,66 @@ TradingMTQ combines traditional technical analysis with cutting-edge AI/ML model
 - ✅ **Live Trading Scripts** ready to run
 - ✅ Automated trading with safety limits
 
-### Phase 3 (Coming Soon)
-- 📅 Machine Learning models (LSTM, Random Forest, XGBoost)
-- 📅 Parameter optimization & walk-forward analysis
-- 📅 Multi-symbol portfolio management
-- 📅 Advanced risk management & position correlation
+### Phase 3 ✅ COMPLETE
+- ✅ **Machine Learning Integration** (LSTM, Random Forest)
+- ✅ **Feature Engineering** (40+ technical features)
+- ✅ **ML-Enhanced Strategy** (combines ML + technical signals)
+- ✅ **Model Training Framework** (save/load models)
+- ✅ **Performance Metrics** (accuracy, precision, F1-score)
+- 📖 See [PHASE3_COMPLETE.md](PHASE3_COMPLETE.md)
+
+### Phase 4 ✅ COMPLETE
+- ✅ **LLM Integration** (OpenAI GPT-4o, Anthropic Claude)
+- ✅ **Sentiment Analysis** (news/social media → trading signals)
+- ✅ **AI Market Analyst** (automated market reports)
+- ✅ **Grid Search Optimization** (automated parameter tuning)
+- ✅ **Config-based API Keys** (secure key management)
+- ✅ Cost: ~$0.40/month for sentiment analysis
+- 📖 See [PHASE4_COMPLETE.md](PHASE4_COMPLETE.md)
+
+### Phase 5 (In Progress)
+- 🔄 Walk-forward analysis framework
+- 🔄 News-based trading signals
+- 🔄 Natural language trade interface
+- 📅 Web dashboard & monitoring UI
+- 📅 REST API for external integrations
 
 ## 🚀 Quick Start
 
 ### 🎯 **SIMPLEST WAY - Just Run This:**
 
 ```bash
-python run.py
+python main.py
 ```
 
 That's it! The script will:
-- ✅ Check all dependencies and MT5 installation
-- ✅ Test your MT5 connection
-- ✅ Show you a menu of trading modes
-- ✅ Guide you through everything
+- ✅ Load configuration from `config/currencies.yaml`
+- ✅ Connect to MetaTrader 5
+- ✅ Start trading 6 currency pairs automatically
+- ✅ Apply automatic SL/TP management (breakeven, trailing, partial profits)
+- ✅ Hot-reload configuration changes every 60 seconds
 
-**See [USAGE.md](USAGE.md) for complete step-by-step guide.**
+**See documentation below for configuration and features.**
 
-### Three Ways to Get Started:
+### Alternative Scripts:
 
-#### 1️⃣ Main Entry Point (RECOMMENDED)
-```bash
-python run.py
-```
-**Interactive menu with pre-flight checks** - Best for first-time users!
-
-#### 2️⃣ Test Connection (SAFE - No Trading)
+#### Test Connection (SAFE - No Trading)
 ```bash
 python examples/test_connection.py
 ```
 Interactive script - tests MT5 connection, shows account info, verifies everything works.
 
-#### 3️⃣ Quick Start Trading (Fastest Way)
+#### Modify Open Positions
 ```bash
-python examples/quick_start.py
+python examples/modify_positions.py
 ```
-Interactive prompts for credentials - starts trading in 2 minutes! (Use demo account)
+Interactive tool to modify SL/TP on existing positions.
 
-#### 4️⃣ Full Trading Bot (Professional)
+#### Original Trading Bot
 ```bash
-# Edit credentials in examples/live_trading.py first
-python examples/live_trading.py
+python run.py
 ```
-Full-featured automated trading with all controls and monitoring.
+Original entry point with menu and pre-flight checks.
 
 ### Prerequisites
 
@@ -125,7 +137,21 @@ python src/main.py
 
 ## 📖 Documentation
 
-**🚀 NEW USERS START HERE:**
+**🚀 CONFIGURATION-BASED TRADING (NEW!):**
+- **[AUTOMATIC_SLTP_QUICKSTART.md](AUTOMATIC_SLTP_QUICKSTART.md)** - Quick start for auto SL/TP features
+- **[docs/AUTOMATIC_SLTP_MANAGEMENT.md](docs/AUTOMATIC_SLTP_MANAGEMENT.md)** - Complete guide with examples
+- **[docs/CONFIG_BASED_TRADING.md](docs/CONFIG_BASED_TRADING.md)** - Configuration system documentation
+- **[docs/MODIFY_SETTINGS_ONTHEFLY.md](docs/MODIFY_SETTINGS_ONTHEFLY.md)** - Hot-reload settings guide
+- **[QUICK_REFERENCE_CONFIG.md](QUICK_REFERENCE_CONFIG.md)** - One-page quick reference
+
+**🤖 AI/ML FEATURES (NEW!):**
+- **[PHASE3_COMPLETE.md](PHASE3_COMPLETE.md)** - Machine Learning integration guide
+- **[PHASE4_COMPLETE.md](PHASE4_COMPLETE.md)** - LLM integration & sentiment analysis
+- **[docs/API_SETUP.md](docs/API_SETUP.md)** - OpenAI/Anthropic API setup guide
+- **[examples/phase3_ml_demo.py](examples/phase3_ml_demo.py)** - ML demo (LSTM, Random Forest)
+- **[examples/phase4_llm_demo.py](examples/phase4_llm_demo.py)** - LLM demo (sentiment, market analysis)
+
+**Original Documentation:**
 - **[START_HERE.md](START_HERE.md)** - Complete overview of ready-to-run system
 - **[READY_TO_RUN.md](READY_TO_RUN.md)** - Quick reference for all 5 trading scripts
 - **[LIVE_TRADING_GUIDE.md](LIVE_TRADING_GUIDE.md)** - Complete guide to live trading (60+ pages)
@@ -145,37 +171,60 @@ python src/main.py
 
 ```
 TradingMTQ/
-├── examples/                # 👈 START HERE! Ready-to-run scripts
+├── main.py                  # 👈 START HERE! Configuration-based trading
+├── config/
+│   ├── currencies.yaml      # ⚙️ Edit this for all settings
+│   └── api_keys.yaml        # 🔑 LLM API keys (OpenAI, Anthropic)
+│
+├── examples/                # Ready-to-run scripts & demos
 │   ├── test_connection.py   # ⚪ Test MT5 (SAFE)
-│   ├── quick_start.py       # 🟡 Quick trading (LIVE)
-│   ├── live_trading.py      # 🟡 Full bot (LIVE)
-│   ├── manage_positions.py  # 🟠 Position manager
-│   └── preflight_check.py   # ⚪ System check (SAFE)
+│   ├── modify_positions.py  # 🟠 Modify open positions
+│   ├── phase3_ml_demo.py    # 🤖 ML demo (LSTM, Random Forest)
+│   └── phase4_llm_demo.py   # 🧠 LLM demo (sentiment, AI analyst)
 │
 ├── src/                     # Source code
 │   ├── connectors/          # MT5 connection & utilities
 │   │   ├── mt5_connector.py # Core connector
-│   │   ├── account_utils.py # Risk management ⭐
-│   │   └── error_descriptions.py # 800+ error codes
+│   │   └── account_utils.py # Risk management ⭐
 │   ├── strategies/          # 5+ trading strategies
 │   │   ├── simple_ma.py     # MA Crossover
-│   │   ├── rsi_strategy.py  # RSI mean reversion
-│   │   └── (3+ more...)
+│   │   ├── ml_strategy.py   # 🆕 ML-enhanced strategy
+│   │   └── (4+ more...)
+│   ├── ml/                  # 🆕 Machine Learning module
+│   │   ├── feature_engineer.py  # 40+ technical features
+│   │   ├── lstm_model.py        # LSTM price predictor
+│   │   └── random_forest.py     # Random Forest classifier
+│   ├── llm/                 # 🆕 LLM integration
+│   │   ├── openai_provider.py   # GPT-4o integration
+│   │   ├── anthropic_provider.py # Claude integration
+│   │   ├── sentiment.py         # Sentiment analyzer
+│   │   └── market_analyst.py    # AI market reports
+│   ├── optimization/        # 🆕 Parameter optimization
+│   │   └── grid_search.py       # Grid search optimizer
+│   ├── trading/             # Multi-currency orchestrator
+│   │   ├── currency_trader.py    # Individual currency trader
+│   │   ├── orchestrator.py       # Multi-currency manager
+│   │   └── position_manager.py   # Auto SL/TP management
 │   ├── indicators/          # 12+ technical indicators
-│   │   ├── trend.py         # SMA, EMA
-│   │   ├── momentum.py      # RSI, MACD
-│   │   └── volatility.py    # Bollinger Bands, ATR
 │   ├── backtest/            # Backtesting engine
-│   └── analysis/            # Performance analytics
+│   └── utils/
+│       └── config_loader.py # 🆕 Config & API key loader
+│
+├── docs/                    # Enhanced documentation
+│   ├── AUTOMATIC_SLTP_MANAGEMENT.md  # Auto SL/TP guide
+│   ├── CONFIG_BASED_TRADING.md       # Configuration system
+│   ├── API_SETUP.md                  # 🆕 LLM API setup guide
+│   └── (more...)
 │
 ├── tests/                   # 60+ unit tests (90%+ coverage)
 │
-├── docs/                    # Original documentation
+├── requirements.txt         # Core dependencies
+├── requirements-ml.txt      # 🆕 ML dependencies
+├── requirements-llm.txt     # 🆕 LLM dependencies
 │
-└── *.md                     # NEW: Ready-to-run guides
-    ├── START_HERE.md        # 👈 Complete system overview
-    ├── READY_TO_RUN.md      # Script quick reference
-    ├── LIVE_TRADING_GUIDE.md # Full trading guide
+└── *.md                     # Quick reference guides
+    ├── PHASE3_COMPLETE.md   # 🆕 ML documentation
+    ├── PHASE4_COMPLETE.md   # 🆕 LLM documentation
     └── (more...)
 ```
 
@@ -184,8 +233,10 @@ TradingMTQ/
 - **MetaTrader Integration**: MetaTrader5 Python API
 - **Backend**: Python 3.10+
 - **Data Processing**: Pandas, NumPy
-- **ML/AI** (Future): TensorFlow/PyTorch, scikit-learn, XGBoost
-- **LLM** (Future): OpenAI API, LangChain
+- **Machine Learning**: TensorFlow/Keras, scikit-learn ✅
+- **LLM/AI**: OpenAI GPT-4o, Anthropic Claude ✅
+- **Configuration**: YAML, environment variables
+- **Testing**: pytest (60+ tests, 90%+ coverage)
 - **Database** (Future): PostgreSQL
 - **Web** (Future): FastAPI, React/Next.js
 
@@ -194,12 +245,14 @@ TradingMTQ/
 | Phase | Timeline | Status | Description |
 |-------|----------|--------|-------------|
 | Phase 1 | Weeks 1-2 | ✅ **COMPLETE** | MT5 connector, 60 tests, 90%+ coverage |
-| Phase 2 | Weeks 3-6 | ✅ **COMPLETE** | Indicators, strategies, backtesting |
-| **Phase 2+** | **Week 7** | ✅ **COMPLETE** | **Risk management, pending orders, live trading** |
-| Phase 3 | Weeks 8-12 | 📋 Planned | Machine Learning & optimization |
-| Phase 4 | Future | 📋 Planned | Multi-symbol portfolio management |
+| Phase 2 | Weeks 3-6 | ✅ **COMPLETE** | Indicators, strategies, backtesting, risk management |
+| Phase 3 | Week 7-8 | ✅ **COMPLETE** | Machine Learning (LSTM, Random Forest, feature engineering) |
+| Phase 4 | Week 9 | ✅ **COMPLETE** | LLM Integration (GPT-4o, Claude, sentiment analysis) |
+| Phase 5 | Week 10+ | 🔄 **IN PROGRESS** | Advanced optimization, news signals, web dashboard |
 
-**Current Status:** Phase 2 Enhanced - **System is production-ready for live trading!**
+**Current Status:** Phase 4 Complete - **AI-powered trading system with ML & LLM!**
+
+**Latest Release:** [v4.0](https://github.com/5kipp3rm/TradingMTQ/releases/tag/v4.0) - LLM Integration
 
 ## 🧪 Testing
 
