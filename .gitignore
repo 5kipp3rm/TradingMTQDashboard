@@ -97,3 +97,6 @@ credentials/
 
 # API Keys Configuration (NEVER COMMIT!)
 config/api_keys.yaml
+
+# Temporary/test folders
+New folder/

@@ -173,18 +173,27 @@ See **[`docs/README.md`](docs/README.md)** for complete documentation index orga
 
 ```
 TradingMTQ/
-├── main.py                  # 👈 START HERE! Configuration-based trading
+├── main.py                  # 👈 Main trading bot (START HERE!)
+├── run.py                   # Original entry point with menu
+│
 ├── config/
-│   ├── currencies.yaml      # ⚙️ Edit this for all settings
+│   ├── currencies.yaml      # ⚙️ Trading settings for all pairs
 │   └── api_keys.yaml        # 🔑 LLM API keys (OpenAI, Anthropic)
 │
-├── examples/                # Ready-to-run scripts & demos
-│   ├── test_connection.py   # ⚪ Test MT5 (SAFE)
-│   ├── modify_positions.py  # 🟠 Modify open positions
-│   ├── phase3_ml_demo.py    # 🤖 ML demo (LSTM, Random Forest)
-│   └── phase4_llm_demo.py   # 🧠 LLM demo (sentiment, AI analyst)
+├── scripts/                 # 🛠️ Utility scripts
+│   ├── check_positions.py   # View open positions
+│   ├── close_all_positions.py # Close all positions (emergency)
+│   ├── check_signal.py      # Check trading signals
+│   └── (4 more utilities...)
 │
-├── src/                     # Source code
+├── examples/                # 📝 Ready-to-run examples & demos
+│   ├── test_connection.py   # Test MT5 connection
+│   ├── modify_positions.py  # Modify open positions
+│   ├── phase3_ml_demo.py    # 🤖 ML demo (LSTM, Random Forest)
+│   ├── phase4_llm_demo.py   # 🧠 LLM demo (sentiment, AI analyst)
+│   └── (6 more examples...)
+│
+├── src/                     # 💻 Source code
 │   ├── connectors/          # MT5 connection & utilities
 │   │   ├── mt5_connector.py # Core connector
 │   │   └── account_utils.py # Risk management ⭐
@@ -212,22 +221,18 @@ TradingMTQ/
 │   └── utils/
 │       └── config_loader.py # 🆕 Config & API key loader
 │
-├── docs/                    # Enhanced documentation
-│   ├── AUTOMATIC_SLTP_MANAGEMENT.md  # Auto SL/TP guide
-│   ├── CONFIG_BASED_TRADING.md       # Configuration system
-│   ├── API_SETUP.md                  # 🆕 LLM API setup guide
-│   └── (more...)
+├── docs/                    # 📚 Documentation
+│   ├── README.md            # Documentation index
+│   ├── guides/              # 12 user guides
+│   ├── phases/              # 5 phase completion docs
+│   ├── api/                 # API documentation
+│   └── architecture/        # Architecture docs
 │
-├── tests/                   # 60+ unit tests (90%+ coverage)
+├── tests/                   # 🧪 60+ unit tests (90%+ coverage)
 │
 ├── requirements.txt         # Core dependencies
 ├── requirements-ml.txt      # 🆕 ML dependencies
-├── requirements-llm.txt     # 🆕 LLM dependencies
-│
-└── *.md                     # Quick reference guides
-    ├── PHASE3_COMPLETE.md   # 🆕 ML documentation
-    ├── PHASE4_COMPLETE.md   # 🆕 LLM documentation
-    └── (more...)
+└── requirements-llm.txt     # 🆕 LLM dependencies
 ```
 
 ## 🛠️ Technology Stack
