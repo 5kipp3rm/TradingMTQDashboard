@@ -94,3 +94,6 @@ credentials/
 *.pem
 *.key
 *.crt
+
+# API Keys Configuration (NEVER COMMIT!)
+config/api_keys.yaml
