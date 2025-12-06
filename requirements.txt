@@ -1,6 +1,11 @@
 # Python dependencies for TradingMTQ
+# Install everything: pip install -r requirements.txt
 
-# Core MT5 Integration
+# ============================================================================
+# CORE DEPENDENCIES
+# ============================================================================
+
+# MT5 Integration
 MetaTrader5>=5.0.5430
 
 # Configuration & Environment
@@ -14,6 +19,42 @@ numpy>=1.26.0
 # Logging
 colorlog>=6.7.0
 
+# HTTP Requests
+requests>=2.31.0
+
+# ============================================================================
+# PHASE 3: MACHINE LEARNING
+# ============================================================================
+
+# ML Core
+scikit-learn>=1.3.0        # Random Forest, preprocessing, metrics
+
+# Deep Learning (LSTM)
+tensorflow>=2.14.0         # LSTM neural networks
+# Alternative (CPU-only, smaller): tensorflow-cpu>=2.14.0
+
+# Visualization
+matplotlib>=3.7.0          # Plotting
+seaborn>=0.12.0            # Statistical visualization
+
+# Optimization
+optuna>=3.3.0              # Hyperparameter tuning
+
+# ============================================================================
+# PHASE 4: LLM INTEGRATION
+# ============================================================================
+
+# LLM Providers
+openai>=1.3.0              # OpenAI GPT-4o API
+anthropic>=0.7.0           # Anthropic Claude API
+
+# Web Scraping (for news)
+beautifulsoup4>=4.12.0     # HTML parsing
+
+# ============================================================================
+# DEVELOPMENT & TESTING
+# ============================================================================
+
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
@@ -24,36 +65,38 @@ black>=23.7.0
 flake8>=6.1.0
 mypy>=1.5.1
 
-# Phase 2+ Dependencies (comment out until needed)
-# Technical Analysis
-# ta==0.11.0
-# pandas-ta==0.3.14b
+# ============================================================================
+# OPTIONAL: Advanced Features (commented out - uncomment if needed)
+# ============================================================================
 
-# Backtesting
-# backtrader==1.9.78.123
+# Advanced ML
+# xgboost>=2.0.0           # Gradient boosting
+# lightgbm>=4.0.0          # Light gradient boosting
 
-# Visualization
-# matplotlib==3.8.0
-# plotly==5.17.0
+# Local LLM
+# ollama>=0.1.0            # Local models via Ollama
+# transformers>=4.35.0     # Hugging Face models
 
-# Phase 3+ Dependencies (ML/AI)
-# tensorflow==2.13.0
-# torch==2.1.0
-# scikit-learn==1.3.0
-# xgboost==2.0.0
-# lightgbm==4.1.0
-# optuna==3.3.0
+# NLP
+# nltk>=3.8.0              # NLP toolkit
+# spacy>=3.7.0             # Advanced NLP
 
-# Phase 4+ Dependencies (LLM)
-# openai==1.3.0
-# anthropic==0.5.0
-# langchain==0.0.330
-# chromadb==0.4.15
+# Technical Analysis (alternative libraries)
+# ta>=0.11.0
+# pandas-ta>=0.3.14
 
-# Phase 5+ Dependencies (Web/API)
-# fastapi==0.104.1
-# uvicorn==0.24.0
-# websockets==12.0
-# redis==5.0.1
-# psycopg2-binary==2.9.9
-# sqlalchemy==2.0.23
+# Backtesting (alternative to custom engine)
+# backtrader>=1.9.78.123
+
+# Advanced Visualization
+# plotly>=5.17.0
+
+# Web Dashboard (Phase 5)
+# fastapi>=0.104.1
+# uvicorn>=0.24.0
+# websockets>=12.0
+
+# Database (Phase 5)
+# redis>=5.0.1
+# psycopg2-binary>=2.9.9
+# sqlalchemy>=2.0.23
