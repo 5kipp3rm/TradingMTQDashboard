@@ -1,64 +1,95 @@
-# TradingMTQ - AI-Powered MetaTrader Currency Trading Platform
+# TradingMTQ Documentation
 
-## Project Overview
+Complete documentation for the TradingMTQ AI-powered trading system.
 
-TradingMTQ is an intelligent trading application that connects to MetaTrader to execute currency trades based on AI/LLM-driven decision logic. The system analyzes market data and executes buy/sell operations automatically or with user approval.
+## ��� Documentation Structure
 
-## Project Goals
+### Quick Start
+- **[../README.md](../README.md)** - Main project README (start here!)
 
-1. **Phase 1 (MVP)**: Establish MetaTrader connection and basic trading functionality
-   - Connect to MetaTrader 5 (MT5) via API
-   - Display available currency pairs
-   - Execute manual buy/sell orders
-   - Monitor positions and account status
+### ��� Guides
+Located in `guides/`:
+- **[Getting Started](guides/GETTING_STARTED.md)** - Installation and setup
+- **[Live Trading Guide](guides/LIVE_TRADING_GUIDE.md)** - Complete live trading walkthrough
+- **[Config-Based Trading](guides/CONFIG_BASED_TRADING.md)** - Configuration system
+- **[Auto SL/TP Management](guides/AUTOMATIC_SLTP_MANAGEMENT.md)** - Automated position management
+- **[Modify Settings On-The-Fly](guides/MODIFY_SETTINGS_ONTHEFLY.md)** - Hot-reload configuration
+- **[Quick Reference](guides/QUICK_REFERENCE.md)** - Code snippets and examples
 
-2. **Phase 2**: Implement AI/LLM Trading Logic
-   - Integrate machine learning models for price prediction
-   - Implement LLM-based market sentiment analysis
-   - Create automated trading strategies
-   - Backtesting framework
+### ��� Phase Documentation
+Located in `phases/`:
+- **[Phase 1 - MT5 Integration](phases/PHASE1_COMPLETE.md)** - Core MT5 connector
+- **[Phase 2 - Trading Strategies](phases/PHASE2_COMPLETE.md)** - Indicators & backtesting
+- **[Phase 3 - Machine Learning](phases/PHASE3_COMPLETE.md)** - LSTM, Random Forest, feature engineering
+- **[Phase 4 - LLM Integration](phases/PHASE4_COMPLETE.md)** - GPT-4o, Claude, sentiment analysis
 
-3. **Phase 3**: Advanced Features
-   - Risk management system
-   - Portfolio optimization
-   - Real-time notifications
-   - Trading analytics dashboard
+### ��� API Documentation
+Located in `api/`:
+- **[API Setup Guide](api/API_SETUP.md)** - OpenAI/Anthropic API configuration
+- **[MT5 Connector API](api/MT5_CONNECTOR.md)** - MetaTrader 5 integration
+- **[Strategy API](api/STRATEGIES.md)** - Creating custom strategies
+- **[Indicator API](api/INDICATORS.md)** - Technical indicators reference
 
-## Technology Stack
+### ���️ Architecture
+Located in `architecture/`:
+- **[System Architecture](architecture/SYSTEM_ARCHITECTURE.md)** - Overall design
+- **[Data Flow](architecture/DATA_FLOW.md)** - How data moves through the system
+- **[Module Overview](architecture/MODULES.md)** - Component breakdown
 
-- **MetaTrader Integration**: MT5 Python API (MetaTrader5 package)
-- **Backend**: Python 3.10+
-- **AI/ML**: TensorFlow/PyTorch, scikit-learn
-- **LLM**: OpenAI API, LangChain
-- **Frontend**: React/Next.js (future)
-- **Database**: PostgreSQL (for trade history)
-- **Visualization**: Plotly, Matplotlib
+## ��� By Use Case
 
-## Documentation Structure
+### I want to...
 
-- `design/` - System architecture and design documents
-- `build/` - Implementation guides and build phases
-- `api/` - API specifications and integration docs
-- `deployment/` - Deployment and configuration guides
+**Get started quickly**
+→ Read [../README.md](../README.md) then [guides/GETTING_STARTED.md](guides/GETTING_STARTED.md)
 
-## Getting Started
+**Run live trading**
+→ [guides/LIVE_TRADING_GUIDE.md](guides/LIVE_TRADING_GUIDE.md)
 
-See `build/phase1-implementation.md` for initial setup instructions.
+**Use machine learning**
+→ [phases/PHASE3_COMPLETE.md](phases/PHASE3_COMPLETE.md)
 
-## Repository Structure
+**Use AI sentiment analysis**
+→ [phases/PHASE4_COMPLETE.md](phases/PHASE4_COMPLETE.md) + [api/API_SETUP.md](api/API_SETUP.md)
 
-```
-TradingMTQ/
-├── docs/              # Documentation
-│   ├── design/        # Architecture & design
-│   ├── build/         # Build phases & guides
-│   └── api/           # API specifications
-├── src/               # Source code
-│   ├── connectors/    # MetaTrader connection
-│   ├── trading/       # Trading logic
-│   ├── ai/            # AI/ML models
-│   └── utils/         # Utilities
-├── tests/             # Test suites
-├── config/            # Configuration files
-└── data/              # Historical data & models
-```
+**Build custom strategies**
+→ [api/STRATEGIES.md](api/STRATEGIES.md)
+
+**Understand the system**
+→ [architecture/SYSTEM_ARCHITECTURE.md](architecture/SYSTEM_ARCHITECTURE.md)
+
+## ��� Quick Reference
+
+### Configuration Files
+- `config/currencies.yaml` - Trading settings for all pairs
+- `config/api_keys.yaml` - LLM API keys (OpenAI, Anthropic)
+- `.env` - MT5 credentials
+
+### Key Scripts
+- `main.py` - Main trading bot (config-based)
+- `examples/test_connection.py` - Test MT5 connection
+- `examples/phase3_ml_demo.py` - ML demonstration
+- `examples/phase4_llm_demo.py` - LLM demonstration
+
+### Core Modules
+- `src/connectors/` - MT5 integration
+- `src/strategies/` - Trading strategies
+- `src/ml/` - Machine learning
+- `src/llm/` - LLM integration
+- `src/trading/` - Multi-currency orchestrator
+
+## �� External Resources
+
+- [MetaTrader 5 Python API](https://www.mql5.com/en/docs/python_metatrader5)
+- [OpenAI API Docs](https://platform.openai.com/docs)
+- [Anthropic Claude Docs](https://docs.anthropic.com/)
+
+## ��� Support
+
+- **Issues**: [GitHub Issues](https://github.com/5kipp3rm/TradingMTQ/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/5kipp3rm/TradingMTQ/discussions)
+
+---
+
+**Last Updated**: December 6, 2025  
+**Version**: 4.0 (LLM Integration Complete)

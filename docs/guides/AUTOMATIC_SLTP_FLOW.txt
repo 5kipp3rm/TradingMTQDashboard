@@ -1,0 +1,296 @@
+# 📊 Automatic SL/TP System Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    TRADING SYSTEM WITH AUTO SL/TP                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  1. NEW TRADE OPENED                                                 │
+│  ━━━━━━━━━━━━━━━━━━━━━━                                             │
+│                                                                       │
+│  BUY EURUSD 0.10 lots @ 1.08500                                     │
+│  SL: 1.08300 (-20 pips)  TP: 1.08900 (+40 pips)                    │
+│                                                                       │
+│  Position Manager: ✅ Added to tracking                              │
+│  Status: Monitoring every 5 seconds...                              │
+└─────────────────────────────────────────────────────────────────────┘
+                                ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│  2. PRICE MOVES UP: 1.08500 → 1.08700 (+20 PIPS)                   │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                    │
+│                                                                       │
+│  🛡️ BREAKEVEN PROTECTION TRIGGERED!                                │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                               │
+│  Profit: +20 pips ≥ trigger (20 pips) ✓                            │
+│  Action: Move SL to entry + 2 pips                                  │
+│                                                                       │
+│  SL: 1.08300 → 1.08520 (+2 pips locked) ✅                          │
+│  TP: 1.08900 (unchanged)                                            │
+│                                                                       │
+│  💡 Trade is now RISK-FREE!                                         │
+└─────────────────────────────────────────────────────────────────────┘
+                                ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│  3. PRICE CONTINUES UP: 1.08700 → 1.08750 (+25 PIPS)               │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                    │
+│                                                                       │
+│  📈 TRAILING STOP ACTIVATED!                                        │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                     │
+│  Profit: +25 pips ≥ activation (25 pips) ✓                         │
+│  Action: Start trailing 15 pips behind price                        │
+│                                                                       │
+│  SL: 1.08520 → 1.08600 (price - 15 pips) ✅                         │
+│  TP: 1.08900 (unchanged)                                            │
+│                                                                       │
+│  💡 SL will now FOLLOW price up automatically!                      │
+└─────────────────────────────────────────────────────────────────────┘
+                                ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│  4. PRICE PUSHES HIGHER: 1.08750 → 1.08800 (+30 PIPS)              │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                    │
+│                                                                       │
+│  💰 PARTIAL PROFIT TAKING TRIGGERED!                                │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                           │
+│  Profit: +30 pips ≥ trigger (30 pips) ✓                            │
+│  Action: Close 50% of position                                      │
+│                                                                       │
+│  Closed: 0.05 lots @ 1.08800                                        │
+│  Profit Locked: $15.00 ✅                                           │
+│  Remaining: 0.05 lots                                               │
+│                                                                       │
+│  Trailing SL Updates: 1.08600 → 1.08650 (still 15 pips behind)     │
+│  TP: 1.08900 (unchanged for now)                                    │
+│                                                                       │
+│  💡 Guaranteed profit secured, remainder still trading!             │
+└─────────────────────────────────────────────────────────────────────┘
+                                ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│  5. STRONG TREND: 1.08800 → 1.08850 (+35 PIPS)                     │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                         │
+│                                                                       │
+│  Trailing SL Updates: 1.08650 → 1.08700 (following price)          │
+│                                                                       │
+│  Distance to TP: 1.08900 - 1.08850 = 50 pips total                 │
+│  Current profit: +35 pips                                            │
+│  Progress: 35/40 = 87.5% > 80% trigger ✓                           │
+│                                                                       │
+│  🎯 DYNAMIC TP EXTENSION TRIGGERED!                                 │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                               │
+│  Action: Extend TP by +20 pips                                      │
+│                                                                       │
+│  TP: 1.08900 → 1.09100 (+60 pips total) ✅                          │
+│  SL: 1.08700 (trailing continues)                                   │
+│                                                                       │
+│  💡 Capturing the strong trend!                                     │
+└─────────────────────────────────────────────────────────────────────┘
+                                ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│  6. PRICE KEEPS MOVING: 1.08850 → 1.09000 (+50 PIPS)               │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                    │
+│                                                                       │
+│  📈 Trailing SL continues to update:                                │
+│  1.08700 → 1.08850 (always 15 pips behind current price)           │
+│                                                                       │
+│  Current Position:                                                   │
+│  - Volume: 0.05 lots (50% already closed)                          │
+│  - Entry: 1.08500                                                   │
+│  - Current: 1.09000 (+50 pips)                                      │
+│  - SL: 1.08850 (+35 pips locked)                                    │
+│  - TP: 1.09100 (+60 pips target)                                    │
+│                                                                       │
+│  Locked Profits:                                                     │
+│  - Partial close: 0.05 lots × 30 pips = $15.00 ✅                  │
+│  - Trailing SL: 0.05 lots × 35 pips = $17.50 guaranteed ✅         │
+│  - Total secured: $32.50                                            │
+└─────────────────────────────────────────────────────────────────────┘
+                                ↓
+                         ┌──────┴──────┐
+                         │             │
+                         ↓             ↓
+    ┌────────────────────────┐   ┌────────────────────────┐
+    │  SCENARIO A:           │   │  SCENARIO B:           │
+    │  Price hits TP         │   │  Price reverses        │
+    │  @ 1.09100 (+60 pips)  │   │  @ 1.08850 (SL hit)    │
+    └────────────────────────┘   └────────────────────────┘
+                │                            │
+                ↓                            ↓
+    ┌────────────────────────┐   ┌────────────────────────┐
+    │  FINAL P/L:            │   │  FINAL P/L:            │
+    │  ━━━━━━━━━━━━━━       │   │  ━━━━━━━━━━━━━━       │
+    │                        │   │                        │
+    │  Partial:              │   │  Partial:              │
+    │  0.05 × 30 = $15.00   │   │  0.05 × 30 = $15.00   │
+    │                        │   │                        │
+    │  Final close:          │   │  Final close:          │
+    │  0.05 × 60 = $30.00   │   │  0.05 × 35 = $17.50   │
+    │                        │   │                        │
+    │  TOTAL: $45.00 ✅     │   │  TOTAL: $32.50 ✅     │
+    │                        │   │                        │
+    │  vs. original TP:      │   │  vs. original TP:      │
+    │  0.10 × 40 = $20.00   │   │  Would have lost!      │
+    │                        │   │                        │
+    │  GAIN: +125% 🚀       │   │  SAVED: $32.50 🛡️    │
+    └────────────────────────┘   └────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════
+                            FEATURE TIMELINE
+═══════════════════════════════════════════════════════════════════════
+
+Entry          +20 pips         +25 pips         +30 pips         +35 pips         +50 pips
+  │               │                │                │                │                │
+  │               │                │                │                │                │
+  ▼               ▼                ▼                ▼                ▼                ▼
+┌────┐       ┌─────────┐      ┌─────────┐     ┌──────────┐     ┌──────────┐     ┌────────┐
+│Open│  -->  │Breakeven│ -->  │Trailing │ --> │ Partial  │ --> │ Dynamic  │ --> │ Final  │
+│    │       │   🛡️    │      │   📈    │     │   💰     │     │   🎯     │     │   ✅   │
+└────┘       └─────────┘      └─────────┘     └──────────┘     └──────────┘     └────────┘
+             SL → Entry+2     Trailing         50% Closed       TP Extended      Profit!
+                              Activates                         +20 pips
+
+
+═══════════════════════════════════════════════════════════════════════
+                         PROTECTION LAYERS
+═══════════════════════════════════════════════════════════════════════
+
+Layer 1: INITIAL SL/TP          Layer 2: BREAKEVEN         Layer 3: TRAILING
+━━━━━━━━━━━━━━━━━━━━━━━━        ━━━━━━━━━━━━━━━━━━━        ━━━━━━━━━━━━━━━━━
+Set at trade open               Activates @ +20 pips       Activates @ +25 pips
+Fixed protection                Risk → Zero                Profit → Locked
+Can still lose                  Small profit locked        Follows price up
+                                                           
+        ↓                               ↓                         ↓
+        
+Layer 4: PARTIAL CLOSE         Layer 5: DYNAMIC TP        Layer 6: FINAL
+━━━━━━━━━━━━━━━━━━━━━━━━       ━━━━━━━━━━━━━━━━━━━━       ━━━━━━━━━━━━━━
+Activates @ +30 pips           @ 80% of TP distance       All protections
+Guarantees profit              Extends target +20          worked together
+Reduces risk exposure          Catches big moves          Maximum profit
+
+
+═══════════════════════════════════════════════════════════════════════
+                      POSITION MANAGER WORKFLOW
+═══════════════════════════════════════════════════════════════════════
+
+    Every 5 seconds:
+    
+    ┌─────────────────────────────────────┐
+    │  1. Get all open positions          │
+    └─────────────────────────────────────┘
+                    ↓
+    ┌─────────────────────────────────────┐
+    │  2. For each position:              │
+    │     - Calculate profit in pips      │
+    │     - Track highest profit          │
+    └─────────────────────────────────────┘
+                    ↓
+    ┌─────────────────────────────────────┐
+    │  3. Check conditions:               │
+    │     ✓ Breakeven needed?             │
+    │     ✓ Trailing stop move?           │
+    │     ✓ Partial close ready?          │
+    │     ✓ TP extension trigger?         │
+    └─────────────────────────────────────┘
+                    ↓
+    ┌─────────────────────────────────────┐
+    │  4. Execute actions if triggered    │
+    │     - Modify SL/TP via MT5          │
+    │     - Close partial volume          │
+    │     - Log all actions               │
+    └─────────────────────────────────────┘
+                    ↓
+    ┌─────────────────────────────────────┐
+    │  5. Update position state           │
+    │     - Mark features as activated    │
+    │     - Track statistics              │
+    └─────────────────────────────────────┘
+                    ↓
+              Wait 5 seconds
+                    ↓
+              Repeat forever
+
+
+═══════════════════════════════════════════════════════════════════════
+                          CONFIGURATION
+═══════════════════════════════════════════════════════════════════════
+
+File: config/currencies.yaml
+
+global:
+  position_management_interval: 5  # Check every 5 seconds
+
+modifications:
+  enable_breakeven: true            # 🛡️ Enable breakeven protection
+  breakeven_trigger_pips: 20        # Trigger at +20 pips
+  breakeven_offset_pips: 2          # Lock in +2 pips
+  
+  enable_trailing_stop: true        # 📈 Enable trailing stop
+  trailing_stop_pips: 15            # Trail 15 pips behind
+  trailing_activation_pips: 25      # Activate at +25 pips
+  
+  enable_partial_close: true        # 💰 Enable partial closes
+  partial_close_trigger_pips: 30    # Trigger at +30 pips
+  partial_close_percent: 50         # Close 50% of position
+  
+  enable_dynamic_tp: true           # 🎯 Enable TP extensions
+  tp_extension_pips: 20             # Extend by +20 pips
+  tp_extension_trigger_percent: 80  # When 80% to TP
+
+
+═══════════════════════════════════════════════════════════════════════
+                       SYSTEM INTEGRATION
+═══════════════════════════════════════════════════════════════════════
+
+main.py
+       │
+       ├─> Load config from currencies.yaml
+       │
+       ├─> Create MultiCurrencyOrchestrator
+       │        │
+       │        └─> Creates PositionManager ✅
+       │
+       └─> Trading loop (every 30s):
+                │
+                ├─> Process new signals
+                │   └─> Open new positions
+                │
+                ├─> Position management (every 5s): ⚡
+                │        │
+                │        ├─> Cleanup closed positions
+                │        │
+                │        └─> Process all open positions:
+                │                 │
+                │                 ├─> Check breakeven
+                │                 ├─> Check trailing stop
+                │                 ├─> Check partial close
+                │                 └─> Check dynamic TP
+                │
+                └─> Wait for next cycle
+
+
+═══════════════════════════════════════════════════════════════════════
+                            BENEFITS
+═══════════════════════════════════════════════════════════════════════
+
+┌─────────────────────┬──────────────┬─────────────────────────────────┐
+│ Without Auto SL/TP  │      VS      │ With Auto SL/TP                 │
+├─────────────────────┼──────────────┼─────────────────────────────────┤
+│ Fixed SL/TP         │      <<<     │ Dynamic adjustments             │
+│ All or nothing      │      <<<     │ Partial profit taking           │
+│ Miss big moves      │      <<<     │ TP extensions capture trends    │
+│ Risk constant       │      <<<     │ Risk reduced to zero            │
+│ Manual monitoring   │      <<<     │ Fully automatic 24/5            │
+│ Emotional decisions │      <<<     │ Rule-based, no emotions         │
+│ Limited profit      │      <<<     │ Maximized profit potential      │
+└─────────────────────┴──────────────┴─────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════
+                        READY TO USE! 🚀
+═══════════════════════════════════════════════════════════════════════
+
+Just run:  python main.py
+
+All features are ENABLED by default and will start working immediately!
+```

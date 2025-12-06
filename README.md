@@ -137,35 +137,37 @@ python src/main.py
 
 ## 📖 Documentation
 
-**🚀 CONFIGURATION-BASED TRADING (NEW!):**
-- **[AUTOMATIC_SLTP_QUICKSTART.md](AUTOMATIC_SLTP_QUICKSTART.md)** - Quick start for auto SL/TP features
-- **[docs/AUTOMATIC_SLTP_MANAGEMENT.md](docs/AUTOMATIC_SLTP_MANAGEMENT.md)** - Complete guide with examples
-- **[docs/CONFIG_BASED_TRADING.md](docs/CONFIG_BASED_TRADING.md)** - Configuration system documentation
-- **[docs/MODIFY_SETTINGS_ONTHEFLY.md](docs/MODIFY_SETTINGS_ONTHEFLY.md)** - Hot-reload settings guide
-- **[QUICK_REFERENCE_CONFIG.md](QUICK_REFERENCE_CONFIG.md)** - One-page quick reference
+> **📚 Complete documentation available in [`docs/`](docs/)** - Organized by category
 
-**🤖 AI/ML FEATURES (NEW!):**
-- **[PHASE3_COMPLETE.md](PHASE3_COMPLETE.md)** - Machine Learning integration guide
-- **[PHASE4_COMPLETE.md](PHASE4_COMPLETE.md)** - LLM integration & sentiment analysis
-- **[docs/API_SETUP.md](docs/API_SETUP.md)** - OpenAI/Anthropic API setup guide
-- **[examples/phase3_ml_demo.py](examples/phase3_ml_demo.py)** - ML demo (LSTM, Random Forest)
-- **[examples/phase4_llm_demo.py](examples/phase4_llm_demo.py)** - LLM demo (sentiment, market analysis)
+### Quick Start Guides
+- **[Getting Started](docs/guides/GETTING_STARTED.md)** - Installation, setup, first run
+- **[Quickstart](docs/guides/QUICKSTART.md)** - 5-minute quick start
+- **[Ready to Run](docs/guides/READY_TO_RUN.md)** - Overview of all scripts
 
-**Original Documentation:**
-- **[START_HERE.md](START_HERE.md)** - Complete overview of ready-to-run system
-- **[READY_TO_RUN.md](READY_TO_RUN.md)** - Quick reference for all 5 trading scripts
-- **[LIVE_TRADING_GUIDE.md](LIVE_TRADING_GUIDE.md)** - Complete guide to live trading (60+ pages)
+### Trading Guides
+- **[Live Trading Guide](docs/guides/LIVE_TRADING_GUIDE.md)** - Complete live trading walkthrough (60+ pages)
+- **[Config-Based Trading](docs/guides/CONFIG_BASED_TRADING.md)** - Configuration system
+- **[Auto SL/TP Management](docs/guides/AUTOMATIC_SLTP_MANAGEMENT.md)** - Automated position management
+- **[Modify Settings On-The-Fly](docs/guides/MODIFY_SETTINGS_ONTHEFLY.md)** - Hot-reload configuration
+- **[Quick Reference](docs/guides/QUICK_REFERENCE.md)** - Code snippets and examples
 
-**Core Documentation:**
-- **[PHASE1_STATUS.md](PHASE1_STATUS.md)** - Core infrastructure (MT5 connector, 60 tests)
-- **[INTEGRATION_COMPLETE.md](INTEGRATION_COMPLETE.md)** - Enhanced features documentation
-- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Code snippets and examples
+### AI/ML Documentation
+- **[Phase 3: Machine Learning](docs/phases/PHASE3_COMPLETE.md)** - LSTM, Random Forest, feature engineering
+- **[Phase 4: LLM Integration](docs/phases/PHASE4_COMPLETE.md)** - GPT-4o, Claude, sentiment analysis
+- **[API Setup Guide](docs/api/API_SETUP.md)** - OpenAI/Anthropic configuration
 
-**Original Docs** (in `docs/` directory):
-- [Quick Start Guide](docs/build/quick-start.md) - Original getting started
-- [System Architecture](docs/design/architecture.md) - Technical design
-- [Phase Roadmap](docs/build/phase2-plus-roadmap.md) - Future features
-- [Documentation Index](docs/INDEX.md) - Complete documentation overview
+### Phase Documentation
+- **[Phase 1: MT5 Integration](docs/phases/PHASE1_COMPLETE.md)** - Core MT5 connector (60+ tests)
+- **[Phase 2: Trading Strategies](docs/phases/PHASE2_COMPLETE.md)** - Indicators & backtesting
+
+### Architecture & Design
+- **[Integration Complete](docs/architecture/INTEGRATION_COMPLETE.md)** - Enhanced features overview
+- **[System Analysis](docs/architecture/SYSTEM_ANALYSIS.md)** - Technical deep dive
+- **[Design Documentation](docs/design/)** - Original design docs
+- **[Build Documentation](docs/build/)** - Build and deployment guides
+
+### 📂 Documentation Index
+See **[`docs/README.md`](docs/README.md)** for complete documentation index organized by use case.
 
 ## 🏗️ Project Structure
 
