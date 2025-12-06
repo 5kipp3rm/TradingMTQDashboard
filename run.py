@@ -305,9 +305,55 @@ def run_quick_start(login, password, server):
     from src.connectors.base import TradeRequest
     
     # Get settings
-    symbol = input("\nSymbol (default: EURUSD): ").strip() or "EURUSD"
-    risk = input("Risk % per trade (default: 1.0): ").strip() or "1.0"
+    print("\n📊 TRADING MODE:")
+    print("1. Wait for MA Crossover (slower, fewer trades)")
+    print("2. Trade on MA Position (faster, more trades)")
+    mode = input("\nMode (default: 2): ").strip() or "2"
+    use_position_trading = (mode == "2")
+    
+    # Popular currency pairs
+    print("\n💱 AVAILABLE CURRENCY PAIRS:")
+    available_pairs = [
+        "EURUSD", "GBPUSD", "USDJPY", "USDCHF",
+        "AUDUSD", "USDCAD", "NZDUSD", "EURGBP",
+        "EURJPY", "GBPJPY", "XAUUSD", "BTCUSD"
+    ]
+    
+    for i, pair in enumerate(available_pairs, 1):
+        print(f"{i:2}. {pair}")
+    
+    print("\nSelect symbols to trade (comma-separated numbers or 'all'):")
+    print("Example: 1,2,5  or  1-4  or  all")
+    selection = input("Selection (default: 1 for EURUSD): ").strip() or "1"
+    
+    # Parse selection
+    symbols = []
+    if selection.lower() == 'all':
+        symbols = available_pairs
+    else:
+        for part in selection.split(','):
+            part = part.strip()
+            if '-' in part:
+                # Range like 1-4
+                start, end = part.split('-')
+                for idx in range(int(start), int(end) + 1):
+                    if 1 <= idx <= len(available_pairs):
+                        symbols.append(available_pairs[idx - 1])
+            else:
+                # Single number
+                idx = int(part)
+                if 1 <= idx <= len(available_pairs):
+                    symbols.append(available_pairs[idx - 1])
+    
+    # Remove duplicates
+    symbols = list(dict.fromkeys(symbols))
+    
+    risk = input("\nRisk % per trade (default: 1.0): ").strip() or "1.0"
     risk_percent = float(risk)
+    
+    print(f"\n✓ Trading symbols: {', '.join(symbols)}")
+    print(f"✓ Risk per trade: {risk_percent}%")
+    print(f"✓ Mode: {'Position Trading' if use_position_trading else 'Crossover'}")
     
     # Connect
     connector = MT5Connector()
@@ -319,15 +365,22 @@ def run_quick_start(login, password, server):
     
     print("✓ Connected!")
     
-    # Verify symbol
-    symbol_info = connector.get_symbol_info(symbol)
-    if not symbol_info:
-        print(f"✗ Symbol {symbol} not available!")
+    # Verify symbols
+    valid_symbols = []
+    for symbol in symbols:
+        symbol_info = connector.get_symbol_info(symbol)
+        if symbol_info:
+            valid_symbols.append(symbol)
+            print(f"✓ {symbol}: Bid {symbol_info.bid:.5f}, Ask {symbol_info.ask:.5f}")
+        else:
+            print(f"✗ {symbol}: Not available - skipping")
+    
+    if not valid_symbols:
+        print("\n✗ No valid symbols to trade!")
         connector.disconnect()
         return
     
-    print(f"\nSymbol: {symbol}")
-    print(f"Bid: {symbol_info.bid:.5f}, Ask: {symbol_info.ask:.5f}")
+    symbols = valid_symbols
     
     # Create strategy
     strategy = SimpleMovingAverageStrategy({
@@ -339,90 +392,134 @@ def run_quick_start(login, password, server):
     
     print(f"\nStrategy: {strategy.name}")
     print(f"Risk: {risk_percent}%")
-    
-    # Confirm
-    print("\n" + "!" * 80)
-    print("  WARNING: This will execute REAL trades!")
-    print("!" * 80)
-    confirm = input("\nType 'GO' to start: ").strip().upper()
-    
-    if confirm != 'GO':
-        print("Cancelled")
-        connector.disconnect()
-        return
+    print(f"Symbols: {len(symbols)}")
     
     print("\n" + "=" * 80)
     print("  TRADING ACTIVE - Press Ctrl+C to stop")
     print("=" * 80)
     
-    last_signal_time = None
+    if use_position_trading:
+        print("  Mode: MA Position Trading (trades when Fast MA > or < Slow MA)")
+    else:
+        print("  Mode: MA Crossover (waits for actual crossover)")
+    
+    last_signals = {}  # Track last signal per symbol
+    last_signal_times = {}  # Track last trade time per symbol
     
     try:
         while True:
-            bars = connector.get_bars(symbol, 'M5', 100)
-            
-            if not bars:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Failed to get data")
-                time.sleep(30)
-                continue
-            
-            signal = strategy.analyze(symbol, 'M5', bars)
-            current_price = bars[-1].close
-            
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] "
-                  f"{symbol} @ {current_price:.5f} - "
-                  f"Signal: {signal.type.name} ({signal.confidence:.0%})")
-            
-            if signal.type != SignalType.HOLD:
-                if last_signal_time:
-                    elapsed = (datetime.now() - last_signal_time).total_seconds()
-                    if elapsed < 60:
-                        print(f"  ⏭ Skipping (too soon: {elapsed:.0f}s)")
-                        time.sleep(30)
+            # Process each symbol
+            for symbol in symbols:
+                try:
+                    bars = connector.get_bars(symbol, 'M5', 100)
+                    
+                    if not bars:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] {symbol}: Failed to get data")
                         continue
-                
-                # Convert signal type to MT5 order type for risk calculation
-                mt5_order_type = mt5.ORDER_TYPE_BUY if signal.type == SignalType.BUY else mt5.ORDER_TYPE_SELL
-                lot_size = AccountUtils.risk_based_lot_size(
-                    symbol, mt5_order_type, signal.price, signal.stop_loss, risk_percent
-                )
-                
-                if not lot_size:
-                    lot_size = symbol_info.volume_min
-                
-                print(f"  📊 Executing {signal.type.name} - {lot_size:.2f} lots")
-                
-                # Convert to OrderType enum for TradeRequest
-                action = OrderType.BUY if signal.type == SignalType.BUY else OrderType.SELL
-                
-                result = connector.send_order(
-                    TradeRequest(
-                        symbol=symbol,
-                        action=action,
-                        volume=lot_size,
-                        price=signal.price,
-                        sl=signal.stop_loss,
-                        tp=signal.take_profit
-                    )
-                )
-                
-                if result.success:
-                    print(f"  ✓ Order #{result.order_ticket} executed @ {result.price:.5f}")
-                    last_signal_time = datetime.now()
-                else:
-                    print(f"  ✗ Failed: {result.error_message}")
+                    
+                    if use_position_trading:
+                        # Position-based trading - check MA positions
+                        import numpy as np
+                        fast_ma = np.mean([bar.close for bar in bars[-10:]])
+                        slow_ma = np.mean([bar.close for bar in bars[-20:]])
+                        current_price = bars[-1].close
+                        
+                        # Determine signal based on position
+                        if fast_ma > slow_ma:
+                            signal_type = SignalType.BUY
+                        elif fast_ma < slow_ma:
+                            signal_type = SignalType.SELL
+                        else:
+                            signal_type = SignalType.HOLD
+                        
+                        # Create signal object
+                        from src.strategies.base import Signal
+                        signal = Signal(
+                            type=signal_type,
+                            symbol=symbol,
+                            timestamp=datetime.now(),
+                            price=current_price,
+                            stop_loss=current_price - 0.0020 if signal_type == SignalType.BUY else current_price + 0.0020,
+                            take_profit=current_price + 0.0040 if signal_type == SignalType.BUY else current_price - 0.0040,
+                            confidence=0.7 if signal_type != SignalType.HOLD else 0.0,
+                            reason=f"Fast MA ({'>' if fast_ma > slow_ma else '<'}) Slow MA"
+                        )
+                        
+                        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] "
+                              f"{symbol} @ {current_price:.5f} - "
+                              f"Fast MA: {fast_ma:.5f}, Slow MA: {slow_ma:.5f}")
+                    else:
+                        # Original crossover-based trading
+                        signal = strategy.analyze(symbol, 'M5', bars)
+                        current_price = bars[-1].close
+                    
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] "
+                          f"{symbol}: Signal: {signal.type.name} ({signal.confidence:.0%})")
+                    
+                    if signal.type != SignalType.HOLD:
+                        # For position trading, only trade on signal change
+                        if use_position_trading and signal.type == last_signals.get(symbol):
+                            continue
+                        
+                        if symbol in last_signal_times:
+                            elapsed = (datetime.now() - last_signal_times[symbol]).total_seconds()
+                            if elapsed < 60:
+                                continue
+                        
+                        # Convert signal type to MT5 order type for risk calculation
+                        mt5_order_type = mt5.ORDER_TYPE_BUY if signal.type == SignalType.BUY else mt5.ORDER_TYPE_SELL
+                        lot_size = AccountUtils.risk_based_lot_size(
+                            symbol, mt5_order_type, signal.price, signal.stop_loss, risk_percent
+                        )
+                        
+                        if not lot_size:
+                            lot_size = symbol_info.volume_min
+                        
+                        print(f"  📊 Executing {signal.type.name} - {lot_size:.2f} lots")
+                        
+                        # Convert to OrderType enum for TradeRequest
+                        action = OrderType.BUY if signal.type == SignalType.BUY else OrderType.SELL
+                        
+                        result = connector.send_order(
+                            TradeRequest(
+                                symbol=symbol,
+                                action=action,
+                                volume=lot_size,
+                                price=signal.price,
+                                sl=signal.stop_loss,
+                                tp=signal.take_profit
+                            )
+                        )
+                        
+                        if result.success:
+                            print(f"  ✓ {symbol}: Order #{result.order_ticket} executed @ {result.price:.5f}")
+                            last_signal_times[symbol] = datetime.now()
+                            last_signals[symbol] = signal.type
+                        else:
+                            print(f"  ✗ {symbol}: Failed: {result.error_message}")
+                    
+                except Exception as e:
+                    print(f"  ✗ {symbol}: Error: {e}")
             
+            # Wait before next cycle
             time.sleep(30)
     
     except KeyboardInterrupt:
         print("\n\n⚠ Stopped by user")
     finally:
-        positions = connector.get_positions(symbol=symbol)
-        if positions:
-            print(f"\n📍 Open positions: {len(positions)}")
-            for pos in positions:
-                print(f"   #{pos.ticket} - {'BUY' if pos.type == 0 else 'SELL'} "
-                      f"{pos.volume:.2f} @ {pos.price_open:.5f} - P/L: ${pos.profit:.2f}")
+        # Show summary for all symbols
+        print("\n" + "=" * 80)
+        print("  TRADING SUMMARY")
+        print("=" * 80)
+        
+        for symbol in symbols:
+            positions = connector.get_positions(symbol=symbol)
+            if positions:
+                total_profit = sum(pos.profit for pos in positions)
+                print(f"\n📊 {symbol}: {len(positions)} position(s), P/L: ${total_profit:.2f}")
+                for pos in positions:
+                    pos_type = "BUY" if pos.type == 0 else "SELL"
+                    print(f"   #{pos.ticket} - {pos_type} {pos.volume:.2f} @ {pos.price_open:.5f} - P/L: ${pos.profit:.2f}")
         
         connector.disconnect()
         print("\n✓ Disconnected")

@@ -1,0 +1,408 @@
+# Trading Configuration File
+# This file controls the multi-currency trading orchestrator
+# Changes to this file can be reloaded without restarting the bot
+
+# ============================================================================
+# GLOBAL SETTINGS
+# ============================================================================
+global:
+  # Maximum number of concurrent open positions across all currencies
+  max_concurrent_trades: 3   # Reduced from 5 for better focus
+  
+  # Total portfolio risk limit (percentage of account balance)
+  portfolio_risk_percent: 5.0  # Reduced from 10% for safety
+  
+  # Trading interval in seconds (how often to check for signals)
+  interval_seconds: 30
+  
+  # Position management interval (check open positions for auto SL/TP)
+  position_management_interval: 5  # seconds (check every 5s for trailing, BE, etc)
+  
+  # Enable parallel processing of currencies (faster but more CPU intensive)
+  parallel_execution: false
+  
+  # Maximum parallel workers (only used if parallel_execution is true)
+  max_workers: 3
+  
+  # Auto-reload configuration changes (hot reload)
+  auto_reload_config: true
+  reload_check_interval: 60  # Check for config changes every 60 seconds
+
+
+# ============================================================================
+# CURRENCY PAIRS CONFIGURATION
+# ============================================================================
+# Each currency pair can have independent settings
+# Set 'enabled: false' to temporarily disable a pair without deleting config
+
+currencies:
+  # -------------------------------------------------------------------------
+  # MAJOR PAIRS
+  # -------------------------------------------------------------------------
+  
+  EURUSD:
+    enabled: true
+    
+    # Risk management
+    risk_percent: 0.5          # Reduced from 1% for safety
+    max_position_size: 1.0     # Maximum lot size
+    min_position_size: 0.01    # Minimum lot size
+    
+    # Strategy settings
+    strategy_type: "position"  # "position" or "crossover"
+    timeframe: "H1"            # H1 = 1 hour (less noise, better signals)
+    
+    # Moving Average parameters
+    fast_period: 20            # Longer periods = fewer but better signals
+    slow_period: 50
+    
+    # Stop Loss / Take Profit (in pips)
+    sl_pips: 30                # Wider stops for H1 timeframe
+    tp_pips: 60
+    
+    # Trading rules
+    cooldown_seconds: 60       # Minimum seconds between trades
+    trade_on_signal_change: true  # Only trade when signal changes
+    
+    # Trading hours (UTC, optional - remove to trade 24/7)
+    # trading_hours:
+    #   start: "08:00"
+    #   end: "17:00"
+    
+  
+  GBPUSD:
+    enabled: false
+    risk_percent: 0.8          # Lower risk - GBP is more volatile
+    max_position_size: 0.5
+    min_position_size: 0.01
+    
+    strategy_type: "position"
+    timeframe: "M5"
+    
+    fast_period: 8
+    slow_period: 21
+    
+    sl_pips: 25                # Wider SL for volatile pair
+    tp_pips: 50
+    
+    cooldown_seconds: 60
+    trade_on_signal_change: true
+  
+  
+  USDJPY:
+    enabled: true
+    risk_percent: 0.5          # Reduced from 1.2% for safety
+    max_position_size: 1.0
+    min_position_size: 0.01
+    
+    strategy_type: "position"
+    timeframe: "H1"            # Higher timeframe
+    
+    fast_period: 20
+    slow_period: 50
+    
+    sl_pips: 25                # Wider stops
+    tp_pips: 50
+    
+    cooldown_seconds: 60
+    trade_on_signal_change: true
+  
+  
+  USDCHF:
+    enabled: false             # Disabled - set to true to activate
+    risk_percent: 1.0
+    max_position_size: 1.0
+    min_position_size: 0.01
+    
+    strategy_type: "position"
+    timeframe: "M5"
+    
+    fast_period: 10
+    slow_period: 20
+    
+    sl_pips: 20
+    tp_pips: 40
+    
+    cooldown_seconds: 60
+    trade_on_signal_change: true
+  
+  
+  # -------------------------------------------------------------------------
+  # MINOR PAIRS
+  # -------------------------------------------------------------------------
+  
+  AUDUSD:
+    enabled: false
+    risk_percent: 1.0
+    max_position_size: 1.0
+    min_position_size: 0.01
+    
+    strategy_type: "position"
+    timeframe: "M5"
+    
+    fast_period: 10
+    slow_period: 20
+    
+    sl_pips: 20
+    tp_pips: 40
+    
+    cooldown_seconds: 60
+    trade_on_signal_change: true
+  
+  
+  NZDUSD:
+    enabled: false
+    risk_percent: 1.0
+    max_position_size: 1.0
+    min_position_size: 0.01
+    
+    strategy_type: "position"
+    timeframe: "M5"
+    
+    fast_period: 10
+    slow_period: 20
+    
+    sl_pips: 20
+    tp_pips: 40
+    
+    cooldown_seconds: 60
+    trade_on_signal_change: true
+  
+  
+  USDCAD:
+    enabled: true
+    risk_percent: 0.5          # Reduced from 1% for safety
+    max_position_size: 1.0
+    min_position_size: 0.01
+    
+    strategy_type: "position"
+    timeframe: "H1"            # Higher timeframe
+    
+    fast_period: 20
+    slow_period: 50
+    
+    sl_pips: 30                # Wider stops
+    tp_pips: 60
+    
+    cooldown_seconds: 60
+    trade_on_signal_change: true
+  
+  
+  # -------------------------------------------------------------------------
+  # CROSS PAIRS
+  # -------------------------------------------------------------------------
+  
+  EURGBP:
+    enabled: false
+    risk_percent: 0.8
+    max_position_size: 0.5
+    min_position_size: 0.01
+    
+    strategy_type: "crossover"  # Use crossover strategy for crosses
+    timeframe: "M15"
+    
+    fast_period: 10
+    slow_period: 20
+    
+    sl_pips: 15
+    tp_pips: 30
+    
+    cooldown_seconds: 120
+    trade_on_signal_change: false
+  
+  
+  EURJPY:
+    enabled: false
+    risk_percent: 0.8
+    max_position_size: 0.5
+    min_position_size: 0.01
+    
+    strategy_type: "crossover"
+    timeframe: "M15"
+    
+    fast_period: 12
+    slow_period: 26
+    
+    sl_pips: 30
+    tp_pips: 60
+    
+    cooldown_seconds: 120
+    trade_on_signal_change: false
+  
+  
+  GBPJPY:
+    enabled: false
+    risk_percent: 0.5          # Very volatile pair
+    max_position_size: 0.3
+    min_position_size: 0.01
+    
+    strategy_type: "crossover"
+    timeframe: "M15"
+    
+    fast_period: 15
+    slow_period: 30
+    
+    sl_pips: 40
+    tp_pips: 80
+    
+    cooldown_seconds: 180
+    trade_on_signal_change: false
+  
+  
+  # -------------------------------------------------------------------------
+  # COMMODITIES / SPECIAL INSTRUMENTS
+  # -------------------------------------------------------------------------
+  
+  XAUUSD:
+    enabled: false
+    risk_percent: 0.5          # Gold is highly volatile
+    max_position_size: 0.3
+    min_position_size: 0.01
+    
+    strategy_type: "crossover"  # Crossover better for gold
+    timeframe: "M15"
+    
+    fast_period: 20
+    slow_period: 50
+    
+    sl_pips: 50
+    tp_pips: 100
+    
+    cooldown_seconds: 120
+    trade_on_signal_change: false
+  
+  
+  # Note: BTCUSD may not be available on all brokers
+  # Remove or disable if not supported
+  BTCUSD:
+    enabled: false             # Disabled by default
+    risk_percent: 0.3
+    max_position_size: 0.1
+    min_position_size: 0.01
+    
+    strategy_type: "crossover"
+    timeframe: "M30"
+    
+    fast_period: 15
+    slow_period: 30
+    
+    sl_pips: 100
+    tp_pips: 200
+    
+    cooldown_seconds: 300
+    trade_on_signal_change: false
+
+
+# ============================================================================
+# EMERGENCY CONTROLS
+# ============================================================================
+emergency:
+  # Emergency stop - immediately stop all trading
+  emergency_stop: false
+  
+  # Close all positions on emergency stop
+  close_all_on_stop: true
+  
+  # Maximum daily loss limit (percentage of starting balance)
+  max_daily_loss_percent: 5.0
+  
+  # Stop trading if daily loss limit reached
+  stop_on_daily_loss: true
+  
+  # Maximum drawdown limit (percentage)
+  max_drawdown_percent: 10.0
+  
+  # Stop trading if drawdown limit reached
+  stop_on_max_drawdown: true
+
+
+# ============================================================================
+# AUTOMATIC SL/TP MANAGEMENT
+# ============================================================================
+# Automatically manages open positions for better profit protection
+# All features work independently - enable what you need
+
+modifications:
+  # 1. BREAKEVEN PROTECTION - Move SL to entry + small profit
+  enable_breakeven: true
+  breakeven_trigger_pips: 30          # Adjusted for H1 (was 20)
+  breakeven_offset_pips: 5            # Larger cushion (was 2)
+  
+  # 2. TRAILING STOP - Automatically moves SL to lock in profits
+  enable_trailing_stop: true
+  trailing_stop_pips: 20              # Wider for H1 (was 15)
+  trailing_activation_pips: 40        # Higher activation (was 25)
+  
+  # 3. PARTIAL PROFIT TAKING - Close part of position at milestone
+  enable_partial_close: true
+  partial_close_trigger_pips: 50      # Higher for H1 (was 30)
+  partial_close_percent: 50           # Keep at 50%
+  
+  # 4. DYNAMIC TAKE PROFIT - Extend TP when price moves favorably
+  enable_dynamic_tp: true
+  tp_extension_pips: 30               # Larger extension (was 20)
+  tp_extension_trigger_percent: 80    # Keep at 80%
+
+
+# ============================================================================
+# NOTIFICATIONS (Optional)
+# ============================================================================
+notifications:
+  # Enable notifications
+  enabled: true
+  
+  # Notify on trade execution
+  notify_on_trade: true
+  
+  # Notify on trade close
+  notify_on_close: true
+  
+  # Notify on errors
+  notify_on_error: true
+  
+  # Notify on daily summary
+  notify_daily_summary: true
+  daily_summary_time: "17:00"  # UTC
+
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  
+  # Log to file
+  log_to_file: true
+  log_file: "logs/trading.log"
+  
+  # Log rotation
+  max_log_size_mb: 10
+  backup_count: 5
+  
+  # Log to console
+  log_to_console: true
+
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# How to modify SL/TP on the fly:
+# 
+# 1. Edit the sl_pips and tp_pips values for any currency
+# 2. Save the file
+# 3. If auto_reload_config is true, changes will be applied automatically
+# 4. New values apply to NEW trades only (not existing positions)
+# 
+# To modify EXISTING positions:
+# - Set modifications.enable_trailing_stop to true for trailing stops
+# - Set modifications.breakeven_trigger_pips to move SL to breakeven
+# - Or manually modify via MT5 terminal
+#
+# To temporarily disable a currency:
+# - Set enabled: false for that currency
+# - It will be skipped on next config reload
+#
+# To stop all trading immediately:
+# - Set emergency.emergency_stop: true
+# - All trading will halt on next cycle
