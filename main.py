@@ -22,6 +22,22 @@ from src.trading import MultiCurrencyOrchestrator, CurrencyTraderConfig
 from src.config_manager import ConfigurationManager
 from src.utils.logger import setup_logging, get_logger, log_connection, log_config, log_cycle
 
+# Optional ML/LLM imports
+try:
+    from src.ml import RandomForestClassifier, FeatureEngineer
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    print("⚠️  ML libraries not available - install with: pip install -r requirements.txt")
+
+try:
+    from src.llm import OpenAIProvider, SentimentAnalyzer, MarketAnalyst
+    from src.utils.config_loader import get_openai_key
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+    print("⚠️  LLM libraries not available - install with: pip install -r requirements.txt")
+
 # Load environment
 load_dotenv()
 
@@ -92,6 +108,56 @@ def main():
         return
     
     logger.info(f"Found {len(enabled_currencies)} enabled currencies: {', '.join(enabled_currencies)}")
+    
+    # Initialize ML/LLM components (optional)
+    use_ml = config_manager.config.get('global', {}).get('use_ml_enhancement', False)
+    use_llm = config_manager.config.get('global', {}).get('use_sentiment_filter', False)
+    
+    if use_ml and ML_AVAILABLE:
+        logger.info("=" * 80)
+        logger.info("  INITIALIZING ML ENHANCEMENT")
+        logger.info("=" * 80)
+        
+        # Try to load pre-trained model
+        ml_model_path = "data/models/rf_model.pkl"
+        if os.path.exists(ml_model_path):
+            try:
+                ml_model = RandomForestClassifier()
+                if ml_model.load(ml_model_path):
+                    logger.info(f"✅ Loaded ML model from {ml_model_path}")
+                    orchestrator.enable_ml_for_all(ml_model)
+                else:
+                    logger.warning(f"⚠️  Failed to load ML model from {ml_model_path}")
+                    use_ml = False
+            except Exception as e:
+                logger.warning(f"⚠️  ML initialization failed: {e}")
+                use_ml = False
+        else:
+            logger.warning(f"⚠️  ML model not found at {ml_model_path}")
+            logger.info(f"   Train a model using: python examples/phase3_ml_demo.py")
+            use_ml = False
+    
+    if use_llm and LLM_AVAILABLE:
+        logger.info("=" * 80)
+        logger.info("  INITIALIZING LLM SENTIMENT ANALYSIS")
+        logger.info("=" * 80)
+        
+        api_key = get_openai_key()
+        if api_key:
+            try:
+                llm_provider = OpenAIProvider(api_key=api_key)
+                sentiment_analyzer = SentimentAnalyzer(llm_provider)
+                market_analyst = MarketAnalyst(llm_provider)
+                
+                orchestrator.enable_llm_for_all(sentiment_analyzer, market_analyst)
+                logger.info("✅ LLM sentiment analysis enabled")
+            except Exception as e:
+                logger.warning(f"⚠️  LLM initialization failed: {e}")
+                use_llm = False
+        else:
+            logger.warning("⚠️  OpenAI API key not found")
+            logger.info("   Set OPENAI_API_KEY in .env or config/api_keys.yaml")
+            use_llm = False
     
     added_count = 0
     skipped_symbols = []
@@ -180,7 +246,7 @@ def main():
         logger.info(f"   - Config auto-reloads every {config_manager.get_reload_interval()}s")
     logger.info("   - Press Ctrl+C to stop")
     
-    input("Press Enter to start trading...")
+    #input("Press Enter to start trading...")
     
     # Run trading with config hot-reload
     try:

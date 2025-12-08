@@ -475,6 +475,18 @@ class MT5Connector(BaseMetaTraderConnector):
             
             price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
             
+            # Get MT5 symbol info for filling mode detection
+            mt5_symbol_info = mt5.symbol_info(position.symbol)
+            if mt5_symbol_info is None:
+                return TradeResult(
+                    success=False,
+                    error_code=1,
+                    error_message=f"Symbol {position.symbol} info not available"
+                )
+            
+            # Detect supported filling mode for this symbol
+            filling_type = self._get_filling_mode(mt5_symbol_info)
+            
             # Build close request
             close_request = {
                 "action": mt5.TRADE_ACTION_DEAL,
@@ -487,10 +499,31 @@ class MT5Connector(BaseMetaTraderConnector):
                 "magic": position.magic,
                 "comment": "Close position",
                 "type_time": mt5.ORDER_TIME_GTC,
-                "type_filling": mt5.ORDER_FILLING_IOC,
+                "type_filling": filling_type,
             }
             
             result = mt5.order_send(close_request)
+            
+            # If filling mode error, try alternatives
+            if result and result.retcode == 10030:  # Unsupported filling mode
+                logger.warning(f"[{self.instance_id}] Filling mode {filling_type} rejected for close, trying alternatives...")
+                
+                filling_modes_to_try = [
+                    mt5.ORDER_FILLING_RETURN,
+                    mt5.ORDER_FILLING_FOK,
+                    mt5.ORDER_FILLING_IOC
+                ]
+                
+                for fill_mode in filling_modes_to_try:
+                    if fill_mode == filling_type:
+                        continue
+                    
+                    logger.info(f"[{self.instance_id}] Trying close with filling mode: {fill_mode}")
+                    close_request["type_filling"] = fill_mode
+                    result = mt5.order_send(close_request)
+                    
+                    if result and result.retcode != 10030:
+                        break
             
             if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
                 error = mt5.last_error()

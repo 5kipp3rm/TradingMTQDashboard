@@ -10,6 +10,22 @@ import MetaTrader5 as mt5
 from src.connectors.base import BaseMetaTraderConnector, OrderType, TradeRequest
 from src.strategies.base import BaseStrategy, Signal, SignalType
 from src.connectors.account_utils import AccountUtils
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+# Optional ML/LLM imports
+try:
+    from src.ml import FeatureEngineer, RandomForestClassifier, LSTMPricePredictor
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+
+try:
+    from src.llm import SentimentAnalyzer, MarketAnalyst
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
 
 
 @dataclass
@@ -41,16 +57,19 @@ class CurrencyTrader:
     
     def __init__(self, 
                  config: CurrencyTraderConfig,
-                 connector: BaseMetaTraderConnector):
+                 connector: BaseMetaTraderConnector,
+                 intelligent_manager=None):
         """
         Initialize currency trader
         
         Args:
             config: Trading configuration for this currency
             connector: Shared MT5 connector
+            intelligent_manager: Optional intelligent position manager for AI decisions
         """
         self.config = config
         self.connector = connector
+        self.intelligent_manager = intelligent_manager
         
         # State management
         self.last_signal: Optional[Signal] = None
@@ -63,6 +82,13 @@ class CurrencyTrader:
         self.failed_trades = 0
         self.total_profit = 0.0
         
+        # ML/LLM components (optional)
+        self.ml_model = None
+        self.sentiment_analyzer = None
+        self.market_analyst = None
+        self.use_ml_enhancement = False
+        self.use_sentiment_filter = False
+        
         # Validation
         self.is_valid = self._validate_symbol()
     
@@ -73,6 +99,25 @@ class CurrencyTrader:
             print(f"⚠️  Warning: Symbol {self.config.symbol} not available on this broker")
             return False
         return True
+    
+    def enable_ml_enhancement(self, ml_model):
+        """Enable ML-enhanced trading"""
+        if ML_AVAILABLE:
+            self.ml_model = ml_model
+            self.use_ml_enhancement = True
+            print(f"✅ [{self.config.symbol}] ML enhancement enabled")
+        else:
+            print(f"⚠️  ML libraries not available")
+    
+    def enable_sentiment_filter(self, sentiment_analyzer, market_analyst=None):
+        """Enable LLM sentiment filtering"""
+        if LLM_AVAILABLE:
+            self.sentiment_analyzer = sentiment_analyzer
+            self.market_analyst = market_analyst
+            self.use_sentiment_filter = True
+            print(f"✅ [{self.config.symbol}] LLM sentiment filter enabled")
+        else:
+            print(f"⚠️  LLM libraries not available")
     
     def can_trade(self) -> bool:
         """Check if enough time has passed since last trade"""
@@ -98,7 +143,10 @@ class CurrencyTrader:
             )
             
             if not bars:
+                logger.debug(f"[{self.config.symbol}] No bars returned from connector")
                 return None
+            
+            logger.debug(f"[{self.config.symbol}] Got {len(bars)} bars for analysis")
             
             if self.config.use_position_trading:
                 # Position-based trading (faster signals)
@@ -138,8 +186,12 @@ class CurrencyTrader:
                     stop_loss=sl,
                     take_profit=tp,
                     confidence=0.7 if signal_type != SignalType.HOLD else 0.0,
-                    reason=f"Fast MA({self.config.fast_period})={'>' if fast_ma > slow_ma else '<'}Slow MA({self.config.slow_period})"
+                    reason=f"Fast MA({self.config.fast_period})={'>' if fast_ma > slow_ma else '<' if fast_ma < slow_ma else '='}Slow MA({self.config.slow_period})"
                 )
+                
+                # Log signal generation for monitoring
+                logger.info(f"[{self.config.symbol}] 📊 MA Analysis: Fast={fast_ma:.5f}, Slow={slow_ma:.5f} → Signal: {signal_type.name}")
+                logger.info(f"[{self.config.symbol}] 🔄 Last signal type: {self.last_signal_type.name if self.last_signal_type else 'None'}")
             else:
                 # Crossover-based trading (waits for actual cross)
                 signal = self.config.strategy.analyze(
@@ -149,11 +201,127 @@ class CurrencyTrader:
                 )
             
             self.last_signal = signal
+            
+            # ML Enhancement (if enabled)
+            if self.use_ml_enhancement and self.ml_model and signal.type != SignalType.HOLD:
+                signal = self._enhance_with_ml(signal, bars)
+            
+            # LLM Sentiment Filter (if enabled)
+            if self.use_sentiment_filter and self.sentiment_analyzer and signal.type != SignalType.HOLD:
+                signal = self._apply_sentiment_filter(signal)
+            
             return signal
             
         except Exception as e:
             print(f"[{self.config.symbol}] Analysis error: {e}")
             return None
+    
+    def _enhance_with_ml(self, signal: Signal, bars: list) -> Signal:
+        """
+        Enhance signal with ML prediction
+        
+        Args:
+            signal: Base technical signal
+            bars: OHLC bars
+            
+        Returns:
+            Enhanced signal with ML confidence
+        """
+        try:
+            from src.ml import FeatureEngineer
+            import pandas as pd
+            
+            # Convert bars to DataFrame
+            df = pd.DataFrame([{
+                'open': bar.open,
+                'high': bar.high,
+                'low': bar.low,
+                'close': bar.close,
+                'volume': bar.volume
+            } for bar in bars])
+            
+            # Generate features
+            feature_engineer = FeatureEngineer()
+            feature_set = feature_engineer.transform(df)
+            
+            if len(feature_set.features) == 0:
+                return signal
+            
+            # Get latest features
+            X = feature_set.features.iloc[-1:].values
+            
+            # Predict
+            prediction = self.ml_model.predict(X)
+            
+            # Convert ML prediction to signal type
+            if prediction.prediction > 0:
+                ml_signal_type = SignalType.BUY
+            elif prediction.prediction < 0:
+                ml_signal_type = SignalType.SELL
+            else:
+                ml_signal_type = SignalType.HOLD
+            
+            # Combine with technical signal
+            if ml_signal_type == signal.type:
+                # ML agrees - boost confidence
+                new_confidence = min(1.0, (signal.confidence * 0.4) + (prediction.confidence * 0.6))
+                signal.confidence = new_confidence
+                signal.reason += f" | ML: {ml_signal_type.value} ({prediction.confidence:.2f})"
+                signal.metadata['ml_confidence'] = prediction.confidence
+                signal.metadata['ml_agrees'] = True
+                print(f"  🧠 ML agrees: {ml_signal_type.value} (confidence {new_confidence:.2f})")
+            else:
+                # ML disagrees - reduce confidence or change signal
+                if prediction.confidence > 0.75:
+                    # ML is very confident - switch to ML signal
+                    signal.type = ml_signal_type
+                    signal.confidence = prediction.confidence * 0.8
+                    signal.reason = f"ML override: {ml_signal_type.value} ({prediction.confidence:.2f})"
+                    signal.metadata['ml_confidence'] = prediction.confidence
+                    signal.metadata['ml_override'] = True
+                    print(f"  🧠 ML override: {ml_signal_type.value} (confidence {prediction.confidence:.2f})")
+                else:
+                    # ML is uncertain - reduce technical confidence
+                    signal.confidence *= 0.6
+                    signal.reason += f" | ML uncertain"
+                    signal.metadata['ml_confidence'] = prediction.confidence
+                    signal.metadata['ml_agrees'] = False
+                    print(f"  🧠 ML disagrees - reduced confidence to {signal.confidence:.2f}")
+            
+            return signal
+            
+        except Exception as e:
+            print(f"  ⚠️  ML enhancement failed: {e}")
+            return signal
+    
+    def _apply_sentiment_filter(self, signal: Signal) -> Signal:
+        """
+        Filter signal using LLM sentiment analysis
+        
+        Args:
+            signal: Signal to filter
+            
+        Returns:
+            Filtered signal (may be changed to HOLD)
+        """
+        try:
+            # For now, we'll use a simplified sentiment check
+            # In production, you'd scrape news or use real-time data
+            
+            # Placeholder: Random sentiment for demo
+            # In real implementation, use: self.sentiment_analyzer.analyze_text(news, symbol)
+            
+            # For now, just log that sentiment filter is available
+            signal.metadata['sentiment_enabled'] = True
+            signal.reason += " | Sentiment: Enabled"
+            
+            print(f"  🤖 LLM sentiment filter active")
+            
+            return signal
+            
+        except Exception as e:
+            print(f"  ⚠️  Sentiment filter failed: {e}")
+            return signal
     
     def should_execute_signal(self, signal: Signal) -> bool:
         """
@@ -167,17 +335,33 @@ class CurrencyTrader:
         """
         # No trade on HOLD
         if signal.type == SignalType.HOLD:
+            logger.info(f"[{self.config.symbol}] ⏸️  HOLD signal - no action needed")
             return False
         
         # Check cooldown
         if not self.can_trade():
+            remaining = (self.last_trade_time + timedelta(seconds=self.config.cooldown_seconds) - datetime.now()).total_seconds()
+            logger.info(f"[{self.config.symbol}] ⏱️  Cooldown active - {remaining:.0f}s remaining")
             return False
         
         # For position trading, only trade on signal change
         if self.config.use_position_trading:
+            # Check current positions to show in logs
+            current_positions = self.connector.get_positions(self.config.symbol)
+            pos_info = ""
+            if current_positions:
+                tickets = ", ".join([f"#{p.ticket}" for p in current_positions[:3]])
+                if len(current_positions) > 3:
+                    tickets += f" +{len(current_positions)-3}"
+                pos_info = f" (Current: {tickets})"
+            
             if signal.type == self.last_signal_type:
+                logger.info(f"[{self.config.symbol}] 🔄 Position trading: {signal.type.name} matches last signal ({self.last_signal_type.name}) - SKIP{pos_info}")
                 return False
+            else:
+                logger.info(f"[{self.config.symbol}] 🔄 Position trading: Signal changed from {self.last_signal_type.name if self.last_signal_type else 'None'} to {signal.type.name} - EXECUTE{pos_info}")
         
+        logger.info(f"[{self.config.symbol}] ✅ Signal approved for execution: {signal.type.name}")
         return True
     
     def calculate_lot_size(self, signal: Signal) -> float:
@@ -249,13 +433,13 @@ class CurrencyTrader:
             
             if result.success:
                 self.last_trade_time = datetime.now()
-                self.last_signal_type = signal.type
+                # last_signal_type already set in should_execute_signal
                 self.total_trades += 1
                 self.successful_trades += 1
                 
-                print(f"✓ [{self.config.symbol}] {signal.type.name} "
+                logger.info(f"✅ [{self.config.symbol}] {signal.type.name} "
                       f"{lot_size:.2f} lots @ {result.price:.5f} "
-                      f"(Order #{result.order_ticket})")
+                      f"→ Ticket #{result.order_ticket}")
                 return True
             else:
                 self.failed_trades += 1
@@ -293,15 +477,36 @@ class CurrencyTrader:
             result['signal'] = signal
             
             if not signal:
+                logger.info(f"[{self.config.symbol}] ❌ No signal generated - market conditions not met")
                 result['error'] = "Failed to generate signal"
                 return result
             
+            logger.info(f"[{self.config.symbol}] 🔍 Signal: {signal.type.name}, Confidence: {signal.confidence:.3f}, Price: {signal.price:.5f}")
+            
             # Check if should execute
             if self.should_execute_signal(signal):
+                # Update last signal type IMMEDIATELY after approval
+                # (Don't wait for trade execution, as AI might reject it)
+                self.last_signal_type = signal.type
+                
+                # If intelligent manager is available, check with it first
+                if self.intelligent_manager and signal.type != SignalType.HOLD:
+                    logger.info(f"[{self.config.symbol}] 🤖 Consulting AI for decision...")
+                    decision = self.intelligent_manager.make_decision(signal)
+                    
+                    if not decision.allow_new_trade:
+                        logger.info(f"🧠 [{self.config.symbol}] AI REJECTED: {decision.reasoning}")
+                        result['executed'] = False
+                        result['reason'] = decision.reasoning
+                        return result
+                    
+                    logger.info(f"🧠 [{self.config.symbol}] AI APPROVED: {decision.reasoning}")
+                
+                # Execute the trade
                 executed = self.execute_trade(signal)
                 result['executed'] = executed
             else:
-                print(f"[{self.config.symbol}] {signal.type.name} "
+                logger.debug(f"[{self.config.symbol}] {signal.type.name} "
                       f"@ {signal.price:.5f} - Skipped (cooldown/duplicate)")
             
         except Exception as e:

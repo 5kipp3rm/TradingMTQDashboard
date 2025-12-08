@@ -60,6 +60,10 @@ class PositionManager:
         if not positions:
             return
         
+        # Check portfolio target profit FIRST (before individual position management)
+        if config.get('enable_portfolio_target', False):
+            self._check_portfolio_target(positions, config)
+        
         for position in positions:
             # Auto-add new positions
             if position.ticket not in self.managed_positions:
@@ -275,6 +279,54 @@ class PositionManager:
                     f"TP extended by {extension_pips} pips to {new_tp:.5f}",
                     extra={'symbol': position.symbol, 'custom_icon': '🎯'}
                 )
+    
+    def _check_portfolio_target(self, positions: List[Position], config: Dict) -> None:
+        """
+        Check if portfolio total profit reached target and close positions
+        
+        Args:
+            positions: List of all open positions
+            config: Management configuration
+        """
+        target_profit = config.get('portfolio_target_profit', 100.0)
+        partial_close = config.get('portfolio_target_partial', False)
+        
+        # Calculate total portfolio profit
+        total_profit = sum(pos.profit for pos in positions)
+        
+        if total_profit >= target_profit:
+            logger.info(
+                f"💰 Portfolio target reached! Total P/L: ${total_profit:.2f} (Target: ${target_profit:.2f})",
+                extra={'custom_icon': '🎯'}
+            )
+            
+            if partial_close:
+                # Close 50% of each position
+                logger.info(f"📊 Closing 50% of all {len(positions)} positions to lock in profit")
+                for pos in positions:
+                    # Close half volume
+                    close_volume = pos.volume * 0.5
+                    result = self.connector.close_position(pos.ticket, close_volume)
+                    if result.success:
+                        logger.info(
+                            f"✓ Partial close: {close_volume:.2f} lots @ profit ${pos.profit * 0.5:.2f}",
+                            extra={'symbol': pos.symbol}
+                        )
+                    else:
+                        logger.error(f"✗ Failed to partial close {pos.symbol}: {result.error_message}")
+            else:
+                # Close all positions
+                logger.info(f"💼 Closing ALL {len(positions)} positions to secure ${total_profit:.2f} profit")
+                for pos in positions:
+                    result = self.connector.close_position(pos.ticket)
+                    if result.success:
+                        logger.info(
+                            f"✓ Closed @ profit ${pos.profit:.2f}",
+                            extra={'symbol': pos.symbol}
+                        )
+                        self.remove_position(pos.ticket)
+                    else:
+                        logger.error(f"✗ Failed to close {pos.symbol}: {result.error_message}")
     
     def remove_position(self, ticket: int) -> None:
         """Remove position from management"""

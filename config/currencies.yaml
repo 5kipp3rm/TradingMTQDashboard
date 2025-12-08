@@ -7,10 +7,12 @@
 # ============================================================================
 global:
   # Maximum number of concurrent open positions across all currencies
-  max_concurrent_trades: 3   # Reduced from 5 for better focus
+  # NOTE: With intelligent position manager enabled, this is a soft limit
+  # The AI will dynamically adjust based on market conditions and portfolio health
+  max_concurrent_trades: 15   # Increased - AI manages intelligently
   
   # Total portfolio risk limit (percentage of account balance)
-  portfolio_risk_percent: 5.0  # Reduced from 10% for safety
+  portfolio_risk_percent: 8.0  # Slightly higher with AI management
   
   # Trading interval in seconds (how often to check for signals)
   interval_seconds: 30
@@ -27,6 +29,11 @@ global:
   # Auto-reload configuration changes (hot reload)
   auto_reload_config: true
   reload_check_interval: 60  # Check for config changes every 60 seconds
+  
+  # AI/ML Features
+  use_intelligent_position_manager: true  # Use AI to decide when to open/close
+  use_ml_enhancement: true                # Use ML to enhance signals
+  use_sentiment_filter: true              # Use LLM sentiment analysis
 
 
 # ============================================================================
@@ -90,7 +97,7 @@ currencies:
   
   
   USDJPY:
-    enabled: true
+    enabled: false
     risk_percent: 0.5          # Reduced from 1.2% for safety
     max_position_size: 1.0
     min_position_size: 0.01
@@ -170,7 +177,7 @@ currencies:
   
   
   USDCAD:
-    enabled: true
+    enabled: false
     risk_percent: 0.5          # Reduced from 1% for safety
     max_position_size: 1.0
     min_position_size: 0.01
@@ -342,6 +349,12 @@ modifications:
   enable_dynamic_tp: true
   tp_extension_pips: 30               # Larger extension (was 20)
   tp_extension_trigger_percent: 80    # Keep at 80%
+  
+  # 5. PORTFOLIO TARGET PROFIT - Close all positions at target profit
+  enable_portfolio_target: true
+  portfolio_target_profit: 100.0      # Close all positions when total P/L reaches this ($)
+  portfolio_target_partial: false     # If true, only close 50% of all positions
+  portfolio_stop_trading_after: true  # Stop opening new trades after target hit (until next day)
 
 
 # ============================================================================
