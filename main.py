@@ -182,6 +182,11 @@ def main():
             max_position_size=currency_config.get('max_position_size', 1.0),
             min_position_size=currency_config.get('min_position_size', 0.01),
             use_position_trading=currency_config['strategy_type'] == 'position',
+            # Position stacking parameters
+            allow_position_stacking=currency_config.get('allow_position_stacking', False),
+            max_positions_same_direction=currency_config.get('max_positions_same_direction', 1),
+            max_total_positions=currency_config.get('max_total_positions', 5),
+            stacking_risk_multiplier=currency_config.get('stacking_risk_multiplier', 1.0),
             fast_period=currency_config['fast_period'],
             slow_period=currency_config['slow_period'],
             sl_pips=currency_config['sl_pips'],

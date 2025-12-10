@@ -40,6 +40,12 @@ class CurrencyTraderConfig:
     min_position_size: float = 0.01
     use_position_trading: bool = True  # Position-based vs Crossover
     
+    # Position stacking (allows multiple positions in same direction)
+    allow_position_stacking: bool = False  # Enable to stack positions during strong trends
+    max_positions_same_direction: int = 1  # Max positions in same direction (BUY or SELL)
+    max_total_positions: int = 5  # Max total positions for this symbol
+    stacking_risk_multiplier: float = 1.0  # Risk multiplier for stacked positions (e.g., 1.2 = 20% more)
+    
     # Per-currency strategy parameters
     fast_period: int = 10
     slow_period: int = 20
@@ -344,21 +350,42 @@ class CurrencyTrader:
             logger.info(f"[{self.config.symbol}] ⏱️  Cooldown active - {remaining:.0f}s remaining")
             return False
         
-        # For position trading, only trade on signal change
+        # For position trading, check if we should allow position stacking
         if self.config.use_position_trading:
             # Check current positions to show in logs
             current_positions = self.connector.get_positions(self.config.symbol)
             pos_info = ""
+            positions_same_direction = 0
+            
             if current_positions:
                 tickets = ", ".join([f"#{p.ticket}" for p in current_positions[:3]])
                 if len(current_positions) > 3:
                     tickets += f" +{len(current_positions)-3}"
                 pos_info = f" (Current: {tickets})"
+                
+                # Count positions in same direction
+                for pos in current_positions:
+                    if signal.type == SignalType.BUY and pos.type == 0:  # MT5: 0=BUY
+                        positions_same_direction += 1
+                    elif signal.type == SignalType.SELL and pos.type == 1:  # MT5: 1=SELL
+                        positions_same_direction += 1
+            
+            # Check if position stacking is enabled (via config or default behavior)
+            allow_stacking = getattr(self.config, 'allow_position_stacking', False)
+            max_positions_same_dir = getattr(self.config, 'max_positions_same_direction', 1)
             
             if signal.type == self.last_signal_type:
-                logger.info(f"[{self.config.symbol}] 🔄 Position trading: {signal.type.name} matches last signal ({self.last_signal_type.name}) - SKIP{pos_info}")
-                return False
+                # Same signal as before
+                if allow_stacking and positions_same_direction < max_positions_same_dir:
+                    # Allow stacking: add another position in same direction
+                    logger.info(f"[{self.config.symbol}] 📊 Position STACKING: Adding position #{positions_same_direction + 1} in {signal.type.name} direction{pos_info}")
+                    return True
+                else:
+                    # No stacking: skip duplicate signal
+                    logger.info(f"[{self.config.symbol}] 🔄 Position trading: {signal.type.name} matches last signal ({self.last_signal_type.name}) - SKIP{pos_info}")
+                    return False
             else:
+                # Signal changed direction
                 logger.info(f"[{self.config.symbol}] 🔄 Position trading: Signal changed from {self.last_signal_type.name if self.last_signal_type else 'None'} to {signal.type.name} - EXECUTE{pos_info}")
         
         logger.info(f"[{self.config.symbol}] ✅ Signal approved for execution: {signal.type.name}")
@@ -367,6 +394,7 @@ class CurrencyTrader:
     def calculate_lot_size(self, signal: Signal) -> float:
         """
         Calculate position size based on risk
+        Applies risk multiplier for stacked positions
         
         Args:
             signal: Trading signal with SL/TP
@@ -379,13 +407,31 @@ class CurrencyTrader:
                          if signal.type == SignalType.BUY 
                          else mt5.ORDER_TYPE_SELL)
         
+        # Check if this is a stacked position (same direction as existing)
+        risk_percent = self.config.risk_percent
+        current_positions = self.connector.get_positions(self.config.symbol)
+        
+        if current_positions and self.config.allow_position_stacking:
+            # Count positions in same direction
+            positions_same_direction = 0
+            for pos in current_positions:
+                if signal.type == SignalType.BUY and pos.type == 0:  # MT5: 0=BUY
+                    positions_same_direction += 1
+                elif signal.type == SignalType.SELL and pos.type == 1:  # MT5: 1=SELL
+                    positions_same_direction += 1
+            
+            # Apply risk multiplier for stacked positions
+            if positions_same_direction > 0:
+                risk_percent *= self.config.stacking_risk_multiplier
+                logger.info(f"[{self.config.symbol}] 📈 Stacking position #{positions_same_direction + 1}: Risk adjusted to {risk_percent:.2f}%")
+        
         # Calculate risk-based lot size
         lot_size = AccountUtils.risk_based_lot_size(
             symbol=self.config.symbol,
             order_type=mt5_order_type,
             entry_price=signal.price,
             stop_loss=signal.stop_loss,
-            risk_percent=self.config.risk_percent
+            risk_percent=risk_percent
         )
         
         if not lot_size:
