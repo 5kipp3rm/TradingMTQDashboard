@@ -12,7 +12,8 @@ class ConfigLoader:
     """Load configuration from YAML files with env var override"""
     
     def __init__(self):
-        self.project_root = Path(__file__).parent.parent
+        # Go up from src/utils to project root
+        self.project_root = Path(__file__).parent.parent.parent
         self.config_dir = self.project_root / 'config'
         self._cache = {}
     

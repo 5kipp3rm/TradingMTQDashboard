@@ -7,6 +7,7 @@ import numpy as np
 from .base import BaseStrategy, Signal, SignalType
 from ..connectors.base import OHLCBar
 from ..indicators.momentum import RSI
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -41,11 +42,11 @@ class RSIStrategy(BaseStrategy):
             tp_rsi_target: Take profit when RSI reaches this level
         """
         super().__init__(
-            name=f"RSI_{rsi_period}_{oversold}_{overbought}",
-            symbol=symbol,
-            timeframe=timeframe
+            name=f"RSI_{rsi_period}_{oversold}_{overbought}"
         )
         
+        self.symbol = symbol
+        self.timeframe = timeframe
         self.rsi_period = rsi_period
         self.oversold = oversold
         self.overbought = overbought
@@ -112,7 +113,7 @@ class RSIStrategy(BaseStrategy):
             tp = current_price + (self.sl_atr_multiplier * atr * 1.5)  # 1.5:1 R:R
             
             return Signal(
-                signal_type=SignalType.BUY,
+                type=SignalType.BUY,
                 symbol=self.symbol,
                 price=current_price,
                 sl=sl,
@@ -126,7 +127,7 @@ class RSIStrategy(BaseStrategy):
             tp = current_price - (self.sl_atr_multiplier * atr * 1.5)  # 1.5:1 R:R
             
             return Signal(
-                signal_type=SignalType.SELL,
+                type=SignalType.SELL,
                 symbol=self.symbol,
                 price=current_price,
                 sl=sl,

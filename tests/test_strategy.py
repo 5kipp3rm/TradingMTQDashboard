@@ -62,6 +62,10 @@ class TestSimpleMovingAverageStrategy:
         
         assert sma > 0
         assert isinstance(sma, float)
+        
+        # Test with insufficient bars
+        sma_insufficient = strategy.calculate_sma(bars[:3], 5)
+        assert sma_insufficient == 0.0
     
     def test_insufficient_data(self, strategy):
         """Test with insufficient data"""
@@ -124,6 +128,16 @@ class TestSimpleMovingAverageStrategy:
         # Should eventually get a BUY signal as fast MA crosses above slow
         assert signal is not None
         assert signal.symbol == "EURUSD"
+        assert signal.type in [SignalType.BUY, SignalType.HOLD]
+        
+        # If it's a BUY signal, verify SL/TP
+        if signal.type == SignalType.BUY:
+            assert signal.stop_loss is not None
+            assert signal.take_profit is not None
+            assert signal.stop_loss < signal.price
+            assert signal.take_profit > signal.price
+            assert signal.confidence >= 0.0
+            assert "Bullish" in signal.reason or "crossover" in signal.reason.lower()
     
     def test_bearish_crossover(self, strategy):
         """Test bearish crossover detection"""
@@ -160,6 +174,16 @@ class TestSimpleMovingAverageStrategy:
         
         assert signal is not None
         assert signal.symbol == "EURUSD"
+        assert signal.type in [SignalType.SELL, SignalType.HOLD]
+        
+        # If it's a SELL signal, verify SL/TP
+        if signal.type == SignalType.SELL:
+            assert signal.stop_loss is not None
+            assert signal.take_profit is not None
+            assert signal.stop_loss > signal.price
+            assert signal.take_profit < signal.price
+            assert signal.confidence >= 0.0
+            assert "Bearish" in signal.reason or "crossover" in signal.reason.lower()
     
     def test_sl_tp_calculation(self, strategy):
         """Test stop loss and take profit calculation"""
@@ -216,3 +240,109 @@ class TestSimpleMovingAverageStrategy:
         
         assert signal.type == SignalType.HOLD
         assert "disabled" in signal.reason.lower()
+    
+    def test_explicit_buy_signal(self):
+        """Test explicit BUY signal generation"""
+        strategy = SimpleMovingAverageStrategy(params={'fast_period': 5, 'slow_period': 10})
+        bars = []
+        base_time = datetime.now()
+        
+        # Create bars with fast MA below slow MA initially
+        for i in range(15):
+            # Slowly declining
+            close = 1.1000 - i * 0.00005
+            bars.append(OHLCBar(
+                symbol="EURUSD",
+                timeframe="M5",
+                time=base_time + timedelta(minutes=i*5),
+                open=close,
+                high=close + 0.00002,
+                low=close - 0.00002,
+                close=close,
+                tick_volume=1000,
+                real_volume=100000,
+                spread=2
+            ))
+        
+        # Analyze to set initial MAs (fast should be <= slow)
+        signal1 = strategy.analyze("EURUSD", "M5", bars)
+        
+        # Add bars that will make fast MA cross above slow MA
+        for i in range(15, 20):
+            # Sharp rise
+            close = 1.09925 + (i - 14) * 0.0002
+            bars.append(OHLCBar(
+                symbol="EURUSD",
+                timeframe="M5",
+                time=base_time + timedelta(minutes=i*5),
+                open=close,
+                high=close + 0.00002,
+                low=close - 0.00002,
+                close=close,
+                tick_volume=1000,
+                real_volume=100000,
+                spread=2
+            ))
+        
+        # This should trigger BUY (fast crosses above slow)
+        signal = strategy.analyze("EURUSD", "M5", bars)
+        
+        # Verify BUY signal was generated
+        assert signal.type == SignalType.BUY
+        assert signal.stop_loss < signal.price
+        assert signal.take_profit > signal.price
+        assert signal.confidence > 0
+        assert "Bullish" in signal.reason
+    
+    def test_explicit_sell_signal(self):
+        """Test explicit SELL signal generation"""
+        strategy = SimpleMovingAverageStrategy(params={'fast_period': 5, 'slow_period': 10})
+        bars = []
+        base_time = datetime.now()
+        
+        # Create bars with fast MA above slow MA initially
+        for i in range(15):
+            # Slowly rising
+            close = 1.0500 + i * 0.00005
+            bars.append(OHLCBar(
+                symbol="EURUSD",
+                timeframe="M5",
+                time=base_time + timedelta(minutes=i*5),
+                open=close,
+                high=close + 0.00002,
+                low=close - 0.00002,
+                close=close,
+                tick_volume=1000,
+                real_volume=100000,
+                spread=2
+            ))
+        
+        # Analyze to set initial MAs (fast should be >= slow)
+        signal1 = strategy.analyze("EURUSD", "M5", bars)
+        
+        # Add bars that will make fast MA cross below slow MA
+        for i in range(15, 20):
+            # Sharp drop
+            close = 1.05070 - (i - 14) * 0.0002
+            bars.append(OHLCBar(
+                symbol="EURUSD",
+                timeframe="M5",
+                time=base_time + timedelta(minutes=i*5),
+                open=close,
+                high=close + 0.00002,
+                low=close - 0.00002,
+                close=close,
+                tick_volume=1000,
+                real_volume=100000,
+                spread=2
+            ))
+        
+        # This should trigger SELL (fast crosses below slow)
+        signal = strategy.analyze("EURUSD", "M5", bars)
+        
+        # Verify SELL signal was generated
+        assert signal.type == SignalType.SELL
+        assert signal.stop_loss > signal.price
+        assert signal.take_profit < signal.price
+        assert signal.confidence > 0
+        assert "Bearish" in signal.reason

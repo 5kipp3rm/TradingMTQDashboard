@@ -8,10 +8,9 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
 from src.indicators import (
-    calculate_sma, calculate_ema, calculate_rsi,
-    calculate_macd, calculate_bollinger_bands,
-    calculate_atr, calculate_adx, calculate_stochastic
+    SMA, EMA, RSI, MACD, BollingerBands, ATR
 )
+# Note: Using indicator classes instead of calculate_* functions
 
 
 @dataclass
@@ -118,54 +117,56 @@ class FeatureEngineer:
         
         # Moving Averages
         for period in self.config['sma_periods']:
-            sma = calculate_sma(close, period)
+            sma_ind = SMA(period=period)
+            sma_result = sma_ind.calculate(close)
+            sma = sma_result.values if hasattr(sma_result, 'values') else sma_result
             features[f'sma_{period}'] = sma
             features[f'price_to_sma_{period}'] = close / sma  # Relative position
         
         for period in self.config['ema_periods']:
-            ema = calculate_ema(close, period)
+            ema_ind = EMA(period=period)
+            ema_result = ema_ind.calculate(close)
+            ema = ema_result.values if hasattr(ema_result, 'values') else ema_result
             features[f'ema_{period}'] = ema
             features[f'price_to_ema_{period}'] = close / ema
         
         # RSI
-        rsi = calculate_rsi(close, self.config['rsi_period'])
+        rsi_ind = RSI(period=self.config['rsi_period'])
+        rsi_result = rsi_ind.calculate(close)
+        rsi = rsi_result.values if hasattr(rsi_result, 'values') else rsi_result
         features['rsi'] = rsi
         features['rsi_oversold'] = (rsi < 30).astype(int)
         features['rsi_overbought'] = (rsi > 70).astype(int)
         
         # MACD
         fast, slow, signal_period = self.config['macd_params']
-        macd_line, signal_line, histogram = calculate_macd(close, fast, slow, signal_period)
-        features['macd'] = macd_line
-        features['macd_signal'] = signal_line
-        features['macd_histogram'] = histogram
-        features['macd_cross'] = (macd_line > signal_line).astype(int)
+        macd_ind = MACD(fast_period=fast, slow_period=slow, signal_period=signal_period)
+        macd_result = macd_ind.calculate(close)
+        # MACD returns values as main line, metadata contains signal and histogram
+        features['macd'] = macd_result.values
+        features['macd_signal'] = macd_result.metadata['signal_line']
+        features['macd_histogram'] = macd_result.metadata['histogram']
+        features['macd_cross'] = (macd_result.values > macd_result.metadata['signal_line']).astype(int)
         
         # Bollinger Bands
-        upper, middle, lower = calculate_bollinger_bands(close, self.config['bb_period'])
-        features['bb_upper'] = upper
-        features['bb_middle'] = middle
-        features['bb_lower'] = lower
-        features['bb_width'] = (upper - lower) / middle
-        features['bb_position'] = (close - lower) / (upper - lower)  # 0-1 range
+        bb_ind = BollingerBands(period=self.config['bb_period'])
+        bb_result = bb_ind.calculate(close)
+        # BB returns middle as values, upper/lower in metadata
+        features['bb_middle'] = bb_result.values
+        features['bb_upper'] = bb_result.metadata['upper_band']
+        features['bb_lower'] = bb_result.metadata['lower_band']
+        features['bb_width'] = (bb_result.metadata['upper_band'] - bb_result.metadata['lower_band']) / bb_result.values
+        features['bb_position'] = (close - bb_result.metadata['lower_band']) / (bb_result.metadata['upper_band'] - bb_result.metadata['lower_band'])  # 0-1 range
         
         # ATR
-        atr = calculate_atr(high, low, close, self.config['atr_period'])
+        atr_ind = ATR(period=self.config['atr_period'])
+        atr_result = atr_ind.calculate(close, high=high, low=low)
+        atr = atr_result.values if hasattr(atr_result, 'values') else atr_result
         features['atr'] = atr
         features['atr_pct'] = atr / close  # Normalized ATR
         
-        # ADX
-        adx = calculate_adx(high, low, close, self.config['adx_period'])
-        features['adx'] = adx
-        features['adx_strong_trend'] = (adx > 25).astype(int)
-        
-        # Stochastic
-        k_period, d_period, smooth = self.config['stoch_params']
-        stoch_k, stoch_d = calculate_stochastic(high, low, close, k_period, d_period, smooth)
-        features['stoch_k'] = stoch_k
-        features['stoch_d'] = stoch_d
-        features['stoch_oversold'] = (stoch_k < 20).astype(int)
-        features['stoch_overbought'] = (stoch_k > 80).astype(int)
+        # Note: ADX and Stochastic not yet implemented in indicators module
+        # Skip for now - can add when those indicators are ready
         
         return features
     

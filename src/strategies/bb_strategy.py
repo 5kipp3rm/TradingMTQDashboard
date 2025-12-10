@@ -8,6 +8,7 @@ from .base import BaseStrategy, Signal, SignalType
 from ..connectors.base import OHLCBar
 from ..indicators.volatility import BollingerBands
 from ..indicators.momentum import RSI
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -43,11 +44,11 @@ class BollingerBandsStrategy(BaseStrategy):
             tp_multiplier: Take profit as multiplier of band width
         """
         super().__init__(
-            name=f"BB_{bb_period}_{bb_std}_RSI_{rsi_period}",
-            symbol=symbol,
-            timeframe=timeframe
+            name=f"BB_{bb_period}_{bb_std}_RSI_{rsi_period}"
         )
         
+        self.symbol = symbol
+        self.timeframe = timeframe
         self.bb_period = bb_period
         self.bb_std = bb_std
         self.rsi_period = rsi_period
@@ -118,7 +119,7 @@ class BollingerBandsStrategy(BaseStrategy):
             confidence = self._calculate_confidence(current_price, current_lower, current_middle, current_rsi, "BUY")
             
             signal = Signal(
-                signal_type=SignalType.BUY,
+                type=SignalType.BUY,
                 symbol=self.symbol,
                 price=current_price,
                 sl=sl,
@@ -135,7 +136,7 @@ class BollingerBandsStrategy(BaseStrategy):
             confidence = self._calculate_confidence(current_price, current_upper, current_middle, current_rsi, "SELL")
             
             signal = Signal(
-                signal_type=SignalType.SELL,
+                type=SignalType.SELL,
                 symbol=self.symbol,
                 price=current_price,
                 sl=sl,

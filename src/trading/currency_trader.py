@@ -237,7 +237,7 @@ class CurrencyTrader:
                 'high': bar.high,
                 'low': bar.low,
                 'close': bar.close,
-                'volume': bar.volume
+                'volume': getattr(bar, 'tick_volume', 0)  # Handle both tick_volume and volume
             } for bar in bars])
             
             # Generate features
@@ -247,8 +247,8 @@ class CurrencyTrader:
             if len(feature_set.features) == 0:
                 return signal
             
-            # Get latest features
-            X = feature_set.features.iloc[-1:].values
+            # Get latest features (keep as DataFrame to preserve feature names)
+            X = feature_set.features.iloc[-1:]
             
             # Predict
             prediction = self.ml_model.predict(X)
@@ -269,7 +269,7 @@ class CurrencyTrader:
                 signal.reason += f" | ML: {ml_signal_type.value} ({prediction.confidence:.2f})"
                 signal.metadata['ml_confidence'] = prediction.confidence
                 signal.metadata['ml_agrees'] = True
-                print(f"  🧠 ML agrees: {ml_signal_type.value} (confidence {new_confidence:.2f})")
+                logger.info(f"  🧠 ML agrees: {ml_signal_type.value} (confidence {new_confidence:.2f})")
             else:
                 # ML disagrees - reduce confidence or change signal
                 if prediction.confidence > 0.75:
@@ -279,19 +279,19 @@ class CurrencyTrader:
                     signal.reason = f"ML override: {ml_signal_type.value} ({prediction.confidence:.2f})"
                     signal.metadata['ml_confidence'] = prediction.confidence
                     signal.metadata['ml_override'] = True
-                    print(f"  🧠 ML override: {ml_signal_type.value} (confidence {prediction.confidence:.2f})")
+                    logger.info(f"  🧠 ML override: {ml_signal_type.value} (confidence {prediction.confidence:.2f})")
                 else:
                     # ML is uncertain - reduce technical confidence
                     signal.confidence *= 0.6
                     signal.reason += f" | ML uncertain"
                     signal.metadata['ml_confidence'] = prediction.confidence
                     signal.metadata['ml_agrees'] = False
-                    print(f"  🧠 ML disagrees - reduced confidence to {signal.confidence:.2f}")
+                    logger.info(f"  🧠 ML disagrees - reduced confidence to {signal.confidence:.2f}")
             
             return signal
             
         except Exception as e:
-            print(f"  ⚠️  ML enhancement failed: {e}")
+            logger.warning(f"  ⚠️  ML enhancement failed: {e}")
             return signal
     
     def _apply_sentiment_filter(self, signal: Signal) -> Signal:

@@ -24,7 +24,7 @@ from src.utils.logger import setup_logging, get_logger, log_connection, log_conf
 
 # Optional ML/LLM imports
 try:
-    from src.ml import RandomForestClassifier, FeatureEngineer
+    from src.ml import RandomForestClassifier, FeatureEngineer, ModelLoader, MLModelWrapper
     ML_AVAILABLE = True
 except ImportError:
     ML_AVAILABLE = False
@@ -113,28 +113,27 @@ def main():
     use_ml = config_manager.config.get('global', {}).get('use_ml_enhancement', False)
     use_llm = config_manager.config.get('global', {}).get('use_sentiment_filter', False)
     
+    currency_models = {}
     if use_ml and ML_AVAILABLE:
         logger.info("=" * 80)
         logger.info("  INITIALIZING ML ENHANCEMENT")
         logger.info("=" * 80)
         
-        # Try to load pre-trained model
-        ml_model_path = "data/models/rf_model.pkl"
-        if os.path.exists(ml_model_path):
-            try:
-                ml_model = RandomForestClassifier()
-                if ml_model.load(ml_model_path):
-                    logger.info(f"✅ Loaded ML model from {ml_model_path}")
-                    orchestrator.enable_ml_for_all(ml_model)
-                else:
-                    logger.warning(f"⚠️  Failed to load ML model from {ml_model_path}")
-                    use_ml = False
-            except Exception as e:
-                logger.warning(f"⚠️  ML initialization failed: {e}")
-                use_ml = False
+        # Load models for enabled currencies
+        model_loader = ModelLoader("models")
+        model_loader.print_available_models()
+        
+        # Load ensemble models (preferred) for all enabled currencies
+        currency_models = model_loader.load_all_models(
+            config_manager.config.get('currencies', {}),
+            model_type='ensemble'  # Use ensemble models for best accuracy
+        )
+        
+        if currency_models:
+            logger.info(f"\n✅ Loaded {len(currency_models)} ML models for trading")
         else:
-            logger.warning(f"⚠️  ML model not found at {ml_model_path}")
-            logger.info(f"   Train a model using: python examples/phase3_ml_demo.py")
+            logger.warning("⚠️  No ML models found")
+            logger.info("   Train models using: python scripts/train_all.py")
             use_ml = False
     
     if use_llm and LLM_AVAILABLE:
@@ -192,6 +191,12 @@ def main():
         trader = orchestrator.add_currency(trader_config)
         if trader:
             added_count += 1
+            
+            # Enable ML for this specific currency if model available
+            if use_ml and symbol in currency_models:
+                wrapped_model = MLModelWrapper(currency_models[symbol])
+                trader.enable_ml_enhancement(wrapped_model)
+                logger.info(f"  \u2705 [{symbol}] ML enhancement enabled with ensemble model")
         else:
             skipped_symbols.append(symbol)
     

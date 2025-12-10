@@ -581,7 +581,7 @@ strategies:
 models:
   lstm_predictor:
     enabled: false
-    model_path: data/models/lstm/v1.0.0
+    model_path: models/lstm/v1.0.0
     input_sequence_length: 60
     prediction_horizon: 5
     confidence_threshold: 0.7

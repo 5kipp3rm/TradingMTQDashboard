@@ -5,6 +5,7 @@ Provides ML models for price prediction and signal classification
 
 from .base import BaseMLModel, ModelType, MLPrediction
 from .feature_engineer import FeatureEngineer, FeatureSet
+from .model_loader import ModelLoader, MLModelWrapper
 
 # Optional imports (require additional dependencies)
 try:
@@ -29,6 +30,8 @@ __all__ = [
     'FeatureSet',
     'LSTMPricePredictor',
     'RandomForestClassifier',
+    'ModelLoader',
+    'MLModelWrapper',
     'LSTM_AVAILABLE',
     'RF_AVAILABLE',
 ]

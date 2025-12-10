@@ -25,12 +25,16 @@ wheels/
 
 # Virtual Environment
 venv/
+.venv/
 ENV/
 env/
 
 # Environment Variables
 .env
 .env.local
+
+# Documents 
+docs/archive/*
 
 # IDE
 .vscode/
@@ -51,6 +55,9 @@ data/processed/*
 !data/processed/.gitkeep
 
 # Model Files
+models/*
+!models/.gitkeep
+!models/README.md
 data/models/*
 !data/models/.gitkeep
 *.h5

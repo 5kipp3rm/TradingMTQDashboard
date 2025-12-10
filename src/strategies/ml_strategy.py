@@ -164,7 +164,8 @@ class MLEnhancedStrategy(BaseStrategy):
             if len(feature_set.features) == 0:
                 return None, 0.0
             
-            X = feature_set.features.iloc[-1:].values
+            # Keep as DataFrame to preserve feature names for sklearn
+            X = feature_set.features.iloc[-1:]
             
             # Predict
             prediction = self.ml_model.predict(X)
@@ -189,11 +190,13 @@ class MLEnhancedStrategy(BaseStrategy):
             return None
         
         # Simple MA crossover as fallback
-        from src.indicators import calculate_sma
+        from src.indicators import SMA
+        import numpy as np
         
         close = bars['close'].values
-        fast_ma = calculate_sma(close, 20)
-        slow_ma = calculate_sma(close, 50)
+        # Use simple numpy mean for MA calculation
+        fast_ma = np.convolve(close, np.ones(20)/20, mode='valid')
+        slow_ma = np.convolve(close, np.ones(50)/50, mode='valid')
         
         if fast_ma is None or slow_ma is None:
             return None

@@ -433,7 +433,7 @@ python examples/phase3_ml_demo.py
 # 5. Train Random Forest
 # 6. Train LSTM
 # 7. Evaluate accuracy
-# 8. Save models to data/models/
+# 8. Save models to models/
 # 9. Use saved models in live trading
 ```
 

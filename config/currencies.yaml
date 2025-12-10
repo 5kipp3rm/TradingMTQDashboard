@@ -51,25 +51,25 @@ currencies:
     enabled: true
     
     # Risk management
-    risk_percent: 0.5          # Reduced from 1% for safety
+    risk_percent: 0.5          # Risk per trade
     max_position_size: 1.0     # Maximum lot size
     min_position_size: 0.01    # Minimum lot size
     
-    # Strategy settings
-    strategy_type: "position"  # "position" or "crossover"
-    timeframe: "H1"            # H1 = 1 hour (less noise, better signals)
+    # Strategy settings - HYBRID MODE
+    strategy_type: "position"  # "position" = faster signals (based on MA position, not crossover)
+    timeframe: "M5"           # M15 = 15 minutes (more trading opportunities)
     
     # Moving Average parameters
-    fast_period: 20            # Longer periods = fewer but better signals
-    slow_period: 50
+    fast_period: 10            # Shorter = more signals
+    slow_period: 20            # Shorter = more signals
     
     # Stop Loss / Take Profit (in pips)
-    sl_pips: 30                # Wider stops for H1 timeframe
-    tp_pips: 60
+    sl_pips: 20                # Tighter for M15
+    tp_pips: 40
     
-    # Trading rules
-    cooldown_seconds: 60       # Minimum seconds between trades
-    trade_on_signal_change: true  # Only trade when signal changes
+    # Trading rules - ALLOW MULTIPLE POSITIONS
+    cooldown_seconds: 120      # 2 minutes (allows multiple positions in same direction)
+    trade_on_signal_change: false  # CRITICAL: Allow re-entry without signal change
     
     # Trading hours (UTC, optional - remove to trade 24/7)
     # trading_hours:
@@ -78,41 +78,41 @@ currencies:
     
   
   GBPUSD:
-    enabled: false
-    risk_percent: 0.8          # Lower risk - GBP is more volatile
-    max_position_size: 0.5
-    min_position_size: 0.01
-    
-    strategy_type: "position"
-    timeframe: "M5"
-    
-    fast_period: 8
-    slow_period: 21
-    
-    sl_pips: 25                # Wider SL for volatile pair
-    tp_pips: 50
-    
-    cooldown_seconds: 60
-    trade_on_signal_change: true
-  
-  
-  USDJPY:
-    enabled: false
-    risk_percent: 0.5          # Reduced from 1.2% for safety
+    enabled: false              # ENABLED for multiple currency trading
+    risk_percent: 0.5          # Same risk as EURUSD
     max_position_size: 1.0
     min_position_size: 0.01
     
-    strategy_type: "position"
-    timeframe: "H1"            # Higher timeframe
+    strategy_type: "position"  # Faster signals
+    timeframe: "M5"           # More opportunities
     
-    fast_period: 20
-    slow_period: 50
+    fast_period: 10
+    slow_period: 20
     
-    sl_pips: 25                # Wider stops
-    tp_pips: 50
+    sl_pips: 20
+    tp_pips: 40
     
-    cooldown_seconds: 60
-    trade_on_signal_change: true
+    cooldown_seconds: 120      # 2 minutes
+    trade_on_signal_change: false  # Allow multiple positions
+  
+  
+  USDJPY:
+    enabled: true              # ENABLED for multiple currency trading
+    risk_percent: 0.5          # Same risk
+    max_position_size: 1.0
+    min_position_size: 0.01
+    
+    strategy_type: "position"  # Faster signals
+    timeframe: "M15"           # More opportunities
+    
+    fast_period: 10
+    slow_period: 20
+    
+    sl_pips: 20
+    tp_pips: 40
+    
+    cooldown_seconds: 120      # 2 minutes
+    trade_on_signal_change: false  # Allow multiple positions
   
   
   USDCHF:
@@ -139,22 +139,22 @@ currencies:
   # -------------------------------------------------------------------------
   
   AUDUSD:
-    enabled: false
-    risk_percent: 1.0
+    enabled: false              # ENABLED for multiple currency trading
+    risk_percent: 0.5
     max_position_size: 1.0
     min_position_size: 0.01
     
-    strategy_type: "position"
-    timeframe: "M5"
+    strategy_type: "crossover"  # Multiple positions allowed
+    timeframe: "H1"
     
-    fast_period: 10
-    slow_period: 20
+    fast_period: 20
+    slow_period: 50
     
-    sl_pips: 20
-    tp_pips: 40
+    sl_pips: 30
+    tp_pips: 60
     
-    cooldown_seconds: 60
-    trade_on_signal_change: true
+    cooldown_seconds: 300
+    trade_on_signal_change: false
   
   
   NZDUSD:

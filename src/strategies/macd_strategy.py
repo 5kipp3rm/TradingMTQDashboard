@@ -7,6 +7,7 @@ import numpy as np
 from .base import BaseStrategy, Signal, SignalType
 from ..connectors.base import OHLCBar
 from ..indicators.trend import MACD
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,11 +40,11 @@ class MACDStrategy(BaseStrategy):
             tp_pips: Take profit in pips
         """
         super().__init__(
-            name=f"MACD_{fast_period}_{slow_period}_{signal_period}",
-            symbol=symbol,
-            timeframe=timeframe
+            name=f"MACD_{fast_period}_{slow_period}_{signal_period}"
         )
         
+        self.symbol = symbol
+        self.timeframe = timeframe
         self.fast_period = fast_period
         self.slow_period = slow_period
         self.signal_period = signal_period
@@ -106,7 +107,7 @@ class MACDStrategy(BaseStrategy):
             confidence = self._calculate_confidence(current_histogram, histogram[-5:], "BUY")
             
             return Signal(
-                signal_type=SignalType.BUY,
+                type=SignalType.BUY,
                 symbol=self.symbol,
                 price=current_price,
                 sl=sl,
@@ -123,7 +124,7 @@ class MACDStrategy(BaseStrategy):
             confidence = self._calculate_confidence(current_histogram, histogram[-5:], "SELL")
             
             return Signal(
-                signal_type=SignalType.SELL,
+                type=SignalType.SELL,
                 symbol=self.symbol,
                 price=current_price,
                 sl=sl,

@@ -4,6 +4,7 @@ Combines multiple indicators for confirmation
 """
 from typing import List, Optional
 import numpy as np
+from datetime import datetime
 from .base import BaseStrategy, Signal, SignalType
 from ..connectors.base import OHLCBar
 from ..indicators.trend import MACD, EMA
@@ -42,11 +43,11 @@ class MultiIndicatorStrategy(BaseStrategy):
             tp_pips: Take profit in pips
         """
         super().__init__(
-            name=f"MultiIndicator_{min_confirmations}conf",
-            symbol=symbol,
-            timeframe=timeframe
+            name=f"MultiIndicator_{min_confirmations}conf"
         )
         
+        self.symbol = symbol
+        self.timeframe = timeframe
         self.ema_period = ema_period
         self.min_confirmations = min_confirmations
         self.sl_pips = sl_pips
@@ -158,11 +159,12 @@ class MultiIndicatorStrategy(BaseStrategy):
             reason = f"{bullish_signals} bullish signals: " + ", ".join(confirmations[:3])
             
             return Signal(
-                signal_type=SignalType.BUY,
+                type=SignalType.BUY,
                 symbol=self.symbol,
+                timestamp=datetime.now(),
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=confidence,
                 reason=reason
             )
@@ -175,11 +177,12 @@ class MultiIndicatorStrategy(BaseStrategy):
             reason = f"{bearish_signals} bearish signals: " + ", ".join(confirmations[:3])
             
             return Signal(
-                signal_type=SignalType.SELL,
+                type=SignalType.SELL,
                 symbol=self.symbol,
+                timestamp=datetime.now(),
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=confidence,
                 reason=reason
             )
