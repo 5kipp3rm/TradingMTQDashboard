@@ -5,7 +5,22 @@
       "Bash(find:*)",
       "Bash(pytest:*)",
       "Bash(ls:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(alembic revision:*)",
+      "Bash(python:*)",
+      "Bash(git tag:*)",
+      "Bash(chmod:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(source:*)",
+      "Bash(bash deploy/macos/setup.sh:*)",
+      "Bash(export:*)",
+      "Bash(tradingmtq version)",
+      "Bash(tradingmtq check)",
+      "Bash(mkdir:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

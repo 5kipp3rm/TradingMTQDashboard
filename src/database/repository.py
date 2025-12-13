@@ -257,7 +257,7 @@ class TradeRepository(BaseRepository):
 
     def get_earliest_trade(self, session: Session) -> Optional[Trade]:
         """
-        Get the earliest trade by open_time.
+        Get the earliest trade by entry_time.
 
         Args:
             session: Database session
@@ -267,7 +267,7 @@ class TradeRepository(BaseRepository):
         """
         with CorrelationContext():
             try:
-                stmt = select(Trade).order_by(Trade.open_time.asc()).limit(1)
+                stmt = select(Trade).order_by(Trade.entry_time.asc()).limit(1)
                 result = session.execute(stmt)
                 return result.scalar_one_or_none()
             except Exception as e:
@@ -294,7 +294,7 @@ class TradeRepository(BaseRepository):
         """
         with CorrelationContext():
             try:
-                # Use exit_time for closed trades, open_time for open trades
+                # Use exit_time for closed trades, entry_time for open trades
                 stmt = select(Trade)
 
                 if status == TradeStatus.CLOSED:
@@ -308,14 +308,14 @@ class TradeRepository(BaseRepository):
                 else:
                     stmt = stmt.where(
                         and_(
-                            Trade.open_time >= start_date,
-                            Trade.open_time <= end_date
+                            Trade.entry_time >= start_date,
+                            Trade.entry_time <= end_date
                         )
                     )
                     if status:
                         stmt = stmt.where(Trade.status == status)
 
-                stmt = stmt.order_by(Trade.open_time.asc())
+                stmt = stmt.order_by(Trade.entry_time.asc())
                 result = session.execute(stmt)
                 trades = result.scalars().all()
 

@@ -154,7 +154,7 @@ class DailyAggregator:
                 return []
 
             # Get date range
-            start_date = earliest_trade.open_time.date()
+            start_date = earliest_trade.entry_time.date()
             end_date = date.today()
 
             logger.info(
@@ -212,7 +212,7 @@ class DailyAggregator:
         total_duration_minutes = 0
         for trade in trades:
             if trade.exit_time:
-                duration = (trade.exit_time - trade.open_time).total_seconds() / 60
+                duration = (trade.exit_time - trade.entry_time).total_seconds() / 60
                 total_duration_minutes += duration
 
         avg_trade_duration_minutes = int(total_duration_minutes / total_trades) if total_trades > 0 else 0
@@ -233,15 +233,10 @@ class DailyAggregator:
             "net_profit": net_profit,
             "win_rate": win_rate,
             "profit_factor": profit_factor,
-            "avg_win": avg_win,
-            "avg_loss": avg_loss,
-            "avg_trade_profit": avg_trade_profit,
-            "best_trade_profit": best_trade_profit,
-            "worst_trade_loss": worst_trade_loss,
-            "avg_trade_duration_minutes": avg_trade_duration_minutes,
-            "symbols_traded": symbols_traded,
-            "max_consecutive_wins": max_consecutive_wins,
-            "max_consecutive_losses": max_consecutive_losses
+            "average_win": avg_win,
+            "average_loss": avg_loss,
+            "largest_win": best_trade_profit,
+            "largest_loss": worst_trade_loss
         }
 
     def _calculate_max_consecutive(self, trades: List[Trade], winning: bool) -> int:
