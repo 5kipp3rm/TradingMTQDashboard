@@ -250,10 +250,12 @@ def check_database_health() -> bool:
     Returns:
         True if database is healthy, False otherwise
     """
+    from sqlalchemy import text
+
     try:
         with get_session() as session:
             # Simple query to test connection
-            session.execute("SELECT 1")
+            session.execute(text("SELECT 1"))
             logger.debug("Database health check passed")
             return True
     except Exception as e:

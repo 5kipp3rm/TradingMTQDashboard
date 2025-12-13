@@ -309,10 +309,12 @@ class SignalRepository(BaseRepository):
                           limit: int = 100) -> List[Signal]:
         """Get recent signals"""
         try:
-            query = session.query(Signal).order_by(desc(Signal.timestamp)).limit(limit)
+            query = session.query(Signal)
 
             if symbol:
                 query = query.filter(Signal.symbol == symbol)
+
+            query = query.order_by(desc(Signal.timestamp)).limit(limit)
 
             return query.all()
 
