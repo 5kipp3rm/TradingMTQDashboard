@@ -63,7 +63,11 @@ def _run_legacy_trading(enable_ml: bool = True, enable_llm: bool = True):
     from src.trading import MultiCurrencyOrchestrator, CurrencyTraderConfig
     from src.config_manager import ConfigurationManager
     from src.utils.logger import setup_logging, get_logger, log_connection, log_config, log_cycle
-    
+    from src.database.connection import init_db
+
+    # Initialize database
+    init_db()
+
     # Optional ML/LLM imports
     try:
         from src.ml import RandomForestClassifier, FeatureEngineer, ModelLoader, MLModelWrapper

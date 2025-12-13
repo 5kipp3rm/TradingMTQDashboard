@@ -575,7 +575,8 @@ def get_error_severity(error: Exception) -> str:
 def build_order_context(symbol: str, order_type: str, volume: float,
                        price: Optional[float] = None,
                        sl: Optional[float] = None,
-                       tp: Optional[float] = None) -> Dict[str, Any]:
+                       tp: Optional[float] = None,
+                       ticket: Optional[int] = None) -> Dict[str, Any]:
     """
     Build context dictionary for order-related exceptions
 
@@ -586,11 +587,12 @@ def build_order_context(symbol: str, order_type: str, volume: float,
         price: Order price (optional)
         sl: Stop loss (optional)
         tp: Take profit (optional)
+        ticket: Order ticket number (optional)
 
     Returns:
         Context dictionary with order details
     """
-    return {
+    context = {
         'symbol': symbol,
         'order_type': order_type,
         'volume': volume,
@@ -599,6 +601,9 @@ def build_order_context(symbol: str, order_type: str, volume: float,
         'take_profit': tp,
         'timestamp': datetime.utcnow().isoformat()
     }
+    if ticket is not None:
+        context['ticket'] = ticket
+    return context
 
 
 def build_connection_context(login: int, server: str,
