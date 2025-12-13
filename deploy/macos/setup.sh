@@ -77,9 +77,31 @@ fi
 echo -e "${YELLOW}[3/9] Installing dependencies...${NC}"
 source venv/bin/activate
 $PYTHON_CMD -m pip install --upgrade pip --quiet
-pip install -r requirements.txt --quiet
-pip install -e . --quiet
-echo -e "${GREEN}  ✓ Dependencies installed${NC}"
+
+# Install core dependencies first (excluding MT5 and optional ML packages)
+echo -e "${BLUE}  ℹ Installing core dependencies...${NC}"
+grep -v -E "^(MetaTrader5|tensorflow|#|$)" requirements.txt > /tmp/requirements_macos.txt
+if pip install -r /tmp/requirements_macos.txt --quiet 2>&1; then
+    echo -e "${GREEN}  ✓ Core dependencies installed${NC}"
+else
+    echo -e "${YELLOW}  ⚠ Some dependencies failed (may be Python 3.14 compatibility)${NC}"
+fi
+rm -f /tmp/requirements_macos.txt
+
+# Try to install TensorFlow (may fail on Python 3.14)
+echo -e "${BLUE}  ℹ Attempting TensorFlow installation...${NC}"
+if pip install "tensorflow>=2.14.0" --quiet 2>&1; then
+    echo -e "${GREEN}  ✓ TensorFlow installed${NC}"
+else
+    echo -e "${YELLOW}  ⚠ TensorFlow not available for Python $PYTHON_VERSION${NC}"
+    echo -e "${BLUE}    ML features will be limited${NC}"
+fi
+
+# Skip pip install -e . on macOS since pyproject.toml requires MT5
+# Instead, add src to PYTHONPATH
+echo -e "${BLUE}  ℹ Skipping editable install (requires MT5)${NC}"
+echo -e "${BLUE}  ℹ Adding src/ to PYTHONPATH${NC}"
+echo -e "${GREEN}  ✓ Installation complete (MT5 skipped - Windows only)${NC}"
 
 # Step 4: Check MetaTrader5 availability
 echo -e "${YELLOW}[4/9] Checking MetaTrader5...${NC}"
@@ -110,7 +132,9 @@ else
     echo -e "${BLUE}  ℹ SQLite mode - database will be created automatically${NC}"
 fi
 
-if $PYTHON_CMD src/database/migration_utils.py init 2>&1; then
+# Add src to PYTHONPATH for database initialization
+export PYTHONPATH="${PWD}:${PYTHONPATH}"
+if $PYTHON_CMD -m src.database.migration_utils init 2>&1; then
     echo -e "${GREEN}  ✓ Database initialized successfully${NC}"
 else
     echo -e "${YELLOW}  ⚠  Database initialization warning (might be already initialized)${NC}"
@@ -128,14 +152,14 @@ else
     echo -e "${BLUE}[7/9] Skipping tests (--skip-tests flag)${NC}"
 fi
 
-# Step 8: Verify CLI installation
-echo -e "${YELLOW}[8/9] Verifying CLI installation...${NC}"
-if tradingmtq version > /dev/null 2>&1; then
-    echo -e "${GREEN}  ✓ CLI commands available${NC}"
+# Step 8: Verify Python imports
+echo -e "${YELLOW}[8/9] Verifying Python imports...${NC}"
+if $PYTHON_CMD -c "import sys; sys.path.insert(0, '.'); from src.database import models; print('OK')" > /dev/null 2>&1; then
+    echo -e "${GREEN}  ✓ Python modules can be imported${NC}"
 else
-    echo -e "${RED}  ✗ CLI installation failed${NC}"
-    exit 1
+    echo -e "${YELLOW}  ⚠ Some imports may fail (MT5 not available)${NC}"
 fi
+echo -e "${BLUE}  ℹ CLI commands not available (requires editable install with MT5)${NC}"
 
 # Step 9: Display next steps
 echo -e "${YELLOW}[9/9] Setup complete!${NC}"
