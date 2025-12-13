@@ -49,8 +49,9 @@ Write-Host "[3/9] Installing dependencies..." -ForegroundColor Yellow
 & ".\venv\Scripts\Activate.ps1"
 python -m pip install --upgrade pip --quiet
 pip install -r requirements.txt --quiet
-pip install -e . --quiet
-Write-Host "  ✓ Dependencies installed" -ForegroundColor Green
+# Install with [trading] extras for MetaTrader5
+pip install -e ".[trading]" --quiet
+Write-Host "  ✓ Dependencies installed (including MetaTrader5)" -ForegroundColor Green
 
 # Step 4: Check MetaTrader5 availability
 Write-Host "[4/9] Checking MetaTrader5..." -ForegroundColor Yellow

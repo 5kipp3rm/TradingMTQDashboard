@@ -88,20 +88,26 @@ else
 fi
 rm -f /tmp/requirements_macos.txt
 
-# Try to install TensorFlow (may fail on Python 3.14)
+# Install package in editable mode (MT5 is now optional)
+echo -e "${BLUE}  ℹ Installing TradingMTQ package...${NC}"
+if pip install -e . --quiet 2>&1; then
+    echo -e "${GREEN}  ✓ TradingMTQ package installed (editable mode)${NC}"
+    echo -e "${BLUE}    CLI commands available: tradingmtq, mtq${NC}"
+else
+    echo -e "${YELLOW}  ⚠ Package installation failed${NC}"
+fi
+
+# Try to install optional TensorFlow (may fail on Python 3.14)
 echo -e "${BLUE}  ℹ Attempting TensorFlow installation...${NC}"
 if pip install "tensorflow>=2.14.0" --quiet 2>&1; then
     echo -e "${GREEN}  ✓ TensorFlow installed${NC}"
 else
     echo -e "${YELLOW}  ⚠ TensorFlow not available for Python $PYTHON_VERSION${NC}"
-    echo -e "${BLUE}    ML features will be limited${NC}"
+    echo -e "${BLUE}    Deep learning features will be limited${NC}"
 fi
 
-# Skip pip install -e . on macOS since pyproject.toml requires MT5
-# Instead, add src to PYTHONPATH
-echo -e "${BLUE}  ℹ Skipping editable install (requires MT5)${NC}"
-echo -e "${BLUE}  ℹ Adding src/ to PYTHONPATH${NC}"
-echo -e "${GREEN}  ✓ Installation complete (MT5 skipped - Windows only)${NC}"
+echo -e "${GREEN}  ✓ Installation complete${NC}"
+echo -e "${BLUE}    Note: MetaTrader5 not installed (Windows-only)${NC}"
 
 # Step 4: Check MetaTrader5 availability
 echo -e "${YELLOW}[4/9] Checking MetaTrader5...${NC}"
@@ -152,14 +158,17 @@ else
     echo -e "${BLUE}[7/9] Skipping tests (--skip-tests flag)${NC}"
 fi
 
-# Step 8: Verify Python imports
-echo -e "${YELLOW}[8/9] Verifying Python imports...${NC}"
-if $PYTHON_CMD -c "import sys; sys.path.insert(0, '.'); from src.database import models; print('OK')" > /dev/null 2>&1; then
-    echo -e "${GREEN}  ✓ Python modules can be imported${NC}"
+# Step 8: Verify CLI installation
+echo -e "${YELLOW}[8/9] Verifying CLI installation...${NC}"
+if tradingmtq version > /dev/null 2>&1; then
+    echo -e "${GREEN}  ✓ CLI commands available (tradingmtq, mtq)${NC}"
 else
-    echo -e "${YELLOW}  ⚠ Some imports may fail (MT5 not available)${NC}"
+    echo -e "${YELLOW}  ⚠ CLI commands not working${NC}"
+    echo -e "${BLUE}    Checking Python imports...${NC}"
+    if $PYTHON_CMD -c "from src.database import models; print('OK')" > /dev/null 2>&1; then
+        echo -e "${GREEN}  ✓ Python modules can be imported${NC}"
+    fi
 fi
-echo -e "${BLUE}  ℹ CLI commands not available (requires editable install with MT5)${NC}"
 
 # Step 9: Display next steps
 echo -e "${YELLOW}[9/9] Setup complete!${NC}"
