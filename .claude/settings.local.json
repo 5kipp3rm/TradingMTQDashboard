@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(pytest:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
