@@ -64,9 +64,20 @@ def _run_legacy_trading(enable_ml: bool = True, enable_llm: bool = True):
     from src.config_manager import ConfigurationManager
     from src.utils.logger import setup_logging, get_logger, log_connection, log_config, log_cycle
     from src.database.connection import init_db
+    from src.analytics import get_scheduler
 
     # Initialize database
     init_db()
+
+    # Start analytics scheduler for automated daily aggregation
+    try:
+        scheduler = get_scheduler(aggregation_hour=0, aggregation_minute=5)
+        scheduler.start()
+        logger = get_logger(__name__)  # Get logger early for scheduler messages
+        logger.info("Analytics scheduler started - daily aggregation at 00:05 UTC")
+    except Exception as e:
+        print(f"⚠️  Analytics scheduler failed to start: {e}")
+        print("   Daily aggregation will need to be run manually")
 
     # Optional ML/LLM imports
     try:

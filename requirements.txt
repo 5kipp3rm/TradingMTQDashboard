@@ -105,3 +105,6 @@ sqlalchemy>=2.0.23         # ORM for database operations
 alembic>=1.13.0            # Database migrations
 psycopg2-binary>=2.9.9     # PostgreSQL adapter (production)
 # redis>=5.0.1             # Phase 5.3 - Caching
+
+# Background Jobs (Phase 5.2)
+apscheduler>=3.10.4        # Scheduled jobs for daily aggregation
