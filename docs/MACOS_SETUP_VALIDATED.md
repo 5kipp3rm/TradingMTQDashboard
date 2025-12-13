@@ -49,8 +49,10 @@ The macOS deployment script has been **tested and validated** on Python 3.14.0. 
 - ✅ **Basic ML**: scikit-learn works fine
 
 ### 3. CLI Commands
-- ❌ **tradingmtq CLI**: Not available (requires editable install with MT5)
-- ✅ **Python imports**: All modules importable via PYTHONPATH
+
+- ✅ **tradingmtq CLI**: Available (MetaTrader5 made optional)
+- ✅ **All commands work**: version, check, aggregate (except 'trade' which requires MT5)
+- ✅ **Python imports**: All modules importable
 
 ---
 
@@ -141,12 +143,28 @@ pytest tests/test_models.py tests/test_repositories.py -v
 ## Quick Start Commands
 
 ### Initial Setup
+
 ```bash
 # One-command setup
 bash deploy/macos/setup.sh --skip-tests
 
 # Activate environment
 source venv/bin/activate
+```
+
+### CLI Commands (Now Available!)
+
+```bash
+# Check version
+tradingmtq version
+
+# System check (shows what's available)
+tradingmtq check
+
+# Database aggregation
+tradingmtq aggregate --backfill
+
+# Note: 'tradingmtq trade' requires MT5 (Windows only)
 ```
 
 ### Database Testing
