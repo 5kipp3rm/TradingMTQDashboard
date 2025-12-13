@@ -35,7 +35,7 @@ Usage:
 """
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import uuid
 from contextvars import ContextVar
@@ -85,7 +85,7 @@ class StructuredLogger:
             JSON-formatted log string
         """
         log_entry = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             'level': level,
             'logger': self.name,
             'message': message,

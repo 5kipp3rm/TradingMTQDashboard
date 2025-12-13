@@ -7,7 +7,7 @@ Uses Phase 0 patterns:
 - Type-safe operations with proper validation
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import select, func, and_, or_, desc
@@ -419,7 +419,7 @@ class DailyPerformanceRepository(BaseRepository):
                     # Update existing
                     for key, value in kwargs.items():
                         setattr(perf, key, value)
-                    perf.updated_at = datetime.utcnow()
+                    perf.updated_at = datetime.now(timezone.utc)
                     logger.info("Daily performance updated", date=target_date)
                 else:
                     # Create new

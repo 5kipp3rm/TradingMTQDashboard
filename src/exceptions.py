@@ -20,7 +20,7 @@ Usage:
         )
 """
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TradingMTQError(Exception):
@@ -54,7 +54,7 @@ class TradingMTQError(Exception):
         self.message = message
         self.error_code = error_code
         self.context = context or {}
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         super().__init__(message)
 
     def to_dict(self) -> Dict[str, Any]:
