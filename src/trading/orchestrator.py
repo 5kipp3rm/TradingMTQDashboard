@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Phase 0 imports - NEW
 from src.exceptions import (
-    TradingError, InvalidSymbolError, OrderExecutionError,
+    TradingMTQError, InvalidSymbolError, OrderExecutionError,
     build_order_context
 )
 from src.utils.structured_logger import StructuredLogger, CorrelationContext
