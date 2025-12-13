@@ -88,10 +88,10 @@ def check():
     """Run system checks"""
     click.echo("\nSystem Check\n")
     click.echo(f"  Python Version: {sys.version.split()[0]}")
-    
+
     # Check dependencies
     click.echo("\nDependencies:")
-    
+
     dependencies = [
         ('MetaTrader5', 'MetaTrader5'),
         ('numpy', 'numpy'),
@@ -100,15 +100,84 @@ def check():
         ('sklearn', 'scikit-learn'),
         ('click', 'click'),
     ]
-    
+
     for module_name, package_name in dependencies:
         try:
             __import__(module_name)
             click.echo(f"  [OK] {package_name}")
         except ImportError:
             click.echo(f"  [MISSING] {package_name} (not installed)")
-    
+
     click.echo()
+
+
+@cli.command()
+@click.option('--date', '-d', type=click.DateTime(formats=['%Y-%m-%d']),
+              help='Aggregate specific date (YYYY-MM-DD)')
+@click.option('--start', '-s', type=click.DateTime(formats=['%Y-%m-%d']),
+              help='Start date for range aggregation (YYYY-MM-DD)')
+@click.option('--end', '-e', type=click.DateTime(formats=['%Y-%m-%d']),
+              help='End date for range aggregation (YYYY-MM-DD)')
+@click.option('--backfill', '-b', is_flag=True,
+              help='Backfill all historical trade data')
+def aggregate(date, start, end, backfill):
+    """
+    Aggregate trade data into daily performance metrics
+
+    Examples:
+        tradingmtq aggregate --backfill              # Aggregate all historical data
+        tradingmtq aggregate -d 2025-12-13           # Aggregate specific date
+        tradingmtq aggregate -s 2025-12-01 -e 2025-12-13  # Aggregate date range
+    """
+    from datetime import date as dt_date
+    from src.analytics import DailyAggregator
+
+    try:
+        aggregator = DailyAggregator()
+
+        if backfill:
+            click.echo("\n🔄 Backfilling all historical trade data...")
+            results = aggregator.backfill()
+
+            if results:
+                click.echo(f"✅ Aggregated {len(results)} days of data")
+                click.echo(f"   Date range: {results[0].date} to {results[-1].date}")
+            else:
+                click.echo("ℹ️  No trade data found to aggregate")
+
+        elif date:
+            click.echo(f"\n🔄 Aggregating trades for {date.date()}...")
+            result = aggregator.aggregate_day(date.date())
+
+            if result:
+                click.echo(f"✅ Aggregated {result.total_trades} trades")
+                click.echo(f"   Net profit: ${result.net_profit:.2f}")
+                click.echo(f"   Win rate: {result.win_rate:.1f}%")
+            else:
+                click.echo(f"ℹ️  No closed trades found for {date.date()}")
+
+        elif start and end:
+            click.echo(f"\n🔄 Aggregating trades from {start.date()} to {end.date()}...")
+            results = aggregator.aggregate_range(start.date(), end.date())
+
+            if results:
+                click.echo(f"✅ Aggregated {len(results)} days of data")
+                total_trades = sum(r.total_trades for r in results)
+                total_profit = sum(r.net_profit for r in results)
+                click.echo(f"   Total trades: {total_trades}")
+                click.echo(f"   Total profit: ${total_profit:.2f}")
+            else:
+                click.echo("ℹ️  No trade data found in date range")
+
+        else:
+            click.echo("❌ Please specify --backfill, --date, or --start/--end")
+            raise click.Abort()
+
+        click.echo()
+
+    except Exception as e:
+        click.echo(f"\n❌ Aggregation error: {e}", err=True)
+        raise click.Abort()
 
 
 if __name__ == '__main__':

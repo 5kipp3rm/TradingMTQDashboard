@@ -255,6 +255,83 @@ class TradeRepository(BaseRepository):
             except Exception as e:
                 self._handle_db_error("get_trade_statistics", e)
 
+    def get_earliest_trade(self, session: Session) -> Optional[Trade]:
+        """
+        Get the earliest trade by open_time.
+
+        Args:
+            session: Database session
+
+        Returns:
+            Earliest Trade or None if no trades exist
+        """
+        with CorrelationContext():
+            try:
+                stmt = select(Trade).order_by(Trade.open_time.asc()).limit(1)
+                result = session.execute(stmt)
+                return result.scalar_one_or_none()
+            except Exception as e:
+                self._handle_db_error("get_earliest_trade", e)
+
+    def get_trades_by_date(
+        self,
+        session: Session,
+        start_date: datetime,
+        end_date: datetime,
+        status: Optional[TradeStatus] = None
+    ) -> List[Trade]:
+        """
+        Get trades within a date range, optionally filtered by status.
+
+        Args:
+            session: Database session
+            start_date: Start datetime (inclusive)
+            end_date: End datetime (inclusive)
+            status: Optional trade status filter
+
+        Returns:
+            List of Trade instances
+        """
+        with CorrelationContext():
+            try:
+                # Use exit_time for closed trades, open_time for open trades
+                stmt = select(Trade)
+
+                if status == TradeStatus.CLOSED:
+                    stmt = stmt.where(
+                        and_(
+                            Trade.exit_time >= start_date,
+                            Trade.exit_time <= end_date,
+                            Trade.status == TradeStatus.CLOSED
+                        )
+                    )
+                else:
+                    stmt = stmt.where(
+                        and_(
+                            Trade.open_time >= start_date,
+                            Trade.open_time <= end_date
+                        )
+                    )
+                    if status:
+                        stmt = stmt.where(Trade.status == status)
+
+                stmt = stmt.order_by(Trade.open_time.asc())
+                result = session.execute(stmt)
+                trades = result.scalars().all()
+
+                logger.info(
+                    "Trades retrieved by date",
+                    start_date=start_date.isoformat(),
+                    end_date=end_date.isoformat(),
+                    status=status.value if status else None,
+                    count=len(trades)
+                )
+
+                return list(trades)
+
+            except Exception as e:
+                self._handle_db_error("get_trades_by_date", e)
+
 
 class SignalRepository(BaseRepository):
     """Repository for Signal operations"""
