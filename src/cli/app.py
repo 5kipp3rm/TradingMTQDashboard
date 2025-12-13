@@ -131,8 +131,12 @@ def aggregate(date, start, end, backfill):
     """
     from datetime import date as dt_date
     from src.analytics import DailyAggregator
+    from src.database.connection import init_db
 
     try:
+        # Initialize database
+        init_db()
+
         aggregator = DailyAggregator()
 
         if backfill:
