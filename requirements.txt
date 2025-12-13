@@ -12,6 +12,9 @@ MetaTrader5>=5.0.5430
 python-dotenv>=1.0.0
 pyyaml>=6.0.1
 
+# CLI Framework
+click>=8.1.0               # Command-line interface
+
 # Data Processing
 pandas>=2.2.0
 numpy>=1.26.0

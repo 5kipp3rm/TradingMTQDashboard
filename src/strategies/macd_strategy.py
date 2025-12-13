@@ -109,9 +109,10 @@ class MACDStrategy(BaseStrategy):
             return Signal(
                 type=SignalType.BUY,
                 symbol=self.symbol,
+                timestamp=bars[-1].time,
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=confidence,
                 reason=f"MACD bullish crossover (Histogram: {current_histogram:.5f})"
             )
@@ -126,9 +127,10 @@ class MACDStrategy(BaseStrategy):
             return Signal(
                 type=SignalType.SELL,
                 symbol=self.symbol,
+                timestamp=bars[-1].time,
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=confidence,
                 reason=f"MACD bearish crossover (Histogram: {current_histogram:.5f})"
             )

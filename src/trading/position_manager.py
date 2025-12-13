@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional, Dict, List
 import MetaTrader5 as mt5
 
-from src.connectors.base import BaseMetaTraderConnector, Position
+from src.connectors.base import BaseMetaTraderConnector, Position, OrderType
 from src.utils.logger import get_logger, log_config
 
 logger = get_logger(__name__)
@@ -92,7 +92,7 @@ class PositionManager:
         pip_value = symbol_info.point * 10
         
         # Calculate profit in pips
-        if position.type == 0:  # BUY
+        if position.type == OrderType.BUY:  # BUY
             profit_pips = (position.price_current - position.price_open) / pip_value
         else:  # SELL
             profit_pips = (position.price_open - position.price_current) / pip_value
@@ -128,15 +128,15 @@ class PositionManager:
         
         if profit_pips >= trigger_pips:
             # Calculate breakeven SL
-            if position.type == 0:  # BUY
+            if position.type == OrderType.BUY:  # BUY
                 new_sl = position.price_open + (offset_pips * pip_value)
             else:  # SELL
                 new_sl = position.price_open - (offset_pips * pip_value)
             
             # Don't move SL backwards
-            if position.type == 0 and new_sl <= position.sl:
+            if position.type == OrderType.BUY and new_sl <= position.sl:
                 return
-            if position.type == 1 and new_sl >= position.sl:
+            if position.type == OrderType.SELL and new_sl >= position.sl:
                 return
             
             # Modify position
@@ -167,7 +167,7 @@ class PositionManager:
                 return
         
         # Calculate trailing SL
-        if position.type == 0:  # BUY
+        if position.type == OrderType.BUY:  # BUY
             new_sl = position.price_current - (trailing_distance * pip_value)
             # Only move SL up, never down
             if position.sl and new_sl <= position.sl:
@@ -224,8 +224,8 @@ class PositionManager:
                 "position": position.ticket,
                 "symbol": position.symbol,
                 "volume": close_volume,
-                "type": mt5.ORDER_TYPE_SELL if position.type == 0 else mt5.ORDER_TYPE_BUY,
-                "price": tick.bid if position.type == 0 else tick.ask,
+                "type": mt5.ORDER_TYPE_SELL if position.type == OrderType.BUY else mt5.ORDER_TYPE_BUY,
+                "price": tick.bid if position.type == OrderType.BUY else tick.ask,
                 "deviation": 20,
                 "magic": 234000,
                 "comment": f"Partial close {close_percent}%",
@@ -258,7 +258,7 @@ class PositionManager:
         trigger_percent = config.get('tp_extension_trigger_percent', 80)
         
         # Calculate how close we are to TP
-        if position.type == 0:  # BUY
+        if position.type == OrderType.BUY:  # BUY
             tp_distance_pips = (position.tp - position.price_open) / pip_value
         else:  # SELL
             tp_distance_pips = (position.price_open - position.tp) / pip_value
@@ -267,7 +267,7 @@ class PositionManager:
         
         # Extend TP if we're close
         if progress_percent >= trigger_percent:
-            if position.type == 0:  # BUY
+            if position.type == OrderType.BUY:  # BUY
                 new_tp = position.tp + (extension_pips * pip_value)
             else:  # SELL
                 new_tp = position.tp - (extension_pips * pip_value)

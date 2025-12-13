@@ -107,8 +107,8 @@ class TestBollingerBandsStrategy(unittest.TestCase):
         self.assertIsNotNone(signal)
         self.assertEqual(signal.type, SignalType.BUY)
         self.assertEqual(signal.symbol, "EURUSD")
-        self.assertLess(signal.sl, signal.price)
-        self.assertGreater(signal.tp, signal.price)
+        self.assertLess(signal.stop_loss, signal.price)
+        self.assertGreater(signal.take_profit, signal.price)
         self.assertIn("lower BB", signal.reason)
         self.assertIn("RSI oversold", signal.reason)
     
@@ -148,8 +148,8 @@ class TestBollingerBandsStrategy(unittest.TestCase):
         self.assertIsNotNone(signal)
         self.assertEqual(signal.type, SignalType.SELL)
         self.assertEqual(signal.symbol, "EURUSD")
-        self.assertGreater(signal.sl, signal.price)
-        self.assertLess(signal.tp, signal.price)
+        self.assertGreater(signal.stop_loss, signal.price)
+        self.assertLess(signal.take_profit, signal.price)
         self.assertIn("upper BB", signal.reason)
         self.assertIn("RSI overbought", signal.reason)
     
@@ -257,13 +257,13 @@ class TestBollingerBandsStrategy(unittest.TestCase):
         bb_result.metadata['lower_band'][-1] = 1.0995
         bb_result.metadata['lower_band'][-2] = 1.0980
         mock_bb.calculate.return_value = bb_result
-        mock_bb_class.return_value = mock_bb
+        self.strategy.bb_indicator = mock_bb
         
         mock_rsi = Mock()
         rsi_result = Mock()
         rsi_result.values = np.full(50, 30.0)
         mock_rsi.calculate.return_value = rsi_result
-        mock_rsi_class.return_value = mock_rsi
+        self.strategy.rsi_indicator = mock_rsi
         
         bars[-1].close = 1.0994
         bars[-2].close = 1.0985
@@ -272,10 +272,10 @@ class TestBollingerBandsStrategy(unittest.TestCase):
         
         # Verify SL/TP are set and reasonable
         band_width = 1.1020 - 1.0980  # 0.0040
-        self.assertIsNotNone(signal.sl)
-        self.assertIsNotNone(signal.tp)
-        self.assertLess(signal.sl, signal.price)
-        self.assertGreater(signal.tp, signal.price)
+        self.assertIsNotNone(signal.stop_loss)
+        self.assertIsNotNone(signal.take_profit)
+        self.assertLess(signal.stop_loss, signal.price)
+        self.assertGreater(signal.take_profit, signal.price)
     
     def test_strategy_name(self):
         """Test strategy name generation"""

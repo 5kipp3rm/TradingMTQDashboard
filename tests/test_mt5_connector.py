@@ -319,3 +319,124 @@ class TestMT5Connector:
         result = connector.close_position(ticket=123456)
         
         assert result.success is True
+    
+    @patch('src.connectors.mt5_connector.mt5')
+    def test_no_bars_first_warning(self, mock_mt5, connector):
+        """Test first warning when no bars returned"""
+        mock_mt5.copy_rates_from_pos.return_value = None
+        
+        with patch('src.connectors.mt5_connector.logger') as mock_logger:
+            bars = connector.get_bars("EURUSD", "M5", 10)
+            
+            assert len(bars) == 0
+            assert "EURUSD_M5" in connector._no_bars_count
+            assert connector._no_bars_count["EURUSD_M5"] == 1
+            
+            # Check warning was logged
+            mock_logger.warning.assert_called_once()
+            warning_msg = mock_logger.warning.call_args[0][0]
+            assert "No bars for EURUSD M5" in warning_msg
+    
+    @patch('src.connectors.mt5_connector.mt5')
+    def test_no_bars_silent_cycles(self, mock_mt5, connector):
+        """Test silent cycles between first warning and detailed help"""
+        mock_mt5.copy_rates_from_pos.return_value = None
+        
+        with patch('src.connectors.mt5_connector.logger') as mock_logger:
+            # Simulate 10 failed attempts
+            for i in range(10):
+                connector.get_bars("EURUSD", "M5", 10)
+            
+            assert connector._no_bars_count["EURUSD_M5"] == 10
+            
+            # Should only warn on first attempt (count=1)
+            assert mock_logger.warning.call_count == 1
+    
+    @patch('src.connectors.mt5_connector.mt5')
+    def test_no_bars_detailed_help_after_20(self, mock_mt5, connector):
+        """Test detailed help message after 20 failed attempts"""
+        mock_mt5.copy_rates_from_pos.return_value = None
+        
+        with patch('src.connectors.mt5_connector.logger') as mock_logger:
+            # Simulate 20 failed attempts
+            for i in range(20):
+                connector.get_bars("EURUSD", "M5", 10)
+            
+            assert connector._no_bars_count["EURUSD_M5"] == 20
+            
+            # Should warn 5 times: once at count=1, 4 times at count=20
+            assert mock_logger.warning.call_count == 5  # 1 initial + 4 detailed warnings
+            
+            # Check detailed help was logged
+            warning_calls = [call[0][0] for call in mock_logger.warning.call_args_list]
+            assert any("Still no data after 20 attempts" in msg for msg in warning_calls)
+            assert any("Forex market hours" in msg for msg in warning_calls)
+            assert any("MT5 connection" in msg for msg in warning_calls)
+    
+    @patch('src.connectors.mt5_connector.mt5')
+    def test_no_bars_counter_reset_on_success(self, mock_mt5, connector):
+        """Test counter resets when data is successfully retrieved"""
+        # First, fail a few times
+        mock_mt5.copy_rates_from_pos.return_value = None
+        
+        for i in range(5):
+            connector.get_bars("EURUSD", "M5", 10)
+        
+        assert "EURUSD_M5" in connector._no_bars_count
+        assert connector._no_bars_count["EURUSD_M5"] == 5
+        
+        # Now succeed
+        mock_rates = [{
+            'time': 1700000000,
+            'open': 1.08500,
+            'high': 1.08550,
+            'low': 1.08450,
+            'close': 1.08520,
+            'tick_volume': 1000,
+            'real_volume': 100000,
+            'spread': 2
+        }]
+        mock_mt5.copy_rates_from_pos.return_value = mock_rates
+        
+        bars = connector.get_bars("EURUSD", "M5", 10)
+        
+        # Counter should be reset
+        assert "EURUSD_M5" not in connector._no_bars_count
+        assert len(bars) == 1
+    
+    @patch('src.connectors.mt5_connector.mt5')
+    def test_no_bars_multiple_symbols(self, mock_mt5, connector):
+        """Test that counters are tracked separately per symbol/timeframe"""
+        mock_mt5.copy_rates_from_pos.return_value = None
+        
+        # Fail different symbol/timeframe combinations
+        connector.get_bars("EURUSD", "M5", 10)
+        connector.get_bars("EURUSD", "M5", 10)
+        connector.get_bars("GBPUSD", "M5", 10)
+        connector.get_bars("EURUSD", "H1", 10)
+        
+        # Each combination should be tracked separately
+        assert connector._no_bars_count["EURUSD_M5"] == 2
+        assert connector._no_bars_count["GBPUSD_M5"] == 1
+        assert connector._no_bars_count["EURUSD_H1"] == 1
+    
+    @patch('src.connectors.mt5_connector.mt5')
+    def test_no_bars_empty_array_vs_none(self, mock_mt5, connector):
+        """Test that both None and empty array are handled the same"""
+        with patch('src.connectors.mt5_connector.logger') as mock_logger:
+            # Test with None
+            mock_mt5.copy_rates_from_pos.return_value = None
+            bars1 = connector.get_bars("EURUSD", "M5", 10)
+            
+            assert len(bars1) == 0
+            assert connector._no_bars_count["EURUSD_M5"] == 1
+            
+            # Reset counter
+            connector._no_bars_count = {}
+            
+            # Test with empty array
+            mock_mt5.copy_rates_from_pos.return_value = []
+            bars2 = connector.get_bars("EURUSD", "M5", 10)
+            
+            assert len(bars2) == 0
+            assert connector._no_bars_count["EURUSD_M5"] == 1

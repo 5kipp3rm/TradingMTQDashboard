@@ -121,9 +121,10 @@ class BollingerBandsStrategy(BaseStrategy):
             signal = Signal(
                 type=SignalType.BUY,
                 symbol=self.symbol,
+                timestamp=bars[-1].time,
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=confidence,
                 reason=f"Price touched lower BB ({current_price:.5f}) + RSI oversold ({current_rsi:.1f})"
             )
@@ -138,9 +139,10 @@ class BollingerBandsStrategy(BaseStrategy):
             signal = Signal(
                 type=SignalType.SELL,
                 symbol=self.symbol,
+                timestamp=bars[-1].time,
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=confidence,
                 reason=f"Price touched upper BB ({current_price:.5f}) + RSI overbought ({current_rsi:.1f})"
             )

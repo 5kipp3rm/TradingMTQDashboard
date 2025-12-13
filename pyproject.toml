@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tradingmtq"
+version = "2.0.0"
+description = "Advanced Multi-Currency Trading Bot for MetaTrader 5 with ML Enhancement"
+readme = "README.md"
+authors = [{name = "5kipp3rm"}]
+license = {text = "MIT"}
+requires-python = ">=3.9"
+keywords = ["trading", "mt5", "metatrader", "forex", "machine-learning"]
+
+dependencies = [
+    "MetaTrader5>=5.0.45",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "scikit-learn>=1.3.0",
+    "joblib>=1.3.0",
+    "click>=8.1.0",
+]
+
+[project.scripts]
+tradingmtq = "src.cli:cli"
+mtq = "src.cli:cli"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["src", "src.cli", "src.trading", "src.strategies", "src.connectors", "src.ml", "src.llm", "src.indicators", "src.backtest", "src.analysis", "src.optimization", "src.utils"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v --cov=src --cov-report=html --cov-report=term"

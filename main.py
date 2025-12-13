@@ -1,13 +1,15 @@
 """
-Configuration-Based Multi-Currency Trading
-Reads all settings from config/currencies.yaml
-Supports hot-reload for on-the-fly SL/TP modifications
+TradingMTQ - Multi-Currency Trading Bot
+Main entry point - launches CLI application
+
+For legacy compatibility, this file can still be run directly.
+New usage: Use 'tradingmtq' command after installation.
 """
-import os
 import sys
-import time
-from datetime import datetime
 from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Fix encoding for Windows console
 if sys.platform == 'win32':
@@ -15,39 +17,73 @@ if sys.platform == 'win32':
     if sys.stdout.encoding != 'utf-8':
         sys.stdout.reconfigure(encoding='utf-8')
 
-from src.connectors import ConnectorFactory
-from src.connectors.base import PlatformType
-from src.strategies import SimpleMovingAverageStrategy
-from src.trading import MultiCurrencyOrchestrator, CurrencyTraderConfig
-from src.config_manager import ConfigurationManager
-from src.utils.logger import setup_logging, get_logger, log_connection, log_config, log_cycle
-
-# Optional ML/LLM imports
-try:
-    from src.ml import RandomForestClassifier, FeatureEngineer, ModelLoader, MLModelWrapper
-    ML_AVAILABLE = True
-except ImportError:
-    ML_AVAILABLE = False
-    print("⚠️  ML libraries not available - install with: pip install -r requirements.txt")
-
-try:
-    from src.llm import OpenAIProvider, SentimentAnalyzer, MarketAnalyst
-    from src.utils.config_loader import get_openai_key
-    LLM_AVAILABLE = True
-except ImportError:
-    LLM_AVAILABLE = False
-    print("⚠️  LLM libraries not available - install with: pip install -r requirements.txt")
-
-# Load environment
-load_dotenv()
-
-# Setup enhanced logging
-setup_logging()
-logger = get_logger(__name__)
-
 
 def main():
-    """Run configuration-based multi-currency trading"""
+    """
+    Legacy main function - launches CLI application
+    
+    For new usage, install package and use:
+        pip install -e .
+        tradingmtq trade
+    """
+    try:
+        # Try to use the new CLI
+        from src.cli import cli
+        
+        # If no arguments provided, run default trade command
+        if len(sys.argv) == 1:
+            sys.argv = ['main.py', 'trade']
+        
+        cli()
+    
+    except ImportError as e:
+        # Fallback to old behavior if CLI dependencies not installed
+        print("⚠️  CLI module not available")
+        print(f"   Error: {e}")
+        print("   Installing dependencies: pip install click")
+        print("\n   Falling back to legacy mode...\n")
+        _run_legacy_trading()
+
+
+def _run_legacy_trading(enable_ml: bool = True, enable_llm: bool = True):
+    """
+    Legacy trading function for backward compatibility
+    
+    Args:
+        enable_ml: Enable ML enhancement (default: True)
+        enable_llm: Enable LLM sentiment analysis (default: True)
+    """
+    import os
+    import time
+    from datetime import datetime
+    
+    from src.connectors import ConnectorFactory
+    from src.connectors.base import PlatformType
+    from src.strategies import SimpleMovingAverageStrategy
+    from src.trading import MultiCurrencyOrchestrator, CurrencyTraderConfig
+    from src.config_manager import ConfigurationManager
+    from src.utils.logger import setup_logging, get_logger, log_connection, log_config, log_cycle
+    
+    # Optional ML/LLM imports
+    try:
+        from src.ml import RandomForestClassifier, FeatureEngineer, ModelLoader, MLModelWrapper
+        ML_AVAILABLE = True
+    except ImportError:
+        ML_AVAILABLE = False
+        print("⚠️  ML libraries not available")
+    
+    try:
+        from src.llm import OpenAIProvider, SentimentAnalyzer, MarketAnalyst
+        from src.utils.config_loader import get_openai_key
+        LLM_AVAILABLE = True
+    except ImportError:
+        LLM_AVAILABLE = False
+    
+    # Setup logging
+    setup_logging()
+    logger = get_logger(__name__)
+    
+    # Run legacy trading (original main.py logic)
     
     logger.info("=" * 80)
     logger.info("  CONFIGURATION-BASED MULTI-CURRENCY TRADING")
@@ -110,8 +146,15 @@ def main():
     logger.info(f"Found {len(enabled_currencies)} enabled currencies: {', '.join(enabled_currencies)}")
     
     # Initialize ML/LLM components (optional)
-    use_ml = config_manager.config.get('global', {}).get('use_ml_enhancement', False)
-    use_llm = config_manager.config.get('global', {}).get('use_sentiment_filter', False)
+    # Override config with CLI flags
+    use_ml = config_manager.config.get('global', {}).get('use_ml_enhancement', False) and enable_ml
+    use_llm = config_manager.config.get('global', {}).get('use_sentiment_filter', False) and enable_llm
+    
+    # Log ML/LLM status
+    if not enable_ml:
+        logger.info("ML Enhancement: DISABLED (via CLI flag)")
+    if not enable_llm:
+        logger.info("LLM Sentiment: DISABLED (via CLI flag)")
     
     currency_models = {}
     if use_ml and ML_AVAILABLE:
@@ -247,6 +290,21 @@ def main():
         logger.info(f"    Offset: {config_manager.get_breakeven_offset()} pips")
     
     logger.info("=" * 80)
+    
+    # Check market hours
+    try:
+        from src.utils.market_hours import is_forex_market_open, get_next_market_open
+        market_open, market_msg = is_forex_market_open()
+        
+        if not market_open:
+            logger.warning("=" * 80)
+            logger.warning(f"⚠️  {market_msg}")
+            logger.warning(f"   Next market open: {get_next_market_open()}")
+            logger.warning("   Bot will continue running but may not receive new data")
+            logger.warning("   Existing positions will be monitored if any")
+            logger.warning("=" * 80)
+    except Exception as e:
+        logger.debug(f"Market hours check skipped: {e}")
     
     # User confirmation
     logger.warning("Ready to start configuration-based trading")

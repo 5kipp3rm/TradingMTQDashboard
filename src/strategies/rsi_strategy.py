@@ -115,9 +115,10 @@ class RSIStrategy(BaseStrategy):
             return Signal(
                 type=SignalType.BUY,
                 symbol=self.symbol,
+                timestamp=bars[-1].time,
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=self._calculate_confidence(current_rsi, "BUY"),
                 reason=f"RSI crossed above {self.oversold} (current: {current_rsi:.1f})"
             )
@@ -129,9 +130,10 @@ class RSIStrategy(BaseStrategy):
             return Signal(
                 type=SignalType.SELL,
                 symbol=self.symbol,
+                timestamp=bars[-1].time,
                 price=current_price,
-                sl=sl,
-                tp=tp,
+                stop_loss=sl,
+                take_profit=tp,
                 confidence=self._calculate_confidence(current_rsi, "SELL"),
                 reason=f"RSI crossed below {self.overbought} (current: {current_rsi:.1f})"
             )

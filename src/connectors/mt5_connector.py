@@ -55,6 +55,7 @@ class MT5Connector(BaseMetaTraderConnector):
         """
         super().__init__(instance_id, PlatformType.MT5)
         self._initialized = False
+        self._no_bars_count = {}  # Track consecutive no-bar warnings per symbol
         logger.info(f"MT5Connector initialized: {instance_id}")
     
     def connect(self, login: int, password: str, server: str, 
@@ -291,8 +292,24 @@ class MT5Connector(BaseMetaTraderConnector):
             
             rates = mt5.copy_rates_from_pos(symbol, tf, start_pos, count)
             if rates is None or len(rates) == 0:
-                logger.warning(f"[{self.instance_id}] No bars for {symbol} {timeframe}")
+                # Track consecutive failures
+                key = f"{symbol}_{timeframe}"
+                self._no_bars_count[key] = self._no_bars_count.get(key, 0) + 1
+                
+                # Only warn every 10 cycles to reduce noise
+                if self._no_bars_count[key] == 1:
+                    logger.warning(f"[{self.instance_id}] No bars for {symbol} {timeframe} - Market may be closed or data not available")
+                elif self._no_bars_count[key] == 20:
+                    logger.warning(f"[{self.instance_id}] {symbol} {timeframe} - Still no data after 20 attempts. Check:")
+                    logger.warning(f"  • Forex market hours (Sunday 5PM - Friday 5PM EST)")
+                    logger.warning(f"  • MT5 connection and symbol availability")
+                    logger.warning(f"  • Timeframe matches broker's available data")
                 return []
+            else:
+                # Reset counter on successful data retrieval
+                key = f"{symbol}_{timeframe}"
+                if key in self._no_bars_count:
+                    del self._no_bars_count[key]
             
             bars = []
             for rate in rates:

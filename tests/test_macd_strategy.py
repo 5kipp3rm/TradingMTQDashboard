@@ -93,15 +93,15 @@ class TestMACDStrategy(unittest.TestCase):
             'signal_line': np.linspace(-0.00015, 0.00015, 50)
         }
         mock_macd.calculate.return_value = macd_result
-        mock_macd_class.return_value = mock_macd
+        self.strategy.macd_indicator = mock_macd
         
         signal = self.strategy.analyze(bars)
         
         self.assertIsNotNone(signal)
         self.assertEqual(signal.type, SignalType.BUY)
         self.assertEqual(signal.symbol, "EURUSD")
-        self.assertLess(signal.sl, signal.price)
-        self.assertGreater(signal.tp, signal.price)
+        self.assertLess(signal.stop_loss, signal.price)
+        self.assertGreater(signal.take_profit, signal.price)
         self.assertIn("bullish crossover", signal.reason)
         self.assertIn("Histogram", signal.reason)
     
@@ -121,15 +121,15 @@ class TestMACDStrategy(unittest.TestCase):
             'signal_line': np.linspace(0.00015, -0.00015, 50)
         }
         mock_macd.calculate.return_value = macd_result
-        mock_macd_class.return_value = mock_macd
+        self.strategy.macd_indicator = mock_macd
         
         signal = self.strategy.analyze(bars)
         
         self.assertIsNotNone(signal)
         self.assertEqual(signal.type, SignalType.SELL)
         self.assertEqual(signal.symbol, "EURUSD")
-        self.assertGreater(signal.sl, signal.price)
-        self.assertLess(signal.tp, signal.price)
+        self.assertGreater(signal.stop_loss, signal.price)
+        self.assertLess(signal.take_profit, signal.price)
         self.assertIn("bearish crossover", signal.reason)
     
     @patch('src.strategies.macd_strategy.MACD')
@@ -147,7 +147,7 @@ class TestMACDStrategy(unittest.TestCase):
             'signal_line': np.full(50, 0.00005)
         }
         mock_macd.calculate.return_value = macd_result
-        mock_macd_class.return_value = mock_macd
+        self.strategy.macd_indicator = mock_macd
         
         signal = self.strategy.analyze(bars)
         
@@ -169,7 +169,7 @@ class TestMACDStrategy(unittest.TestCase):
             'signal_line': np.full(50, 0.00005)
         }
         mock_macd.calculate.return_value = macd_result
-        mock_macd_class.return_value = mock_macd
+        self.strategy.macd_indicator = mock_macd
         
         signal = self.strategy.analyze(bars)
         
@@ -191,7 +191,7 @@ class TestMACDStrategy(unittest.TestCase):
             'signal_line': np.full(50, 0.00003)
         }
         mock_macd.calculate.return_value = macd_result
-        mock_macd_class.return_value = mock_macd
+        self.strategy.macd_indicator = mock_macd
         
         signal = self.strategy.analyze(bars)
         
@@ -201,8 +201,8 @@ class TestMACDStrategy(unittest.TestCase):
         expected_sl_distance = 20 * 0.0001
         expected_tp_distance = 40 * 0.0001
         
-        self.assertAlmostEqual(signal.price - signal.sl, expected_sl_distance, places=5)
-        self.assertAlmostEqual(signal.tp - signal.price, expected_tp_distance, places=5)
+        self.assertAlmostEqual(signal.price - signal.stop_loss, expected_sl_distance, places=5)
+        self.assertAlmostEqual(signal.take_profit - signal.price, expected_tp_distance, places=5)
     
     @patch('src.strategies.macd_strategy.MACD')
     def test_sl_tp_calculation_jpypair(self, mock_macd_class):
@@ -228,7 +228,7 @@ class TestMACDStrategy(unittest.TestCase):
             'signal_line': np.full(50, 0.00003)
         }
         mock_macd.calculate.return_value = macd_result
-        mock_macd_class.return_value = mock_macd
+        strategy_jpy.macd_indicator = mock_macd
         
         signal = strategy_jpy.analyze(bars)
         
@@ -236,8 +236,8 @@ class TestMACDStrategy(unittest.TestCase):
         expected_sl_distance = 20 * 0.01
         expected_tp_distance = 40 * 0.01
         
-        self.assertAlmostEqual(signal.price - signal.sl, expected_sl_distance, places=2)
-        self.assertAlmostEqual(signal.tp - signal.price, expected_tp_distance, places=2)
+        self.assertAlmostEqual(signal.price - signal.stop_loss, expected_sl_distance, places=2)
+        self.assertAlmostEqual(signal.take_profit - signal.price, expected_tp_distance, places=2)
     
     def test_calculate_confidence_with_momentum(self):
         """Test confidence calculation with positive momentum"""
