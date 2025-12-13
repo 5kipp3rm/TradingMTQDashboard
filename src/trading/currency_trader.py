@@ -24,6 +24,11 @@ from src.connectors.base import BaseMetaTraderConnector, OrderType, TradeRequest
 from src.strategies.base import BaseStrategy, Signal, SignalType
 from src.connectors.account_utils import AccountUtils
 
+# Database imports - Phase 5.1
+from src.database.repository import TradeRepository, SignalRepository
+from src.database.connection import get_session
+from src.database.models import TradeStatus, SignalType as DBSignalType
+
 logger = StructuredLogger(__name__)
 
 # Optional ML/LLM imports
@@ -111,6 +116,10 @@ class CurrencyTrader:
         self.market_analyst = None
         self.use_ml_enhancement = False
         self.use_sentiment_filter = False
+
+        # Database repositories - Phase 5.1
+        self.trade_repo = TradeRepository()
+        self.signal_repo = SignalRepository()
 
         # Validation
         self.is_valid = self._validate_symbol()
@@ -322,6 +331,10 @@ class CurrencyTrader:
             # LLM Sentiment Filter (if enabled)
             if self.use_sentiment_filter and self.sentiment_analyzer and signal.type != SignalType.HOLD:
                 signal = self._apply_sentiment_filter(signal)
+
+            # Save signal to database - Phase 5.1
+            if signal and signal.type != SignalType.HOLD:
+                self._save_signal_to_db(signal)
 
             return signal
 
@@ -676,6 +689,10 @@ class CurrencyTrader:
                     price=result.price,
                     ticket=result.order_ticket
                 )
+
+                # Save trade to database - Phase 5.1
+                self._save_trade_to_db(signal, result, result.order_ticket)
+
                 return True
             else:
                 self.failed_trades += 1
@@ -811,6 +828,127 @@ class CurrencyTrader:
             'last_trade': self.last_trade_time,
             'last_signal_type': self.last_signal_type.name if self.last_signal_type else None
         }
+
+    def _convert_signal_type_to_db(self, signal_type: SignalType) -> str:
+        """Convert strategy SignalType to database enum string"""
+        mapping = {
+            SignalType.BUY: "buy",
+            SignalType.SELL: "sell",
+            SignalType.HOLD: "hold"
+        }
+        return mapping.get(signal_type, "hold")
+
+    def _save_signal_to_db(self, signal: Signal) -> None:
+        """
+        Save signal to database
+
+        Args:
+            signal: Signal object to save
+        """
+        try:
+            with get_session() as session:
+                # Extract ML metadata if present
+                ml_enhanced = signal.metadata.get('ml_confidence') is not None
+                ml_confidence = signal.metadata.get('ml_confidence')
+                ml_agreed = signal.metadata.get('ml_agrees', signal.metadata.get('ml_override'))
+
+                db_signal = self.signal_repo.create(
+                    session,
+                    symbol=signal.symbol,
+                    signal_type=self._convert_signal_type_to_db(signal.type),
+                    timestamp=signal.timestamp,
+                    price=signal.price,
+                    stop_loss=signal.stop_loss,
+                    take_profit=signal.take_profit,
+                    confidence=signal.confidence,
+                    reason=signal.reason,
+                    strategy_name=self.config.strategy.name,
+                    timeframe=self.config.timeframe,
+                    ml_enhanced=ml_enhanced,
+                    ml_confidence=ml_confidence,
+                    ml_agreed=ml_agreed
+                )
+
+                # Store database ID in signal metadata for later reference
+                signal.metadata['db_signal_id'] = db_signal.id
+
+                logger.debug(
+                    "Signal saved to database",
+                    signal_id=db_signal.id,
+                    symbol=signal.symbol,
+                    signal_type=signal.type.name
+                )
+        except Exception as e:
+            # Don't fail trading if database save fails
+            logger.error(
+                "Failed to save signal to database",
+                symbol=signal.symbol,
+                error=str(e),
+                exc_info=True
+            )
+
+    def _save_trade_to_db(self, signal: Signal, result: Any, ticket: int) -> None:
+        """
+        Save executed trade to database
+
+        Args:
+            signal: Original signal that triggered the trade
+            result: Order execution result
+            ticket: MT5 ticket number
+        """
+        try:
+            with get_session() as session:
+                # Extract ML metadata
+                ml_enhanced = signal.metadata.get('ml_confidence') is not None
+                ml_confidence = signal.metadata.get('ml_confidence')
+                ai_approved = not signal.metadata.get('llm_rejected', False)
+                ai_reasoning = signal.metadata.get('llm_reason', signal.reason)
+
+                db_trade = self.trade_repo.create(
+                    session,
+                    ticket=ticket,
+                    symbol=signal.symbol,
+                    magic_number=0,  # Could be extracted from config
+                    trade_type=self._convert_signal_type_to_db(signal.type),
+                    status="open",
+                    entry_price=result.price,
+                    entry_time=signal.timestamp,
+                    volume=result.volume if hasattr(result, 'volume') else 0.0,
+                    stop_loss=signal.stop_loss,
+                    take_profit=signal.take_profit,
+                    strategy_name=self.config.strategy.name,
+                    signal_confidence=signal.confidence,
+                    signal_reason=signal.reason,
+                    ml_enhanced=ml_enhanced,
+                    ml_confidence=ml_confidence,
+                    ai_approved=ai_approved,
+                    ai_reasoning=ai_reasoning
+                )
+
+                # Link signal to trade if signal was saved
+                if 'db_signal_id' in signal.metadata:
+                    self.signal_repo.mark_executed(
+                        session,
+                        signal_id=signal.metadata['db_signal_id'],
+                        trade_id=db_trade.id,
+                        execution_reason=f"Signal confidence: {signal.confidence:.2f}"
+                    )
+
+                logger.debug(
+                    "Trade saved to database",
+                    trade_id=db_trade.id,
+                    ticket=ticket,
+                    symbol=signal.symbol
+                )
+        except Exception as e:
+            # Don't fail trading if database save fails
+            logger.error(
+                "Failed to save trade to database",
+                ticket=ticket,
+                symbol=signal.symbol,
+                error=str(e),
+                exc_info=True
+            )
 
     def __repr__(self) -> str:
         return (f"CurrencyTrader(symbol={self.config.symbol}, "

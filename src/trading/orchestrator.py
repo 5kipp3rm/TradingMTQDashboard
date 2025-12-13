@@ -26,6 +26,10 @@ from .currency_trader import CurrencyTrader, CurrencyTraderConfig
 from .position_manager import PositionManager
 from .intelligent_position_manager import IntelligentPositionManager, PositionAction
 
+# Database imports - Phase 5.1
+from src.database.repository import AccountSnapshotRepository
+from src.database.connection import get_session
+
 logger = StructuredLogger(__name__)
 
 
@@ -78,6 +82,9 @@ class MultiCurrencyOrchestrator:
         # Portfolio statistics
         self.total_cycles = 0
         self.start_time = datetime.now()
+
+        # Database repository - Phase 5.1
+        self.snapshot_repo = AccountSnapshotRepository()
 
         logger.info(
             "MultiCurrencyOrchestrator initialized",
@@ -384,6 +391,9 @@ class MultiCurrencyOrchestrator:
             self.total_cycles += 1
             logger.debug("Cycle completed", cycle_number=self.total_cycles)
 
+            # Save account snapshot to database - Phase 5.1
+            self._save_account_snapshot()
+
             return results
 
     def process_parallel_cycle(self, max_workers: int = 3) -> Dict[str, Any]:
@@ -435,6 +445,9 @@ class MultiCurrencyOrchestrator:
 
             self.total_cycles += 1
             logger.debug("Parallel cycle completed", cycle_number=self.total_cycles)
+
+            # Save account snapshot to database - Phase 5.1
+            self._save_account_snapshot()
 
             return results
 
@@ -619,6 +632,56 @@ class MultiCurrencyOrchestrator:
     def __len__(self) -> int:
         """Number of currencies being traded"""
         return len(self.traders)
+
+    def _save_account_snapshot(self) -> None:
+        """
+        Save current account state to database
+
+        Phase 5.1 database integration - saves portfolio snapshots after each cycle
+        """
+        try:
+            # Get account info from connector
+            account_info = self.connector.get_account_info()
+            if not account_info:
+                logger.warning("Could not retrieve account info for snapshot")
+                return
+
+            # Get current positions
+            positions = self.connector.get_positions()
+            open_positions = len(positions) if positions else 0
+            total_volume = sum(p.volume for p in positions) if positions else 0.0
+
+            with get_session() as session:
+                snapshot = self.snapshot_repo.create(
+                    session,
+                    account_number=account_info.login,
+                    server=account_info.server,
+                    broker=account_info.company,
+                    balance=account_info.balance,
+                    equity=account_info.equity,
+                    profit=account_info.profit,
+                    margin=account_info.margin,
+                    margin_free=account_info.margin_free,
+                    margin_level=account_info.margin_level if hasattr(account_info, 'margin_level') else None,
+                    open_positions=open_positions,
+                    total_volume=total_volume,
+                    snapshot_time=datetime.now()
+                )
+
+                logger.debug(
+                    "Account snapshot saved",
+                    snapshot_id=snapshot.id,
+                    balance=float(account_info.balance),
+                    equity=float(account_info.equity),
+                    open_positions=open_positions
+                )
+        except Exception as e:
+            # Don't fail trading if snapshot save fails
+            logger.error(
+                "Failed to save account snapshot",
+                error=str(e),
+                exc_info=True
+            )
 
     def __repr__(self) -> str:
         symbols = list(self.traders.keys())
