@@ -7,13 +7,15 @@ class Dashboard {
         this.charts = {};
         this.currentPeriod = 30;
         this.isConnected = false;
+        this.wsConnected = false;
 
         this.initializeElements();
         this.attachEventListeners();
+        this.initializeWebSocket();
         this.checkAPIHealth();
         this.loadDashboard();
 
-        // Auto-refresh every 60 seconds
+        // Auto-refresh every 60 seconds (backup to WebSocket updates)
         setInterval(() => this.loadDashboard(), 60000);
     }
 
@@ -64,6 +66,131 @@ class Dashboard {
         this.elements.exportBtn.addEventListener('click', () => {
             this.exportToCSV();
         });
+    }
+
+    /**
+     * Initialize WebSocket connection for real-time updates
+     */
+    initializeWebSocket() {
+        // Register connection state listener
+        wsClient.onConnection((state, data) => {
+            this.handleWebSocketStateChange(state, data);
+        });
+
+        // Register message handlers
+        wsClient.on('connection', (message) => {
+            console.log('[Dashboard] WebSocket connected:', message);
+            this.wsConnected = true;
+            this.updateStatus(true, 'Connected (Live)');
+        });
+
+        wsClient.on('trade_event', (message) => {
+            console.log('[Dashboard] Trade event:', message);
+            this.handleTradeEvent(message);
+        });
+
+        wsClient.on('performance_update', (message) => {
+            console.log('[Dashboard] Performance update:', message);
+            this.handlePerformanceUpdate(message);
+        });
+
+        wsClient.on('system_event', (message) => {
+            console.log('[Dashboard] System event:', message);
+            this.handleSystemEvent(message);
+        });
+
+        wsClient.on('heartbeat', (message) => {
+            // Silent heartbeat handling
+            this.updateLastUpdate();
+        });
+
+        wsClient.on('pong', (message) => {
+            console.log('[Dashboard] Pong received');
+        });
+
+        // Connect to WebSocket
+        wsClient.connect();
+    }
+
+    /**
+     * Handle WebSocket state changes
+     */
+    handleWebSocketStateChange(state, data) {
+        switch (state) {
+            case 'connected':
+                this.wsConnected = true;
+                this.updateStatus(true, 'Connected (Live)');
+                break;
+
+            case 'disconnected':
+                this.wsConnected = false;
+                this.updateStatus(true, 'Connected (Polling)');
+                break;
+
+            case 'reconnecting':
+                this.updateStatus(true, `Reconnecting (${data.attempt})`);
+                break;
+
+            case 'error':
+                console.error('[Dashboard] WebSocket error:', data);
+                break;
+
+            case 'max_reconnect_attempts':
+                this.updateStatus(false, 'Connection Failed');
+                break;
+        }
+    }
+
+    /**
+     * Handle trade event from WebSocket
+     */
+    handleTradeEvent(message) {
+        const event = message.event;
+        const trade = message.data;
+
+        // Show notification
+        this.showNotification(`Trade ${event}: ${trade.symbol}`, trade.profit >= 0 ? 'success' : 'danger');
+
+        // Reload dashboard data
+        this.loadDashboard();
+    }
+
+    /**
+     * Handle performance update from WebSocket
+     */
+    handlePerformanceUpdate(message) {
+        const data = message.data;
+
+        // Update summary cards without full reload
+        if (data.total_trades !== undefined) {
+            this.elements.totalTrades.textContent = this.formatNumber(data.total_trades);
+        }
+        if (data.net_profit !== undefined) {
+            this.elements.netProfit.textContent = this.formatCurrency(data.net_profit);
+            this.elements.netProfit.className = 'metric-value ' + (data.net_profit >= 0 ? 'positive' : 'negative');
+        }
+        if (data.win_rate !== undefined) {
+            this.elements.winRate.textContent = this.formatPercentage(data.win_rate);
+            this.elements.winRate.className = 'metric-value ' + (data.win_rate >= 50 ? 'positive' : 'negative');
+        }
+
+        this.updateLastUpdate();
+    }
+
+    /**
+     * Handle system event from WebSocket
+     */
+    handleSystemEvent(message) {
+        const event = message.event;
+        const data = message.data;
+
+        console.log(`[Dashboard] System event: ${event}`, data);
+
+        // Show notification for important events
+        if (event === 'aggregation_complete') {
+            this.showNotification('Daily aggregation completed', 'success');
+            this.loadDashboard();
+        }
     }
 
     /**
@@ -456,7 +583,24 @@ class Dashboard {
      */
     showError(message) {
         console.error('Dashboard Error:', message);
-        // Could implement toast notifications here
+        this.showNotification(message, 'danger');
+    }
+
+    /**
+     * Show notification toast
+     */
+    showNotification(message, type = 'info') {
+        // Simple console notification for now
+        // In production, you'd want a proper toast library
+        console.log(`[Notification ${type.toUpperCase()}]`, message);
+
+        // You could implement browser notifications here:
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('TradingMTQ', {
+                body: message,
+                icon: '/favicon.ico'
+            });
+        }
     }
 }
 

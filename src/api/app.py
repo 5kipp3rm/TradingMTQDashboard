@@ -6,12 +6,33 @@ Provides REST endpoints for retrieving performance metrics and trade data.
 """
 
 from pathlib import Path
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routes import analytics, trades, health
+from src.api.routes import analytics, trades, health, websocket as ws_routes
+from src.api.websocket import connection_manager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    """
+    # Startup: Start heartbeat loop
+    heartbeat_task = asyncio.create_task(connection_manager.heartbeat_loop())
+
+    yield
+
+    # Shutdown: Cancel heartbeat and close connections
+    heartbeat_task.cancel()
+    try:
+        await heartbeat_task
+    except asyncio.CancelledError:
+        pass
 
 
 def create_app() -> FastAPI:
@@ -27,7 +48,8 @@ def create_app() -> FastAPI:
         version="2.0.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json"
+        openapi_url="/api/openapi.json",
+        lifespan=lifespan
     )
 
     # CORS middleware for web dashboard access
@@ -48,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api", tags=["health"])
     app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
     app.include_router(trades.router, prefix="/api/trades", tags=["trades"])
+    app.include_router(ws_routes.router, prefix="/api", tags=["websocket"])
 
     # Mount static files for dashboard (must be after API routes)
     dashboard_path = Path(__file__).parent.parent.parent / "dashboard"
