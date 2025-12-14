@@ -109,3 +109,7 @@ psycopg2-binary>=2.9.9     # PostgreSQL adapter (production)
 
 # Background Jobs (Phase 5.2)
 apscheduler>=3.10.4        # Scheduled jobs for daily aggregation
+
+# Report Generation (Phase 5.4)
+reportlab>=4.0.7           # PDF report generation
+pillow>=10.1.0             # Image processing for charts in reports
