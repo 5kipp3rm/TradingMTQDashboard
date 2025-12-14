@@ -1,0 +1,42 @@
+# Email Notification Configuration for TradingMTQ
+# Copy this file to email.yaml and fill in your email settings
+
+email:
+  # SMTP Server Configuration
+  smtp_host: "smtp.gmail.com"  # Gmail SMTP server
+  smtp_port: 587                # TLS port (587 for TLS, 465 for SSL)
+
+  # Authentication
+  username: "your-email@gmail.com"
+  password: "your-app-password"  # Use app password, not regular password
+
+  # Sender Information
+  from_email: "your-email@gmail.com"
+  from_name: "TradingMTQ Bot"
+
+  # Connection Settings
+  use_tls: true   # Use TLS (recommended for port 587)
+  use_ssl: false  # Use SSL (recommended for port 465)
+
+# Common SMTP Configurations:
+#
+# Gmail (using App Password):
+#   smtp_host: "smtp.gmail.com"
+#   smtp_port: 587
+#   use_tls: true
+#   Note: Enable 2FA and generate App Password at https://myaccount.google.com/apppasswords
+#
+# Outlook/Hotmail:
+#   smtp_host: "smtp-mail.outlook.com"
+#   smtp_port: 587
+#   use_tls: true
+#
+# Yahoo:
+#   smtp_host: "smtp.mail.yahoo.com"
+#   smtp_port: 587
+#   use_tls: true
+#
+# Custom SMTP Server:
+#   smtp_host: "mail.yourdomain.com"
+#   smtp_port: 587
+#   use_tls: true

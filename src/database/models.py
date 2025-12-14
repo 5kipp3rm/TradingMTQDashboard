@@ -36,6 +36,24 @@ class SignalType(enum.Enum):
     HOLD = "hold"
 
 
+class AlertType(enum.Enum):
+    """Alert event types"""
+    TRADE_OPENED = "trade_opened"
+    TRADE_CLOSED = "trade_closed"
+    DAILY_SUMMARY = "daily_summary"
+    ERROR_ALERT = "error_alert"
+    PROFIT_THRESHOLD = "profit_threshold"
+    LOSS_THRESHOLD = "loss_threshold"
+
+
+class NotificationChannel(enum.Enum):
+    """Notification delivery channels"""
+    EMAIL = "email"
+    SMS = "sms"
+    PUSH = "push"
+    WEBSOCKET = "websocket"
+
+
 class Trade(Base):
     """
     Trade execution record
@@ -316,4 +334,127 @@ class DailyPerformance(Base):
             'average_loss': float(self.average_loss) if self.average_loss else None,
             'end_balance': float(self.end_balance) if self.end_balance else None,
             'end_equity': float(self.end_equity) if self.end_equity else None,
+        }
+
+
+class AlertConfiguration(Base):
+    """
+    Alert configuration
+
+    Stores user preferences for notifications
+    """
+    __tablename__ = 'alert_configurations'
+
+    # Primary Key
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Alert Settings
+    alert_type: Mapped[str] = mapped_column(SQLEnum(AlertType), nullable=False, index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Notification Channels
+    email_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    sms_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    websocket_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Recipients
+    email_recipients: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Comma-separated emails
+    sms_recipients: Mapped[Optional[str]] = mapped_column(Text, nullable=True)    # Comma-separated phone numbers
+
+    # Threshold Settings (for profit/loss alerts)
+    profit_threshold: Mapped[Optional[Decimal]] = mapped_column(Numeric(precision=10, scale=2), nullable=True)
+    loss_threshold: Mapped[Optional[Decimal]] = mapped_column(Numeric(precision=10, scale=2), nullable=True)
+
+    # Symbol Filters (optional)
+    symbol_filter: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Comma-separated symbols
+
+    # Audit Trail
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return (f"<AlertConfiguration(id={self.id}, type={self.alert_type}, "
+                f"enabled={self.enabled}, email={self.email_enabled})>")
+
+    def get_email_recipients(self) -> list:
+        """Parse comma-separated email recipients"""
+        if not self.email_recipients:
+            return []
+        return [email.strip() for email in self.email_recipients.split(',') if email.strip()]
+
+    def get_sms_recipients(self) -> list:
+        """Parse comma-separated SMS recipients"""
+        if not self.sms_recipients:
+            return []
+        return [phone.strip() for phone in self.sms_recipients.split(',') if phone.strip()]
+
+    def get_symbol_filters(self) -> list:
+        """Parse comma-separated symbol filters"""
+        if not self.symbol_filter:
+            return []
+        return [symbol.strip().upper() for symbol in self.symbol_filter.split(',') if symbol.strip()]
+
+    def to_dict(self) -> dict:
+        """Convert configuration to dictionary"""
+        return {
+            'id': self.id,
+            'alert_type': self.alert_type.value if isinstance(self.alert_type, enum.Enum) else self.alert_type,
+            'enabled': self.enabled,
+            'email_enabled': self.email_enabled,
+            'sms_enabled': self.sms_enabled,
+            'websocket_enabled': self.websocket_enabled,
+            'email_recipients': self.get_email_recipients(),
+            'sms_recipients': self.get_sms_recipients(),
+            'profit_threshold': float(self.profit_threshold) if self.profit_threshold else None,
+            'loss_threshold': float(self.loss_threshold) if self.loss_threshold else None,
+            'symbol_filter': self.get_symbol_filters(),
+        }
+
+
+class AlertHistory(Base):
+    """
+    Alert delivery history
+
+    Tracks all sent notifications for auditing
+    """
+    __tablename__ = 'alert_history'
+
+    # Primary Key
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Alert Information
+    alert_type: Mapped[str] = mapped_column(SQLEnum(AlertType), nullable=False, index=True)
+    channel: Mapped[str] = mapped_column(SQLEnum(NotificationChannel), nullable=False)
+
+    # Delivery Status
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Recipients
+    recipient: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    # Related Trade (if applicable)
+    trade_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('trades.id'), nullable=True, index=True)
+
+    # Message Content (for debugging)
+    subject: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    message_preview: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # First 500 chars
+
+    def __repr__(self) -> str:
+        return (f"<AlertHistory(id={self.id}, type={self.alert_type}, "
+                f"channel={self.channel}, success={self.success})>")
+
+    def to_dict(self) -> dict:
+        """Convert history to dictionary"""
+        return {
+            'id': self.id,
+            'alert_type': self.alert_type.value if isinstance(self.alert_type, enum.Enum) else self.alert_type,
+            'channel': self.channel.value if isinstance(self.channel, enum.Enum) else self.channel,
+            'sent_at': self.sent_at.isoformat() if self.sent_at else None,
+            'success': self.success,
+            'error_message': self.error_message,
+            'recipient': self.recipient,
+            'trade_id': self.trade_id,
+            'subject': self.subject,
         }
