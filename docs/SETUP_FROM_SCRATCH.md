@@ -290,12 +290,47 @@ pip install -e .
 
 ### Initialize Database Tables
 
-```bash
-# Initialize database and create all tables
-tradingmtq aggregate --initialize
+The database is automatically initialized when you run any command. You can use any of these methods:
 
-# Or use Python directly
+#### Method 1: Using aggregate command (automatic initialization)
+
+```bash
+# Database will be created automatically with backfill
+tradingmtq aggregate --backfill
+
+# This will:
+# 1. Create database file (trading.db)
+# 2. Create all tables
+# 3. Aggregate any existing trade data
+```
+
+#### Method 2: Using serve command (automatic initialization)
+
+```bash
+# Database will be created automatically when starting server
+tradingmtq serve
+
+# This will:
+# 1. Create database file (trading.db)
+# 2. Create all tables
+# 3. Start API server at http://localhost:8000
+```
+
+#### Method 3: Using Python directly (database only, no server)
+
+```bash
+# Initialize database only (no data aggregation)
 python -c "from src.database import init_db; init_db()"
+```
+
+#### Method 4: Windows PowerShell
+
+```powershell
+# Using Python on Windows
+python -c "from src.database import init_db; init_db()"
+
+# Or run aggregate with backfill
+tradingmtq aggregate --backfill
 ```
 
 **This creates:**
@@ -310,6 +345,8 @@ python -c "from src.database import init_db; init_db()"
 - `report_history` table
 
 ### Verify Database Creation
+
+#### macOS/Linux
 
 ```bash
 # Check if database file exists
@@ -328,6 +365,16 @@ with get_session() as session:
     for table in sorted(tables):
         print(f'  - {table}')
 "
+```
+
+#### Windows PowerShell
+
+```powershell
+# Check if database file exists
+dir trading.db
+
+# Check tables (using Python)
+python -c "from src.database import get_session; from sqlalchemy import inspect; session = get_session().__enter__(); inspector = inspect(session.bind); tables = inspector.get_table_names(); print(f'Tables created: {len(tables)}'); [print(f'  - {table}') for table in sorted(tables)]"
 ```
 
 Expected output:
