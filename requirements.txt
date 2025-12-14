@@ -63,6 +63,7 @@ beautifulsoup4>=4.12.0     # HTML parsing
 pytest>=7.4.0
 pytest-cov>=4.1.0
 pytest-mock>=3.11.1
+pytest-asyncio>=0.23.0     # Async test support for WebSocket tests
 
 # Code Quality
 black>=23.7.0
