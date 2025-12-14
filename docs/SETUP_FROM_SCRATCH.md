@@ -157,33 +157,61 @@ sudo -u postgres createuser -P tradingmtq
 
 #### Windows
 
-```powershell
-# Download and install PostgreSQL from:
-# https://www.postgresql.org/download/windows/
+**Important**: For Windows development, we recommend using **SQLite** (default) as PostgreSQL setup can be complex. PostgreSQL is better suited for production deployments.
 
-# Or using Chocolatey:
+##### Option 1: SQLite (Recommended for Development)
+
+No installation needed! SQLite comes with Python and will be created automatically when you run the application.
+
+```powershell
+# Just make sure your .env file has:
+DATABASE_URL=sqlite:///./trading.db
+
+# Database will be created automatically on first run
+```
+
+##### Option 2: PostgreSQL (For Production)
+
+```powershell
+# Install using Chocolatey (requires Administrator PowerShell)
 choco install postgresql
 
 # PostgreSQL service starts automatically after installation
-
-# Create database using pgAdmin (GUI):
-# 1. Open pgAdmin
-# 2. Connect to PostgreSQL server
-# 3. Right-click "Databases" → Create → Database
-# 4. Name: tradingmtq
-
-# Or using Command Prompt/PowerShell:
-# Add PostgreSQL to PATH (usually: C:\Program Files\PostgreSQL\15\bin)
-# Then run:
-createdb -U postgres tradingmtq
-
-# Or using psql:
-psql -U postgres
-CREATE DATABASE tradingmtq;
-\q
 ```
 
-**Update connection string** in config.yaml (see Configuration section below)
+**Authentication Setup** (Required for PostgreSQL):
+
+PostgreSQL on Windows requires authentication configuration. You have two options:
+
+1. **Use pgAdmin GUI** (Easiest):
+   - Open pgAdmin (installed with PostgreSQL)
+   - Connect to PostgreSQL server (localhost)
+   - Right-click "Databases" → Create → Database
+   - Name: `tradingmtq`
+
+2. **Configure trust authentication** (Development only):
+   - Edit `C:\Program Files\PostgreSQL\18\data\pg_hba.conf`
+   - Change authentication method from `scram-sha-256` to `trust` for localhost connections:
+   ```
+   # IPv4 local connections:
+   host    all             all             127.0.0.1/32            trust
+   # IPv6 local connections:
+   host    all             all             ::1/128                 trust
+   ```
+   - Restart PostgreSQL service:
+   ```powershell
+   net stop postgresql-x64-18
+   net start postgresql-x64-18
+   ```
+   - Create database:
+   ```powershell
+   psql -U postgres -c "CREATE DATABASE tradingmtq;"
+   ```
+
+**Update .env file** with PostgreSQL connection:
+```
+DATABASE_URL=postgresql://postgres@localhost:5432/tradingmtq
+```
 
 ---
 
@@ -698,6 +726,58 @@ pip install reportlab pillow apscheduler --upgrade
 pip install -r requirements.txt --force-reinstall
 ```
 
+### Issue: PostgreSQL authentication errors on Windows
+
+**Error Messages:**
+- `FATAL: no pg_hba.conf entry for host`
+- `FATAL: password authentication failed`
+
+**Solutions:**
+
+1. **Use SQLite instead** (recommended for development):
+   ```powershell
+   # Update .env file
+   DATABASE_URL=sqlite:///./trading.db
+
+   # Reinitialize database
+   python -c "from src.database import init_db; init_db()"
+   ```
+
+2. **Fix PostgreSQL authentication**:
+   - Edit `C:\Program Files\PostgreSQL\18\data\pg_hba.conf`
+   - Change `scram-sha-256` to `trust` for localhost (lines ~115-117)
+   - Restart PostgreSQL:
+     ```powershell
+     net stop postgresql-x64-18
+     net start postgresql-x64-18
+     ```
+
+3. **Use pgAdmin GUI**:
+   - Open pgAdmin (installed with PostgreSQL)
+   - Create database manually through the GUI interface
+
+### Issue: "psql: command not found" on Windows
+
+**Solution:**
+```powershell
+# Add PostgreSQL to PATH temporarily (Git Bash)
+export PATH="/c/Program Files/PostgreSQL/18/bin:$PATH"
+
+# Or restart your terminal after PostgreSQL installation
+# The PATH should be updated automatically by Chocolatey
+```
+
+### Issue: Unicode/emoji errors in terminal output
+
+**Error:** `'charmap' codec can't encode character`
+
+**Solution:**
+```powershell
+# Use plain text instead of emojis in Python scripts
+# Replace ✅ with [OK] or similar ASCII characters
+# Or use UTF-8 compatible terminal like Windows Terminal
+```
+
 ### Issue: Email not sending
 
 **Solutions:**
@@ -772,20 +852,54 @@ pytest tests/test_report_generator.py::TestReportGeneratorInitialization::test_i
 
 ## Quick Start Checklist
 
+### Windows Quick Start (Recommended)
+
+For a fresh Windows setup (fastest path):
+
+```powershell
+# 1. Clone repository
+git clone https://github.com/5kipp3rm/TradingMTQ.git
+cd TradingMTQ
+
+# 2. Install dependencies (no virtual environment needed for quick start)
+pip install -r requirements.txt
+
+# 3. Install package in development mode
+pip install -e .
+
+# 4. Verify .env file has SQLite configured (default)
+# Should contain: DATABASE_URL=sqlite:///./trading.db
+
+# 5. Initialize database
+python -c "from src.database import init_db; init_db()"
+
+# 6. Verify installation
+tradingmtq check
+
+# 7. Start the server
+tradingmtq serve
+
+# 8. Open browser to http://localhost:8000
+```
+
+Done! Your TradingMTQ instance is now running.
+
+### General Checklist
+
 Use this checklist for a fresh setup:
 
 - [ ] Clone repository
-- [ ] Create virtual environment
+- [ ] Create virtual environment (optional but recommended)
 - [ ] Activate virtual environment
 - [ ] Install dependencies (`pip install -r requirements.txt`)
-- [ ] Create config.yaml or .env file
-- [ ] Initialize database (`tradingmtq aggregate --initialize`)
-- [ ] Create test trading account
-- [ ] Add sample performance data (optional)
+- [ ] Install package (`pip install -e .`)
+- [ ] Create/verify .env file (use SQLite for development)
+- [ ] Initialize database (`python -c "from src.database import init_db; init_db()"`)
+- [ ] Verify installation (`tradingmtq check`)
 - [ ] Start API server (`tradingmtq serve`)
 - [ ] Open dashboard (http://localhost:8000)
 - [ ] Verify API docs (http://localhost:8000/api/docs)
-- [ ] Run tests (`pytest`)
+- [ ] (Optional) Add sample data or run tests
 
 ---
 
