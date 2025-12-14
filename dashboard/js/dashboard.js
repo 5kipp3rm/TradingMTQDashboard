@@ -11,12 +11,29 @@ class Dashboard {
 
         this.initializeElements();
         this.attachEventListeners();
+        this.initializeAccountManager();
         this.initializeWebSocket();
         this.checkAPIHealth();
         this.loadDashboard();
 
         // Auto-refresh every 60 seconds (backup to WebSocket updates)
         setInterval(() => this.loadDashboard(), 60000);
+    }
+
+    /**
+     * Initialize account manager integration
+     */
+    async initializeAccountManager() {
+        // Wait for account manager to be ready
+        if (typeof accountManager !== 'undefined') {
+            await accountManager.init();
+            accountManager.renderAccountSelector('accountSelectorContainer');
+
+            // Listen for account changes
+            window.addEventListener('accountChanged', () => {
+                this.loadDashboard();
+            });
+        }
     }
 
     /**
@@ -258,7 +275,8 @@ class Dashboard {
      */
     async loadSummary() {
         try {
-            const data = await api.getSummary(this.currentPeriod);
+            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
+            const data = await api.getSummary(this.currentPeriod, accountId);
 
             // Update summary cards
             this.elements.totalTrades.textContent = this.formatNumber(data.total_trades || 0);
@@ -291,7 +309,8 @@ class Dashboard {
      */
     async loadMetrics() {
         try {
-            const data = await api.getMetrics(this.currentPeriod);
+            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
+            const data = await api.getMetrics(this.currentPeriod, accountId);
 
             // Update Profit Chart
             this.updateProfitChart(data);
@@ -445,7 +464,10 @@ class Dashboard {
      */
     async loadDailyPerformance() {
         try {
-            const data = await api.getDailyPerformance({ limit: 30 });
+            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
+            const params = { limit: 30 };
+            if (accountId) params.accountId = accountId;
+            const data = await api.getDailyPerformance(params);
             this.renderDailyTable(data.records || []);
         } catch (error) {
             console.error('Daily Performance Load Error:', error);

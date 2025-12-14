@@ -523,7 +523,8 @@ class DailyPerformanceRepository(BaseRepository):
 
     def get_performance_summary(self, session: Session,
                                start_date: Optional[date] = None,
-                               end_date: Optional[date] = None) -> Dict[str, Any]:
+                               end_date: Optional[date] = None,
+                               account_id: Optional[int] = None) -> Dict[str, Any]:
         """Get aggregated performance summary"""
         try:
             query = session.query(DailyPerformance)
@@ -532,6 +533,8 @@ class DailyPerformanceRepository(BaseRepository):
                 query = query.filter(DailyPerformance.date >= datetime.combine(start_date, datetime.min.time()))
             if end_date:
                 query = query.filter(DailyPerformance.date <= datetime.combine(end_date, datetime.min.time()))
+            if account_id is not None:
+                query = query.filter(DailyPerformance.account_id == account_id)
 
             performances = query.all()
 

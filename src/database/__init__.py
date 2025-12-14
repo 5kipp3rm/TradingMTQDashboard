@@ -4,7 +4,8 @@ Provides SQLAlchemy models, repositories, and connection management
 """
 from .models import (
     Base, Trade, Signal, AccountSnapshot, DailyPerformance,
-    AlertConfiguration, AlertHistory, AlertType, NotificationChannel
+    AlertConfiguration, AlertHistory, AlertType, NotificationChannel,
+    TradingAccount
 )
 from .repository import TradeRepository, SignalRepository, AccountSnapshotRepository
 from .connection import get_session, init_db, close_db
@@ -19,6 +20,7 @@ __all__ = [
     'AlertHistory',
     'AlertType',
     'NotificationChannel',
+    'TradingAccount',
     'TradeRepository',
     'SignalRepository',
     'AccountSnapshotRepository',

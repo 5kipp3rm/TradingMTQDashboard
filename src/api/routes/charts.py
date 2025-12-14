@@ -27,7 +27,8 @@ router = APIRouter()
 async def get_equity_curve(
     start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
-    granularity: str = Query("daily", description="Granularity: daily, trade, hourly")
+    granularity: str = Query("daily", description="Granularity: daily, trade, hourly"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get equity curve data showing account balance over time.
@@ -36,6 +37,7 @@ async def get_equity_curve(
         start_date: Start date (defaults to 90 days ago)
         end_date: End date (defaults to today)
         granularity: Data granularity (daily, trade, hourly)
+        account_id: Optional account ID to filter by
 
     Returns:
         Equity curve data points with timestamps and balance
@@ -53,10 +55,15 @@ async def get_equity_curve(
                 start_dt = datetime.combine(start_date, datetime.min.time())
                 end_dt = datetime.combine(end_date, datetime.max.time())
 
-                records = session.query(DailyPerformance).filter(
+                query = session.query(DailyPerformance).filter(
                     DailyPerformance.date >= start_dt,
                     DailyPerformance.date <= end_dt
-                ).order_by(DailyPerformance.date).all()
+                )
+
+                if account_id is not None:
+                    query = query.filter(DailyPerformance.account_id == account_id)
+
+                records = query.order_by(DailyPerformance.date).all()
 
                 # Calculate cumulative equity
                 equity_data = []
@@ -84,11 +91,16 @@ async def get_equity_curve(
                 start_dt = datetime.combine(start_date, datetime.min.time())
                 end_dt = datetime.combine(end_date, datetime.max.time())
 
-                trades = session.query(Trade).filter(
+                query = session.query(Trade).filter(
                     Trade.status == TradeStatus.CLOSED,
                     Trade.exit_time >= start_dt,
                     Trade.exit_time <= end_dt
-                ).order_by(Trade.exit_time).all()
+                )
+
+                if account_id is not None:
+                    query = query.filter(Trade.account_id == account_id)
+
+                trades = query.order_by(Trade.exit_time).all()
 
                 equity_data = []
                 cumulative_profit = 0.0
@@ -124,7 +136,8 @@ async def get_equity_curve(
 @router.get("/trade-distribution")
 async def get_trade_distribution(
     start_date: Optional[date] = Query(None, description="Start date"),
-    end_date: Optional[date] = Query(None, description="End date")
+    end_date: Optional[date] = Query(None, description="End date"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get trade distribution by hour of day and day of week.
@@ -143,7 +156,7 @@ async def get_trade_distribution(
             end_dt = datetime.combine(end_date, datetime.max.time())
 
             # Query trades with time extraction
-            trades = session.query(
+            query = session.query(
                 extract('dow', Trade.entry_time).label('day_of_week'),
                 extract('hour', Trade.entry_time).label('hour'),
                 func.count(Trade.id).label('trade_count'),
@@ -153,7 +166,12 @@ async def get_trade_distribution(
                 Trade.status == TradeStatus.CLOSED,
                 Trade.entry_time >= start_dt,
                 Trade.entry_time <= end_dt
-            ).group_by(
+            )
+
+            if account_id is not None:
+                query = query.filter(Trade.account_id == account_id)
+
+            trades = query.group_by(
                 'day_of_week', 'hour'
             ).all()
 
@@ -186,7 +204,8 @@ async def get_trade_distribution(
 async def get_symbol_performance(
     start_date: Optional[date] = Query(None, description="Start date"),
     end_date: Optional[date] = Query(None, description="End date"),
-    limit: int = Query(10, ge=1, le=50, description="Max symbols to return")
+    limit: int = Query(10, ge=1, le=50, description="Max symbols to return"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get performance comparison across different symbols.
@@ -205,7 +224,7 @@ async def get_symbol_performance(
             end_dt = datetime.combine(end_date, datetime.max.time())
 
             # Aggregate by symbol
-            results = session.query(
+            query = session.query(
                 Trade.symbol,
                 func.count(Trade.id).label('total_trades'),
                 func.sum(func.case((Trade.profit > 0, 1), else_=0)).label('winning_trades'),
@@ -218,7 +237,12 @@ async def get_symbol_performance(
                 Trade.status == TradeStatus.CLOSED,
                 Trade.exit_time >= start_dt,
                 Trade.exit_time <= end_dt
-            ).group_by(
+            )
+
+            if account_id is not None:
+                query = query.filter(Trade.account_id == account_id)
+
+            results = query.group_by(
                 Trade.symbol
             ).order_by(
                 func.sum(Trade.profit).desc()
@@ -256,7 +280,8 @@ async def get_symbol_performance(
 @router.get("/win-loss-analysis")
 async def get_win_loss_analysis(
     start_date: Optional[date] = Query(None, description="Start date"),
-    end_date: Optional[date] = Query(None, description="End date")
+    end_date: Optional[date] = Query(None, description="End date"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get detailed win/loss analysis including:
@@ -276,11 +301,16 @@ async def get_win_loss_analysis(
             end_dt = datetime.combine(end_date, datetime.max.time())
 
             # Get all closed trades
-            trades = session.query(Trade).filter(
+            query = session.query(Trade).filter(
                 Trade.status == TradeStatus.CLOSED,
                 Trade.exit_time >= start_dt,
                 Trade.exit_time <= end_dt
-            ).order_by(Trade.exit_time).all()
+            )
+
+            if account_id is not None:
+                query = query.filter(Trade.account_id == account_id)
+
+            trades = query.order_by(Trade.exit_time).all()
 
             # Profit distribution (histogram)
             profit_ranges = [-1000, -500, -250, -100, -50, -25, 0, 25, 50, 100, 250, 500, 1000]
@@ -367,7 +397,8 @@ async def get_win_loss_analysis(
 
 @router.get("/monthly-comparison")
 async def get_monthly_comparison(
-    months: int = Query(12, ge=1, le=24, description="Number of months to compare")
+    months: int = Query(12, ge=1, le=24, description="Number of months to compare"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get month-over-month performance comparison.
@@ -383,7 +414,7 @@ async def get_monthly_comparison(
             end_dt = datetime.combine(end_date, datetime.max.time())
 
             # Aggregate by month
-            results = session.query(
+            query = session.query(
                 extract('year', DailyPerformance.date).label('year'),
                 extract('month', DailyPerformance.date).label('month'),
                 func.sum(DailyPerformance.total_trades).label('total_trades'),
@@ -394,7 +425,12 @@ async def get_monthly_comparison(
             ).filter(
                 DailyPerformance.date >= start_dt,
                 DailyPerformance.date <= end_dt
-            ).group_by(
+            )
+
+            if account_id is not None:
+                query = query.filter(DailyPerformance.account_id == account_id)
+
+            results = query.group_by(
                 'year', 'month'
             ).order_by(
                 'year', 'month'
@@ -432,7 +468,8 @@ async def get_monthly_comparison(
 async def get_risk_reward_scatter(
     start_date: Optional[date] = Query(None, description="Start date"),
     end_date: Optional[date] = Query(None, description="End date"),
-    limit: int = Query(500, ge=1, le=1000, description="Max trades to include")
+    limit: int = Query(500, ge=1, le=1000, description="Max trades to include"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get risk/reward scatter plot data.
@@ -450,13 +487,18 @@ async def get_risk_reward_scatter(
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 
-            trades = session.query(Trade).filter(
+            query = session.query(Trade).filter(
                 Trade.status == TradeStatus.CLOSED,
                 Trade.exit_time >= start_dt,
                 Trade.exit_time <= end_dt,
                 Trade.stop_loss.isnot(None),
                 Trade.take_profit.isnot(None)
-            ).order_by(Trade.exit_time.desc()).limit(limit).all()
+            )
+
+            if account_id is not None:
+                query = query.filter(Trade.account_id == account_id)
+
+            trades = query.order_by(Trade.exit_time.desc()).limit(limit).all()
 
             scatter_data = []
             for trade in trades:

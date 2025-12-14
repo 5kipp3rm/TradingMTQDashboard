@@ -54,6 +54,69 @@ class NotificationChannel(enum.Enum):
     WEBSOCKET = "websocket"
 
 
+class TradingAccount(Base):
+    """
+    Trading Account Configuration
+
+    Stores MT5 account credentials and settings for multi-account support
+    """
+    __tablename__ = 'trading_accounts'
+
+    # Primary Key
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Account Identification
+    account_number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False, index=True)
+    account_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    broker: Mapped[str] = mapped_column(String(100), nullable=False)
+    server: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Status
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Account Type
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Credentials (encrypted in production)
+    login: Mapped[int] = mapped_column(Integer, nullable=False)
+    password_encrypted: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Settings
+    initial_balance: Mapped[Optional[Decimal]] = mapped_column(Numeric(precision=15, scale=2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(10), default="USD", nullable=False)
+
+    # Metadata
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Audit Trail
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_connected: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return (f"<TradingAccount(id={self.id}, account={self.account_number}, "
+                f"name='{self.account_name}', active={self.is_active})>")
+
+    def to_dict(self) -> dict:
+        """Convert account to dictionary (excluding sensitive data)"""
+        return {
+            'id': self.id,
+            'account_number': self.account_number,
+            'account_name': self.account_name,
+            'broker': self.broker,
+            'server': self.server,
+            'is_active': self.is_active,
+            'is_default': self.is_default,
+            'is_demo': self.is_demo,
+            'currency': self.currency,
+            'initial_balance': float(self.initial_balance) if self.initial_balance else None,
+            'description': self.description,
+            'last_connected': self.last_connected.isoformat() if self.last_connected else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class Trade(Base):
     """
     Trade execution record
@@ -69,6 +132,9 @@ class Trade(Base):
     ticket: Mapped[Optional[int]] = mapped_column(Integer, unique=True, nullable=True, index=True)
     symbol: Mapped[str] = mapped_column(String(12), nullable=False, index=True)
     magic_number: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Account Association
+    account_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('trading_accounts.id'), nullable=True, index=True)
 
     # Trade Type and Direction
     trade_type: Mapped[str] = mapped_column(SQLEnum(SignalType), nullable=False)
@@ -231,6 +297,9 @@ class AccountSnapshot(Base):
     server: Mapped[str] = mapped_column(String(50), nullable=False)
     broker: Mapped[str] = mapped_column(String(50), nullable=False)
 
+    # Account Association
+    account_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('trading_accounts.id'), nullable=True, index=True)
+
     # Balance and Equity
     balance: Mapped[Decimal] = mapped_column(Numeric(precision=15, scale=2), nullable=False)
     equity: Mapped[Decimal] = mapped_column(Numeric(precision=15, scale=2), nullable=False)
@@ -286,6 +355,9 @@ class DailyPerformance(Base):
 
     # Date
     date: Mapped[datetime] = mapped_column(DateTime, nullable=False, unique=True, index=True)
+
+    # Account Association
+    account_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('trading_accounts.id'), nullable=True, index=True)
 
     # Trade Counts
     total_trades: Mapped[int] = mapped_column(Integer, default=0)

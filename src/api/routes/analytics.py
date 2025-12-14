@@ -19,13 +19,15 @@ router = APIRouter()
 
 @router.get("/summary")
 async def get_summary(
-    days: int = Query(default=30, ge=1, le=365, description="Number of days to include")
+    days: int = Query(default=30, ge=1, le=365, description="Number of days to include"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get summary analytics for the specified number of days.
 
     Args:
         days: Number of days to include (default: 30, max: 365)
+        account_id: Optional account ID to filter by
 
     Returns:
         Summary analytics including total trades, profit, win rate, etc.
@@ -37,13 +39,14 @@ async def get_summary(
         repo = DailyPerformanceRepository()
 
         # Use existing get_performance_summary method
-        summary = repo.get_performance_summary(session, start_date, end_date)
+        summary = repo.get_performance_summary(session, start_date, end_date, account_id=account_id)
 
         if not summary:
             return {
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
                 "days": days,
+                "account_id": account_id,
                 "total_days": 0,
                 "total_trades": 0,
                 "net_profit": 0.0,
@@ -54,6 +57,7 @@ async def get_summary(
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
             "days": days,
+            "account_id": account_id,
             **summary
         }
 
@@ -62,7 +66,8 @@ async def get_summary(
 async def get_daily_performance(
     start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
-    limit: int = Query(default=30, ge=1, le=365, description="Max number of records")
+    limit: int = Query(default=30, ge=1, le=365, description="Max number of records"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
 ):
     """
     Get daily performance records.
@@ -71,6 +76,7 @@ async def get_daily_performance(
         start_date: Start date (optional, defaults to 30 days ago)
         end_date: End date (optional, defaults to today)
         limit: Maximum number of records to return
+        account_id: Optional account ID to filter by
 
     Returns:
         List of daily performance records
@@ -86,10 +92,16 @@ async def get_daily_performance(
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
 
-        records = session.query(DailyPerformance).filter(
+        query = session.query(DailyPerformance).filter(
             DailyPerformance.date >= start_dt,
             DailyPerformance.date <= end_dt
-        ).order_by(DailyPerformance.date.desc()).limit(limit).all()
+        )
+
+        # Add account filter if provided
+        if account_id is not None:
+            query = query.filter(DailyPerformance.account_id == account_id)
+
+        records = query.order_by(DailyPerformance.date.desc()).limit(limit).all()
 
         # Convert to dict
         results = []
@@ -99,6 +111,7 @@ async def get_daily_performance(
         return {
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
+            "account_id": account_id,
             "count": len(results),
             "records": results
         }
@@ -159,12 +172,16 @@ async def trigger_aggregation(target_date: Optional[date] = None):
 
 
 @router.get("/metrics")
-async def get_performance_metrics(days: int = Query(default=30, ge=1, le=365)):
+async def get_performance_metrics(
+    days: int = Query(default=30, ge=1, le=365),
+    account_id: Optional[int] = Query(None, description="Filter by specific account ID")
+):
     """
     Get key performance metrics for charting.
 
     Args:
         days: Number of days to include
+        account_id: Optional account ID to filter by
 
     Returns:
         Time series data for key metrics
@@ -177,10 +194,16 @@ async def get_performance_metrics(days: int = Query(default=30, ge=1, le=365)):
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
 
-        records = session.query(DailyPerformance).filter(
+        query = session.query(DailyPerformance).filter(
             DailyPerformance.date >= start_dt,
             DailyPerformance.date <= end_dt
-        ).order_by(DailyPerformance.date.asc()).all()
+        )
+
+        # Add account filter if provided
+        if account_id is not None:
+            query = query.filter(DailyPerformance.account_id == account_id)
+
+        records = query.order_by(DailyPerformance.date.asc()).all()
 
         # Prepare time series data
         dates = []
@@ -202,6 +225,7 @@ async def get_performance_metrics(days: int = Query(default=30, ge=1, le=365)):
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
             "period_days": days,
+            "account_id": account_id,
             "dates": dates,
             "cumulative_profit": profits,
             "win_rates": win_rates,

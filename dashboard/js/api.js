@@ -53,8 +53,10 @@ class APIClient {
     /**
      * Get Analytics Summary
      */
-    async getSummary(days = 30) {
-        return this.request(`/analytics/summary?days=${days}`);
+    async getSummary(days = 30, accountId = null) {
+        let url = `/analytics/summary?days=${days}`;
+        if (accountId) url += `&account_id=${accountId}`;
+        return this.request(url);
     }
 
     /**
@@ -66,6 +68,7 @@ class APIClient {
         if (params.startDate) queryParams.append('start_date', params.startDate);
         if (params.endDate) queryParams.append('end_date', params.endDate);
         if (params.limit) queryParams.append('limit', params.limit);
+        if (params.accountId) queryParams.append('account_id', params.accountId);
 
         const query = queryParams.toString();
         return this.request(`/analytics/daily${query ? '?' + query : ''}`);
@@ -74,8 +77,10 @@ class APIClient {
     /**
      * Get Performance Metrics for Charting
      */
-    async getMetrics(days = 30) {
-        return this.request(`/analytics/metrics?days=${days}`);
+    async getMetrics(days = 30, accountId = null) {
+        let url = `/analytics/metrics?days=${days}`;
+        if (accountId) url += `&account_id=${accountId}`;
+        return this.request(url);
     }
 
     /**
