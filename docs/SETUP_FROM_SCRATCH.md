@@ -126,25 +126,64 @@ SQLite database will be created automatically. No additional setup needed.
 
 ### PostgreSQL (Optional - For Production)
 
+#### macOS
+
 ```bash
-# Install PostgreSQL (macOS)
+# Install PostgreSQL
 brew install postgresql
 
-# Install PostgreSQL (Ubuntu/Debian)
-sudo apt-get install postgresql postgresql-contrib
-
 # Start PostgreSQL service
-# macOS:
 brew services start postgresql
-
-# Ubuntu/Debian:
-sudo systemctl start postgresql
 
 # Create database
 createdb tradingmtq
-
-# Update connection string (see Configuration section)
 ```
+
+#### Ubuntu/Debian
+
+```bash
+# Install PostgreSQL
+sudo apt-get install postgresql postgresql-contrib
+
+# Start PostgreSQL service
+sudo systemctl start postgresql
+
+# Create database
+sudo -u postgres createdb tradingmtq
+
+# Create user (optional)
+sudo -u postgres createuser -P tradingmtq
+```
+
+#### Windows
+
+```powershell
+# Download and install PostgreSQL from:
+# https://www.postgresql.org/download/windows/
+
+# Or using Chocolatey:
+choco install postgresql
+
+# PostgreSQL service starts automatically after installation
+
+# Create database using pgAdmin (GUI):
+# 1. Open pgAdmin
+# 2. Connect to PostgreSQL server
+# 3. Right-click "Databases" → Create → Database
+# 4. Name: tradingmtq
+
+# Or using Command Prompt/PowerShell:
+# Add PostgreSQL to PATH (usually: C:\Program Files\PostgreSQL\15\bin)
+# Then run:
+createdb -U postgres tradingmtq
+
+# Or using psql:
+psql -U postgres
+CREATE DATABASE tradingmtq;
+\q
+```
+
+**Update connection string** in config.yaml (see Configuration section below)
 
 ---
 
