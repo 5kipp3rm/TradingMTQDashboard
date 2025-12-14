@@ -22,7 +22,9 @@
       "Bash(mkdir:*)",
       "Bash(git reset:*)",
       "Bash(tradingmtq aggregate --help:*)",
-      "Bash(tradingmtq aggregate:*)"
+      "Bash(tradingmtq aggregate:*)",
+      "Bash(timeout 5 tradingmtq serve:*)",
+      "Bash(tradingmtq serve --help:*)"
     ],
     "deny": [],
     "ask": []
