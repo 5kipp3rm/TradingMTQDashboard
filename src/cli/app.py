@@ -184,5 +184,54 @@ def aggregate(date, start, end, backfill):
         raise click.Abort()
 
 
+@cli.command()
+@click.option('--host', '-h', default='0.0.0.0',
+              help='Host to bind the API server (default: 0.0.0.0)')
+@click.option('--port', '-p', default=8000, type=int,
+              help='Port to bind the API server (default: 8000)')
+@click.option('--reload', '-r', is_flag=True,
+              help='Enable auto-reload on code changes (development only)')
+def serve(host, port, reload):
+    """
+    Start the analytics API server
+
+    Examples:
+        tradingmtq serve                    # Start on 0.0.0.0:8000
+        tradingmtq serve -p 8080            # Use port 8080
+        tradingmtq serve --reload           # Enable auto-reload for development
+        tradingmtq serve -h localhost -p 3000  # Bind to localhost:3000
+    """
+    try:
+        import uvicorn
+        from src.database.connection import init_db
+
+        # Initialize database
+        init_db()
+
+        click.echo(f"\n🚀 Starting TradingMTQ Analytics API")
+        click.echo(f"   Host: {host}")
+        click.echo(f"   Port: {port}")
+        click.echo(f"   Docs: http://{host if host != '0.0.0.0' else 'localhost'}:{port}/api/docs")
+        click.echo(f"   Auto-reload: {'enabled' if reload else 'disabled'}")
+        click.echo(f"\n   Press Ctrl+C to stop\n")
+
+        # Run uvicorn server
+        uvicorn.run(
+            "src.api.app:app",
+            host=host,
+            port=port,
+            reload=reload,
+            log_level="info"
+        )
+
+    except ImportError:
+        click.echo("❌ FastAPI or Uvicorn not installed", err=True)
+        click.echo("   Install with: pip install fastapi uvicorn", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"\n❌ Server error: {e}", err=True)
+        raise click.Abort()
+
+
 if __name__ == '__main__':
     cli()
