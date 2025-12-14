@@ -7,6 +7,9 @@ from .models import (
     AlertConfiguration, AlertHistory, AlertType, NotificationChannel,
     TradingAccount
 )
+from .report_models import (
+    ReportConfiguration, ReportHistory, ReportFrequency, ReportFormat
+)
 from .repository import TradeRepository, SignalRepository, AccountSnapshotRepository
 from .connection import get_session, init_db, close_db
 
@@ -21,6 +24,10 @@ __all__ = [
     'AlertType',
     'NotificationChannel',
     'TradingAccount',
+    'ReportConfiguration',
+    'ReportHistory',
+    'ReportFrequency',
+    'ReportFormat',
     'TradeRepository',
     'SignalRepository',
     'AccountSnapshotRepository',
