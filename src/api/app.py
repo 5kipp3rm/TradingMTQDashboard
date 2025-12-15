@@ -5,6 +5,9 @@ Main FastAPI application for the analytics dashboard API.
 Provides REST endpoints for retrieving performance metrics and trade data.
 """
 
+# Python 3.14 compatibility patch - MUST be imported first
+from src.utils.python314_compat import *  # noqa
+
 from pathlib import Path
 import asyncio
 from contextlib import asynccontextmanager
