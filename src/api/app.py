@@ -13,7 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routes import analytics, trades, health, websocket as ws_routes, alerts, charts, accounts, reports, currencies
+from src.api.routes import (
+    analytics, trades, health, websocket as ws_routes, alerts, charts,
+    accounts, reports, currencies, account_connections, analytics_aggregated
+)
 from src.api.websocket import connection_manager
 
 
@@ -69,11 +72,13 @@ def create_app() -> FastAPI:
     # Register routers
     app.include_router(health.router, prefix="/api", tags=["health"])
     app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+    app.include_router(analytics_aggregated.router, prefix="/api", tags=["analytics-aggregated"])
     app.include_router(trades.router, prefix="/api/trades", tags=["trades"])
     app.include_router(ws_routes.router, prefix="/api", tags=["websocket"])
     app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
     app.include_router(charts.router, prefix="/api/charts", tags=["charts"])
     app.include_router(accounts.router, prefix="/api", tags=["accounts"])
+    app.include_router(account_connections.router, prefix="/api", tags=["account-connections"])
     app.include_router(reports.router, prefix="/api", tags=["reports"])
     app.include_router(currencies.router, prefix="/api", tags=["currencies"])
 

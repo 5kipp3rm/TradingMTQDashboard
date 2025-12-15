@@ -117,6 +117,55 @@ class TradingAccount(Base):
         }
 
 
+class AccountConnectionState(Base):
+    """
+    Account Connection State Tracking
+
+    Tracks real-time MT5 connection status for each trading account.
+    Used by session manager to maintain connection state.
+    """
+    __tablename__ = 'account_connection_states'
+
+    # Primary Key
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Account Association
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey('trading_accounts.id'), unique=True, nullable=False, index=True)
+
+    # Connection Status
+    is_connected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Timestamps
+    last_connected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_disconnected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Error Tracking
+    connection_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_error_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Audit Trail
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return (f"<AccountConnectionState(id={self.id}, account_id={self.account_id}, "
+                f"connected={self.is_connected}, retries={self.retry_count})>")
+
+    def to_dict(self) -> dict:
+        """Convert connection state to dictionary"""
+        return {
+            'id': self.id,
+            'account_id': self.account_id,
+            'is_connected': self.is_connected,
+            'last_connected_at': self.last_connected_at.isoformat() if self.last_connected_at else None,
+            'last_disconnected_at': self.last_disconnected_at.isoformat() if self.last_disconnected_at else None,
+            'connection_error': self.connection_error,
+            'retry_count': self.retry_count,
+            'last_error_at': self.last_error_at.isoformat() if self.last_error_at else None,
+        }
+
+
 class Trade(Base):
     """
     Trade execution record

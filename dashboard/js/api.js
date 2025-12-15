@@ -122,6 +122,51 @@ class APIClient {
             method: 'POST',
         });
     }
+
+    /**
+     * Get Aggregated Performance across multiple accounts
+     */
+    async getAggregatePerformance(days = 30, accountIds = null) {
+        let url = `/analytics/aggregate?days=${days}`;
+        if (accountIds && Array.isArray(accountIds) && accountIds.length > 0) {
+            url += `&account_ids=${accountIds.join(',')}`;
+        }
+        return this.request(url);
+    }
+
+    /**
+     * Get Account Comparison
+     */
+    async getAccountComparison(days = 30, accountIds = null) {
+        let url = `/analytics/comparison?days=${days}`;
+        if (accountIds && Array.isArray(accountIds) && accountIds.length > 0) {
+            url += `&account_ids=${accountIds.join(',')}`;
+        }
+        return this.request(url);
+    }
+
+    /**
+     * Get Aggregate Summary
+     */
+    async getAggregateSummary() {
+        return this.request('/analytics/summary');
+    }
+
+    /**
+     * Get Aggregate Trades from multiple accounts
+     */
+    async getAggregateTrades(params = {}) {
+        const queryParams = new URLSearchParams();
+
+        if (params.accountIds && Array.isArray(params.accountIds) && params.accountIds.length > 0) {
+            queryParams.append('account_ids', params.accountIds.join(','));
+        }
+        if (params.limit) queryParams.append('limit', params.limit || 100);
+        if (params.offset) queryParams.append('offset', params.offset || 0);
+
+        const query = queryParams.toString();
+        return this.request(`/analytics/trades${query ? '?' + query : ''}`);
+    }
 }
 
 // Export singleton instance

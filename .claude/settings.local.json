@@ -24,7 +24,12 @@
       "Bash(tradingmtq aggregate --help:*)",
       "Bash(tradingmtq aggregate:*)",
       "Bash(timeout 5 tradingmtq serve:*)",
-      "Bash(tradingmtq serve --help:*)"
+      "Bash(tradingmtq serve --help:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(cloc:*)",
+      "Bash(curl:*)",
+      "Bash(./venv/bin/alembic:*)"
     ],
     "deny": [],
     "ask": []

@@ -191,6 +191,22 @@ class ConnectionManager:
         await self.broadcast(message)
         logger.info(f"Broadcast currency event: {event_type} for {currency_data.get('symbol', 'unknown')}")
 
+    async def broadcast_account_connection_event(self, event_type: str, account_data: Dict[str, Any]):
+        """
+        Broadcast an account connection event.
+
+        Args:
+            event_type: Type of event (connected, disconnected, error)
+            account_data: Account connection data
+        """
+        message = {
+            "type": "account_connection",
+            "event": event_type,
+            "data": account_data
+        }
+        await self.broadcast(message)
+        logger.info(f"Broadcast account connection event: {event_type} for account {account_data.get('account_id', 'unknown')}")
+
     async def heartbeat_loop(self):
         """
         Send periodic heartbeat messages to keep connections alive.

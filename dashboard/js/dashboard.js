@@ -276,7 +276,16 @@ class Dashboard {
     async loadSummary() {
         try {
             const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
-            const data = await api.getSummary(this.currentPeriod, accountId);
+
+            // Use aggregated analytics if "All Accounts" is selected (accountId is null)
+            let data;
+            if (accountId === null) {
+                // Load aggregated performance across all accounts
+                data = await api.getAggregatePerformance(this.currentPeriod);
+            } else {
+                // Load single account summary
+                data = await api.getSummary(this.currentPeriod, accountId);
+            }
 
             // Update summary cards
             this.elements.totalTrades.textContent = this.formatNumber(data.total_trades || 0);
@@ -290,6 +299,10 @@ class Dashboard {
             if (data.total_trades && data.total_trades > 0) {
                 const winningTrades = data.winning_trades || (data.winning_days || 0);
                 winRate = (winningTrades / data.total_trades * 100);
+            }
+            // For aggregated performance, win_rate is already calculated
+            if (data.win_rate !== undefined) {
+                winRate = data.win_rate;
             }
             this.elements.winRate.textContent = this.formatPercentage(winRate);
             this.elements.winRate.className = 'metric-value ' + (winRate >= 50 ? 'positive' : 'negative');
