@@ -175,6 +175,22 @@ class ConnectionManager:
         }
         await self.broadcast(message)
 
+    async def broadcast_currency_event(self, event_type: str, currency_data: Dict[str, Any]):
+        """
+        Broadcast a currency configuration event.
+
+        Args:
+            event_type: Type of event (created, updated, deleted, enabled, disabled, reloaded)
+            currency_data: Currency configuration data
+        """
+        message = {
+            "type": "currency_event",
+            "event": event_type,
+            "data": currency_data
+        }
+        await self.broadcast(message)
+        logger.info(f"Broadcast currency event: {event_type} for {currency_data.get('symbol', 'unknown')}")
+
     async def heartbeat_loop(self):
         """
         Send periodic heartbeat messages to keep connections alive.

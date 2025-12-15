@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from src.database import get_session, CurrencyConfiguration
+from src.api.websocket import connection_manager
 
 
 router = APIRouter()
@@ -441,6 +442,12 @@ async def create_currency(
     db.commit()
     db.refresh(new_config)
 
+    # Broadcast WebSocket event
+    await connection_manager.broadcast_currency_event(
+        "created",
+        {"symbol": new_config.symbol, "enabled": new_config.enabled}
+    )
+
     return CurrencyConfigResponse(
         id=new_config.id,
         symbol=new_config.symbol,
@@ -512,6 +519,12 @@ async def update_currency(
     db.commit()
     db.refresh(currency)
 
+    # Broadcast WebSocket event
+    await connection_manager.broadcast_currency_event(
+        "updated",
+        {"symbol": currency.symbol, "enabled": currency.enabled, "config_version": currency.config_version}
+    )
+
     return CurrencyConfigResponse(
         id=currency.id,
         symbol=currency.symbol,
@@ -565,6 +578,12 @@ async def delete_currency(
     db.delete(currency)
     db.commit()
 
+    # Broadcast WebSocket event
+    await connection_manager.broadcast_currency_event(
+        "deleted",
+        {"symbol": symbol}
+    )
+
     return None
 
 
@@ -592,6 +611,12 @@ async def enable_currency(
 
     db.commit()
     db.refresh(currency)
+
+    # Broadcast WebSocket event
+    await connection_manager.broadcast_currency_event(
+        "enabled",
+        {"symbol": currency.symbol, "enabled": True}
+    )
 
     return CurrencyConfigResponse(
         id=currency.id,
@@ -647,6 +672,12 @@ async def disable_currency(
 
     db.commit()
     db.refresh(currency)
+
+    # Broadcast WebSocket event
+    await connection_manager.broadcast_currency_event(
+        "disabled",
+        {"symbol": currency.symbol, "enabled": False}
+    )
 
     return CurrencyConfigResponse(
         id=currency.id,
@@ -760,6 +791,12 @@ async def reload_from_yaml(
         added, updated, errors = service.sync_yaml_to_database(db)
 
         success = len(errors) == 0
+
+        # Broadcast WebSocket event
+        await connection_manager.broadcast_currency_event(
+            "reloaded",
+            {"added": added, "updated": updated, "success": success}
+        )
 
         return ReloadResponse(
             success=success,
