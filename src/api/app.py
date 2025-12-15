@@ -21,6 +21,7 @@ from src.api.routes import (
     accounts, reports, currencies, account_connections, analytics_aggregated, positions
 )
 from src.api.websocket import connection_manager
+from src.database.connection import init_db
 
 
 @asynccontextmanager
@@ -28,6 +29,9 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup and shutdown events.
     """
+    # Startup: Initialize database
+    init_db()
+
     # Startup: Start heartbeat loop
     heartbeat_task = asyncio.create_task(connection_manager.heartbeat_loop())
 
