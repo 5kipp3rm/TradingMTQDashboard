@@ -167,6 +167,98 @@ class APIClient {
         const query = queryParams.toString();
         return this.request(`/analytics/trades${query ? '?' + query : ''}`);
     }
+
+    /**
+     * Position Execution Methods
+     */
+
+    /**
+     * Open a new position
+     */
+    async openPosition(accountId, symbol, orderType, volume, stopLoss = null, takeProfit = null, comment = null) {
+        const payload = {
+            account_id: accountId,
+            symbol: symbol,
+            order_type: orderType,
+            volume: volume
+        };
+
+        if (stopLoss !== null) payload.stop_loss = stopLoss;
+        if (takeProfit !== null) payload.take_profit = takeProfit;
+        if (comment) payload.comment = comment;
+
+        return this.request('/positions/open', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    /**
+     * Close an open position
+     */
+    async closePosition(accountId, ticket) {
+        return this.request(`/positions/${ticket}/close?account_id=${accountId}`, {
+            method: 'POST'
+        });
+    }
+
+    /**
+     * Modify SL/TP on an open position
+     */
+    async modifyPosition(accountId, ticket, newSl = null, newTp = null) {
+        const payload = {};
+        if (newSl !== null) payload.stop_loss = newSl;
+        if (newTp !== null) payload.take_profit = newTp;
+
+        return this.request(`/positions/${ticket}/modify?account_id=${accountId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    /**
+     * Preview position before execution
+     */
+    async previewPosition(accountId, symbol, orderType, volume, stopLoss = null, takeProfit = null) {
+        const payload = {
+            account_id: accountId,
+            symbol: symbol,
+            order_type: orderType,
+            volume: volume
+        };
+
+        if (stopLoss !== null) payload.stop_loss = stopLoss;
+        if (takeProfit !== null) payload.take_profit = takeProfit;
+
+        return this.request('/positions/preview', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    /**
+     * Get all open positions for an account
+     */
+    async getOpenPositions(accountId, symbol = null) {
+        let url = `/positions/open?account_id=${accountId}`;
+        if (symbol) url += `&symbol=${symbol}`;
+        return this.request(url);
+    }
+
+    /**
+     * Close all positions for an account
+     */
+    async bulkClosePositions(accountId, symbol = null) {
+        const payload = {
+            account_id: accountId
+        };
+        if (symbol) payload.symbol = symbol;
+
+        return this.request('/positions/close-all', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
 }
 
 // Export singleton instance

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Position Execution - TradingMTQ</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/positions.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Position Execution</h1>
+            <nav class="nav">
+                <a href="index.html">Dashboard</a>
+                <a href="accounts.html">Accounts</a>
+                <a href="currencies.html">Currencies</a>
+                <a href="positions.html" class="active">Positions</a>
+            </nav>
+        </header>
+
+        <!-- Account Selector -->
+        <div id="accountSelectorContainer" class="account-selector-container"></div>
+
+        <main class="main-content">
+            <!-- Quick Execution Panel -->
+            <section class="execution-panel">
+                <h2>Quick Execution</h2>
+                <form id="executionForm" class="execution-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="symbol">Symbol</label>
+                            <input type="text" id="symbol" name="symbol" placeholder="EURUSD" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="volume">Volume (Lots)</label>
+                            <input type="number" id="volume" name="volume" step="0.01" min="0.01" placeholder="0.1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="stopLoss">Stop Loss</label>
+                            <input type="number" id="stopLoss" name="stopLoss" step="0.00001" placeholder="Optional">
+                        </div>
+                        <div class="form-group">
+                            <label for="takeProfit">Take Profit</label>
+                            <input type="number" id="takeProfit" name="takeProfit" step="0.00001" placeholder="Optional">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comment">Comment</label>
+                        <input type="text" id="comment" name="comment" placeholder="Optional comment">
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" class="btn btn-preview" id="previewBtn">Preview</button>
+                        <button type="button" class="btn btn-buy" id="buyBtn">Buy</button>
+                        <button type="button" class="btn btn-sell" id="sellBtn">Sell</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Open Positions List -->
+            <section class="positions-section">
+                <div class="section-header">
+                    <h2>Open Positions</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-small btn-refresh" id="refreshBtn">Refresh</button>
+                        <button class="btn btn-small btn-danger" id="closeAllBtn">Close All</button>
+                    </div>
+                </div>
+
+                <div id="positionsContainer" class="positions-container">
+                    <div class="loading">Loading positions...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Position Preview</h3>
+                <button class="modal-close" id="previewModalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="previewModalBody">
+                <!-- Preview content will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="previewCancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="previewConfirmBtn">Confirm & Execute</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modify Position Modal -->
+    <div id="modifyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Modify Position</h3>
+                <button class="modal-close" id="modifyModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="modifyForm">
+                    <input type="hidden" id="modifyTicket">
+                    <div class="form-group">
+                        <label for="modifyStopLoss">Stop Loss</label>
+                        <input type="number" id="modifyStopLoss" step="0.00001" placeholder="New SL">
+                    </div>
+                    <div class="form-group">
+                        <label for="modifyTakeProfit">Take Profit</label>
+                        <input type="number" id="modifyTakeProfit" step="0.00001" placeholder="New TP">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modifyCancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="modifyConfirmBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/account-manager.js"></script>
+    <script src="js/positions.js"></script>
+</body>
+</html>

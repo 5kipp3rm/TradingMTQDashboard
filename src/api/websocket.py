@@ -207,6 +207,22 @@ class ConnectionManager:
         await self.broadcast(message)
         logger.info(f"Broadcast account connection event: {event_type} for account {account_data.get('account_id', 'unknown')}")
 
+    async def broadcast_position_event(self, event_type: str, position_data: Dict[str, Any]):
+        """
+        Broadcast a position execution event.
+
+        Args:
+            event_type: Type of event (position_opened, position_closed, position_modified, execution_status)
+            position_data: Position data to broadcast
+        """
+        message = {
+            "type": "position_event",
+            "event": event_type,
+            "data": position_data
+        }
+        await self.broadcast(message)
+        logger.info(f"Broadcast position event: {event_type} for ticket {position_data.get('ticket', 'unknown')}")
+
     async def heartbeat_loop(self):
         """
         Send periodic heartbeat messages to keep connections alive.

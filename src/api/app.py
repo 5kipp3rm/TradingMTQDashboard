@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.routes import (
     analytics, trades, health, websocket as ws_routes, alerts, charts,
-    accounts, reports, currencies, account_connections, analytics_aggregated
+    accounts, reports, currencies, account_connections, analytics_aggregated, positions
 )
 from src.api.websocket import connection_manager
 
@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(account_connections.router, prefix="/api", tags=["account-connections"])
     app.include_router(reports.router, prefix="/api", tags=["reports"])
     app.include_router(currencies.router, prefix="/api", tags=["currencies"])
+    app.include_router(positions.router, prefix="/api", tags=["positions"])
 
     # Mount static files for dashboard (must be after API routes)
     dashboard_path = Path(__file__).parent.parent.parent / "dashboard"
