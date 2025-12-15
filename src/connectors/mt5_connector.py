@@ -8,7 +8,51 @@ Refactored to use Phase 0 patterns:
 - Automatic retry decorators
 - Error context preservation
 """
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+    MT5_AVAILABLE = True
+except ImportError:
+    # MetaTrader5 is Windows-only, mock it for development on macOS/Linux
+    MT5_AVAILABLE = False
+    import sys
+    from types import ModuleType
+
+    # Create a mock MT5 module for development
+    mt5 = ModuleType('MetaTrader5')
+    # Timeframes
+    mt5.TIMEFRAME_M1 = 1
+    mt5.TIMEFRAME_M5 = 5
+    mt5.TIMEFRAME_M15 = 15
+    mt5.TIMEFRAME_M30 = 30
+    mt5.TIMEFRAME_H1 = 60
+    mt5.TIMEFRAME_H4 = 240
+    mt5.TIMEFRAME_D1 = 1440
+    mt5.TIMEFRAME_W1 = 10080
+    mt5.TIMEFRAME_MN1 = 43200
+    # Order types
+    mt5.ORDER_TYPE_BUY = 0
+    mt5.ORDER_TYPE_SELL = 1
+    mt5.ORDER_TYPE_BUY_LIMIT = 2
+    mt5.ORDER_TYPE_SELL_LIMIT = 3
+    mt5.ORDER_TYPE_BUY_STOP = 4
+    mt5.ORDER_TYPE_SELL_STOP = 5
+    # Trade actions
+    mt5.TRADE_ACTION_DEAL = 1
+    mt5.TRADE_ACTION_PENDING = 5
+    mt5.TRADE_ACTION_SLTP = 2
+    mt5.TRADE_ACTION_MODIFY = 3
+    mt5.TRADE_ACTION_REMOVE = 4
+    # Order filling types
+    mt5.ORDER_FILLING_FOK = 0
+    mt5.ORDER_FILLING_IOC = 1
+    mt5.ORDER_FILLING_RETURN = 2
+    # Order time types
+    mt5.ORDER_TIME_GTC = 0
+    mt5.ORDER_TIME_SPECIFIED = 2
+    mt5.ORDER_TIME_SPECIFIED_DAY = 3
+    # Trade return codes
+    mt5.TRADE_RETCODE_DONE = 10009
+    sys.modules['MetaTrader5'] = mt5
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 
