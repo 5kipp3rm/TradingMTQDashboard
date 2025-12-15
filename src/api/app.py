@@ -68,8 +68,11 @@ def create_app() -> FastAPI:
         allow_origins=[
             "http://localhost:3000",  # React dev server
             "http://localhost:5173",  # Vite dev server
+            "http://localhost:8000",  # FastAPI server (for static files)
             "http://127.0.0.1:3000",
             "http://127.0.0.1:5173",
+            "http://127.0.0.1:8000",
+            "http://0.0.0.0:8000",    # Allow 0.0.0.0 origin
         ],
         allow_credentials=True,
         allow_methods=["*"],
