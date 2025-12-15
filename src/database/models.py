@@ -54,6 +54,12 @@ class NotificationChannel(enum.Enum):
     WEBSOCKET = "websocket"
 
 
+class PlatformType(enum.Enum):
+    """MetaTrader platform types"""
+    MT4 = "MT4"
+    MT5 = "MT5"
+
+
 class TradingAccount(Base):
     """
     Trading Account Configuration
@@ -70,6 +76,9 @@ class TradingAccount(Base):
     account_name: Mapped[str] = mapped_column(String(100), nullable=False)
     broker: Mapped[str] = mapped_column(String(100), nullable=False)
     server: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Platform Type
+    platform_type: Mapped[PlatformType] = mapped_column(SQLEnum(PlatformType), default=PlatformType.MT5, nullable=False)
 
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -106,6 +115,7 @@ class TradingAccount(Base):
             'account_name': self.account_name,
             'broker': self.broker,
             'server': self.server,
+            'platform_type': self.platform_type.value,
             'is_active': self.is_active,
             'is_default': self.is_default,
             'is_demo': self.is_demo,

@@ -23,7 +23,7 @@ from src.utils.python314_compat import *  # noqa
 import argparse
 from decimal import Decimal
 from src.database.connection import init_db, get_session
-from src.database.models import TradingAccount
+from src.database.models import TradingAccount, PlatformType
 
 
 def add_account_interactive():
@@ -31,10 +31,18 @@ def add_account_interactive():
     print("\n=== Add Trading Account ===\n")
 
     # Required fields
-    account_number = int(input("MT5 Account Number: "))
+    account_number = int(input("Account Number: "))
     account_name = input("Account Name (e.g., 'Main Trading Account'): ")
     broker = input("Broker Name (e.g., 'IC Markets'): ")
-    server = input("MT5 Server (e.g., 'ICMarkets-Demo'): ")
+
+    # Platform type
+    print("\nPlatform Type:")
+    print("  1. MetaTrader 5 (MT5)")
+    print("  2. MetaTrader 4 (MT4)")
+    platform_choice = input("Select platform (1 or 2, default: 1): ") or "1"
+    platform_type = PlatformType.MT5 if platform_choice == "1" else PlatformType.MT4
+
+    server = input(f"{platform_type.value} Server (e.g., 'ICMarkets-Demo'): ")
     login = int(input(f"Login Number (default: {account_number}): ") or account_number)
 
     # Optional fields
@@ -53,6 +61,7 @@ def add_account_interactive():
         account_name=account_name,
         broker=broker,
         server=server,
+        platform_type=platform_type,
         login=login,
         is_demo=is_demo,
         is_active=is_active,
@@ -70,6 +79,7 @@ def add_demo_account():
         account_name="Demo Account",
         broker="Demo Broker",
         server="DemoServer-MT5",
+        platform_type=PlatformType.MT5,
         login=12345678,
         is_demo=True,
         is_active=True,
@@ -90,10 +100,18 @@ def add_live_account():
         print("Cancelled.")
         return None
 
-    account_number = int(input("MT5 Account Number: "))
+    account_number = int(input("Account Number: "))
     account_name = input("Account Name: ")
     broker = input("Broker Name: ")
-    server = input("MT5 Server: ")
+
+    # Platform type
+    print("\nPlatform Type:")
+    print("  1. MetaTrader 5 (MT5)")
+    print("  2. MetaTrader 4 (MT4)")
+    platform_choice = input("Select platform (1 or 2, default: 1): ") or "1"
+    platform_type = PlatformType.MT5 if platform_choice == "1" else PlatformType.MT4
+
+    server = input(f"{platform_type.value} Server: ")
     login = int(input(f"Login Number (default: {account_number}): ") or account_number)
 
     initial_balance = input("Initial Balance: ")
@@ -107,6 +125,7 @@ def add_live_account():
         account_name=account_name,
         broker=broker,
         server=server,
+        platform_type=platform_type,
         login=login,
         is_demo=False,  # LIVE account
         is_active=True,
@@ -147,6 +166,7 @@ def create_account(**kwargs):
         print(f"   Name: {account.account_name}")
         print(f"   Broker: {account.broker}")
         print(f"   Server: {account.server}")
+        print(f"   Platform: {account.platform_type.value}")
         print(f"   Type: {'DEMO' if account.is_demo else 'LIVE'}")
         print(f"   Active: {account.is_active}")
         print(f"   Default: {account.is_default}")
@@ -176,7 +196,7 @@ def list_accounts():
 
             print(f"ID: {acc.id} | {acc.account_number} | {acc.account_name}")
             print(f"  Broker: {acc.broker} | Server: {acc.server}")
-            print(f"  Type: {acc_type} | Status: {status}{default}")
+            print(f"  Platform: {acc.platform_type.value} | Type: {acc_type} | Status: {status}{default}")
             if acc.initial_balance:
                 print(f"  Balance: {acc.initial_balance} {acc.currency}")
             print()
