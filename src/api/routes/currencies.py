@@ -721,3 +721,192 @@ async def validate_currency_config(
         errors=errors,
         symbol=config_data.symbol
     )
+
+
+# ============================================================================
+# HOT-RELOAD ENDPOINTS
+# ============================================================================
+
+class ReloadResponse(BaseModel):
+    """Response model for reload operations"""
+    success: bool
+    message: str
+    added: int = 0
+    updated: int = 0
+    errors: List[str] = []
+
+
+class SyncResponse(BaseModel):
+    """Response model for sync operations"""
+    success: bool
+    message: str
+    currency_count: int
+
+
+@router.post("/currencies/reload", response_model=ReloadResponse)
+async def reload_from_yaml(
+    db: Session = Depends(get_session)
+):
+    """
+    Hot-reload currency configurations from YAML file.
+
+    Syncs database with current YAML configuration without restarting.
+    Adds new currencies and updates existing ones from YAML.
+    """
+    from src.services import get_config_service
+
+    try:
+        service = get_config_service()
+        added, updated, errors = service.sync_yaml_to_database(db)
+
+        success = len(errors) == 0
+
+        return ReloadResponse(
+            success=success,
+            message=f"Reloaded: {added} added, {updated} updated" if success else "Reload completed with errors",
+            added=added,
+            updated=updated,
+            errors=errors
+        )
+
+    except Exception as e:
+        return ReloadResponse(
+            success=False,
+            message=f"Failed to reload: {str(e)}",
+            errors=[str(e)]
+        )
+
+
+@router.post("/currencies/sync-to-yaml", response_model=SyncResponse)
+async def sync_to_yaml(
+    db: Session = Depends(get_session)
+):
+    """
+    Sync database configurations to YAML file.
+
+    Exports all currency configurations from database to YAML.
+    Useful after making changes via API to persist to file.
+    """
+    from src.services import get_config_service
+
+    try:
+        service = get_config_service()
+        success = service.sync_database_to_yaml(db)
+
+        if success:
+            currencies = service.load_from_database(db)
+            return SyncResponse(
+                success=True,
+                message="Successfully synced to YAML",
+                currency_count=len(currencies)
+            )
+        else:
+            return SyncResponse(
+                success=False,
+                message="Failed to sync to YAML",
+                currency_count=0
+            )
+
+    except Exception as e:
+        return SyncResponse(
+            success=False,
+            message=f"Sync failed: {str(e)}",
+            currency_count=0
+        )
+
+
+@router.get("/currencies/consistency")
+async def check_consistency(
+    db: Session = Depends(get_session)
+):
+    """
+    Check consistency between database and YAML configuration.
+
+    Returns any differences found between the two sources.
+    """
+    from src.services import get_config_service
+
+    try:
+        service = get_config_service()
+        is_consistent, differences = service.validate_consistency(db)
+
+        return {
+            "is_consistent": is_consistent,
+            "differences": differences,
+            "message": "Configuration is consistent" if is_consistent else f"Found {len(differences)} differences"
+        }
+
+    except Exception as e:
+        return {
+            "is_consistent": False,
+            "differences": [],
+            "message": f"Consistency check failed: {str(e)}"
+        }
+
+
+@router.post("/currencies/export")
+async def export_configuration(
+    export_path: str = Query(..., description="Path to export file"),
+    db: Session = Depends(get_session)
+):
+    """
+    Export current database configuration to a file.
+
+    Useful for backing up or sharing configurations.
+    """
+    from src.services import get_config_service
+
+    try:
+        service = get_config_service()
+        success = service.export_to_file(db, export_path)
+
+        return {
+            "success": success,
+            "message": f"Exported to {export_path}" if success else "Export failed",
+            "export_path": export_path
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Export failed: {str(e)}",
+            "export_path": export_path
+        }
+
+
+@router.post("/currencies/import")
+async def import_configuration(
+    import_path: str = Query(..., description="Path to import file"),
+    db: Session = Depends(get_session)
+):
+    """
+    Import configuration from a file.
+
+    Useful for restoring backups or applying shared configurations.
+    """
+    from src.services import get_config_service
+
+    try:
+        service = get_config_service()
+        added, updated, errors = service.import_from_file(db, import_path)
+
+        success = len(errors) == 0
+
+        return {
+            "success": success,
+            "message": f"Imported: {added} added, {updated} updated" if success else "Import completed with errors",
+            "added": added,
+            "updated": updated,
+            "errors": errors,
+            "import_path": import_path
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Import failed: {str(e)}",
+            "added": 0,
+            "updated": 0,
+            "errors": [str(e)],
+            "import_path": import_path
+        }
