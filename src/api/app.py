@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routes import analytics, trades, health, websocket as ws_routes, alerts, charts, accounts, reports
+from src.api.routes import analytics, trades, health, websocket as ws_routes, alerts, charts, accounts, reports, currencies
 from src.api.websocket import connection_manager
 
 
@@ -75,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(charts.router, prefix="/api/charts", tags=["charts"])
     app.include_router(accounts.router, prefix="/api", tags=["accounts"])
     app.include_router(reports.router, prefix="/api", tags=["reports"])
+    app.include_router(currencies.router, prefix="/api", tags=["currencies"])
 
     # Mount static files for dashboard (must be after API routes)
     dashboard_path = Path(__file__).parent.parent.parent / "dashboard"

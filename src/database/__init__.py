@@ -10,6 +10,9 @@ from .models import (
 from .report_models import (
     ReportConfiguration, ReportHistory, ReportFrequency, ReportFormat
 )
+from .currency_models import (
+    CurrencyConfiguration, StrategyType, Timeframe
+)
 from .repository import TradeRepository, SignalRepository, AccountSnapshotRepository
 from .connection import get_session, init_db, close_db
 
@@ -28,6 +31,9 @@ __all__ = [
     'ReportHistory',
     'ReportFrequency',
     'ReportFormat',
+    'CurrencyConfiguration',
+    'StrategyType',
+    'Timeframe',
     'TradeRepository',
     'SignalRepository',
     'AccountSnapshotRepository',
