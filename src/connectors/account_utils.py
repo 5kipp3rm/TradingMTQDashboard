@@ -1,32 +1,72 @@
 """
 Account Utility Functions
 Helper methods for account analysis and position sizing
+
+NOTE: These utilities require the MetaTrader5 Python package which only works on Windows/Linux.
+For Mac users, use the bridge-based connectors instead.
 """
-import MetaTrader5 as mt5
 from typing import Optional
 import logging
 from .base import OrderType
 
 logger = logging.getLogger(__name__)
 
+# Try to import MetaTrader5 - only available on Windows/Linux
+try:
+    import MetaTrader5 as mt5
+    MT5_AVAILABLE = True
+except ImportError:
+    MT5_AVAILABLE = False
+    logger.warning(
+        "MetaTrader5 package not available. AccountUtils will not work. "
+        "This is expected on macOS. Use MT5ConnectorBridge instead."
+    )
+    # Create mock module for constants
+    from types import ModuleType
+    mt5 = ModuleType('MetaTrader5')
+    mt5.TRADE_ACTION_DEAL = 1
+    mt5.ORDER_TYPE_BUY = 0
+    mt5.ORDER_TYPE_SELL = 1
+    mt5.ORDER_TYPE_BUY_LIMIT = 2
+    mt5.ORDER_TYPE_SELL_LIMIT = 3
+    mt5.ORDER_TYPE_BUY_STOP = 4
+    mt5.ORDER_TYPE_SELL_STOP = 5
+    mt5.ACCOUNT_TRADE_MODE_DEMO = 0
+    mt5.ACCOUNT_TRADE_MODE_CONTEST = 1
+    mt5.ACCOUNT_TRADE_MODE_REAL = 2
+    mt5.ACCOUNT_MARGIN_MODE_RETAIL_NETTING = 0
+    mt5.ACCOUNT_MARGIN_MODE_EXCHANGE = 1
+    mt5.ACCOUNT_MARGIN_MODE_RETAIL_HEDGING = 2
+    mt5.ACCOUNT_STOPOUT_MODE_PERCENT = 0
+    mt5.ACCOUNT_STOPOUT_MODE_MONEY = 1
+
 
 class AccountUtils:
-    """Account utility functions for margin calculations and position sizing"""
-    
+    """
+    Account utility functions for margin calculations and position sizing
+
+    NOTE: These methods require the MetaTrader5 Python package (Windows/Linux only).
+    On macOS, these methods will return None. Use MT5ConnectorBridge for Mac compatibility.
+    """
+
     @staticmethod
     def margin_check(symbol: str, order_type: int, volume: float, price: float) -> Optional[float]:
         """
         Calculate required margin for an order.
-        
+
         Args:
             symbol: Trading symbol
             order_type: MT5 order type constant
             volume: Trade volume in lots
             price: Entry price
-            
+
         Returns:
             Required margin in account currency, or None if calculation fails
         """
+        if not MT5_AVAILABLE:
+            logger.warning("AccountUtils.margin_check not available - MetaTrader5 package not installed")
+            return None
+
         try:
             result = mt5.order_check({
                 "action": mt5.TRADE_ACTION_DEAL,

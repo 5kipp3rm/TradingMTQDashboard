@@ -10,8 +10,10 @@ from src.utils.python314_compat import *  # noqa
 
 from pathlib import Path
 import asyncio
+import logging
+import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +24,7 @@ from src.api.routes import (
 )
 from src.api.websocket import connection_manager
 from src.database.connection import init_db
+from src.utils.logger import setup_logging
 
 
 @asynccontextmanager
@@ -29,6 +32,9 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup and shutdown events.
     """
+    # Startup: Initialize logging
+    setup_logging(log_dir="logs", log_level="INFO", console_output=True, file_output=True)
+
     # Startup: Initialize database
     init_db()
 
@@ -61,6 +67,39 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
         lifespan=lifespan
     )
+
+    # HTTP request logging middleware
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        logger = logging.getLogger("src.api.app")
+        start_time = time.time()
+
+        # Log request
+        logger.info(
+            f"→ {request.method} {request.url.path}",
+            extra={
+                'method': request.method,
+                'path': request.url.path,
+                'client': request.client.host if request.client else None
+            }
+        )
+
+        # Process request
+        response = await call_next(request)
+
+        # Log response
+        duration = time.time() - start_time
+        logger.info(
+            f"← {request.method} {request.url.path} - {response.status_code} ({duration:.3f}s)",
+            extra={
+                'method': request.method,
+                'path': request.url.path,
+                'status_code': response.status_code,
+                'duration': duration
+            }
+        )
+
+        return response
 
     # CORS middleware for web dashboard access
     app.add_middleware(

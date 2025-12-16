@@ -1,0 +1,26 @@
+# MT4 Integration Optional Dependencies
+# Install only the connector implementation you plan to use
+
+# For MT4ConnectorV3Bridge (RECOMMENDED - Bridge Solution)
+requests>=2.31.0
+
+# For MT4ConnectorV1 (Python Package - Limited Support)
+# MetaTrader4>=0.1.0  # Uncomment if using this approach
+
+# For MT4ConnectorV2FIX (FIX API - Professional Trading)
+# simplefix>=1.0.16   # Uncomment if using this approach
+
+# Installation Instructions:
+# ===========================
+#
+# Recommended (Bridge Solution):
+#   pip install -r requirements-mt4.txt
+#
+# With MetaTrader4 Package:
+#   pip install -r requirements-mt4.txt MetaTrader4
+#
+# With FIX API:
+#   pip install -r requirements-mt4.txt simplefix
+#
+# All approaches:
+#   pip install -r requirements-mt4.txt MetaTrader4 simplefix

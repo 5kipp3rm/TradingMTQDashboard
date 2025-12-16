@@ -1,0 +1,22 @@
+pkill -f "uvicorn src.api.app:app"
+
+name: demo-trading-bot
+email: demo-trading-bot@gmail.com
+
+login: 170509819
+password: v3owtay
+inventor: q0elztf
+
+server:
+  host: MetaQuotes-Demo
+
+
+name: demo-trading-bot
+email: demo-trading-bot@gmail.com
+
+login: 5043678961
+password: Fm-lZe5r
+inventor: V_8jBhXv
+
+server:
+  host: MetaQuotes-Demo

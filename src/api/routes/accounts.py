@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, validator
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 
-from src.database import get_session, TradingAccount, AccountConnectionState
+from src.database import get_session, TradingAccount, AccountConnectionState, PlatformType
 from src.services.session_manager import session_manager
 from src.api.websocket import connection_manager
 
@@ -27,6 +27,7 @@ class AccountCreate(BaseModel):
     account_name: str = Field(..., description="Friendly account name", min_length=1, max_length=100)
     broker: str = Field(..., description="Broker name", min_length=1, max_length=100)
     server: str = Field(..., description="MT5 server address", min_length=1, max_length=100)
+    platform_type: str = Field("MT5", description="Platform type (MT4 or MT5)")
     login: int = Field(..., description="MT5 login number", gt=0)
     password: Optional[str] = Field(None, description="Account password (will be encrypted)")
     is_demo: bool = Field(True, description="Whether this is a demo account")
@@ -35,6 +36,13 @@ class AccountCreate(BaseModel):
     initial_balance: Optional[float] = Field(None, description="Initial account balance", gt=0)
     currency: str = Field("USD", description="Account currency", min_length=3, max_length=10)
     description: Optional[str] = Field(None, description="Account description", max_length=500)
+
+    @validator('platform_type')
+    def platform_type_valid(cls, v):
+        """Validate platform type"""
+        if v.upper() not in ['MT4', 'MT5']:
+            raise ValueError('platform_type must be MT4 or MT5')
+        return v.upper()
 
     @validator('currency')
     def currency_uppercase(cls, v):
@@ -47,12 +55,20 @@ class AccountUpdate(BaseModel):
     account_name: Optional[str] = Field(None, min_length=1, max_length=100)
     broker: Optional[str] = Field(None, min_length=1, max_length=100)
     server: Optional[str] = Field(None, min_length=1, max_length=100)
+    platform_type: Optional[str] = Field(None, description="Platform type (MT4 or MT5)")
     password: Optional[str] = Field(None, description="New password (will be encrypted)")
     is_demo: Optional[bool] = None
     is_active: Optional[bool] = None
     initial_balance: Optional[float] = Field(None, gt=0)
     currency: Optional[str] = Field(None, min_length=3, max_length=10)
     description: Optional[str] = Field(None, max_length=500)
+
+    @validator('platform_type')
+    def platform_type_valid(cls, v):
+        """Validate platform type"""
+        if v and v.upper() not in ['MT4', 'MT5']:
+            raise ValueError('platform_type must be MT4 or MT5')
+        return v.upper() if v else None
 
     @validator('currency')
     def currency_uppercase(cls, v):
@@ -67,6 +83,7 @@ class AccountResponse(BaseModel):
     account_name: str
     broker: str
     server: str
+    platform_type: str
     login: int
     is_active: bool
     is_default: bool
@@ -126,6 +143,7 @@ async def list_accounts(
                 account_name=acc.account_name,
                 broker=acc.broker,
                 server=acc.server,
+                platform_type=acc.platform_type.value,
                 login=acc.login,
                 is_active=acc.is_active,
                 is_default=acc.is_default,
@@ -166,6 +184,7 @@ async def get_account(
         account_name=account.account_name,
         broker=account.broker,
         server=account.server,
+        platform_type=account.platform_type.value,
         login=account.login,
         is_active=account.is_active,
         is_default=account.is_default,
@@ -217,6 +236,7 @@ async def create_account(
         account_name=account_data.account_name,
         broker=account_data.broker,
         server=account_data.server,
+        platform_type=PlatformType[account_data.platform_type],
         login=account_data.login,
         password_encrypted=account_data.password,  # TODO: Implement encryption
         is_demo=account_data.is_demo,
@@ -237,6 +257,7 @@ async def create_account(
         account_name=new_account.account_name,
         broker=new_account.broker,
         server=new_account.server,
+        platform_type=new_account.platform_type.value,
         login=new_account.login,
         is_active=new_account.is_active,
         is_default=new_account.is_default,
@@ -274,6 +295,8 @@ async def update_account(
         if field == "password" and value:
             # TODO: Implement encryption
             setattr(account, "password_encrypted", value)
+        elif field == "platform_type" and value:
+            setattr(account, "platform_type", PlatformType[value])
         else:
             setattr(account, field, value)
 
@@ -286,6 +309,7 @@ async def update_account(
         account_name=account.account_name,
         broker=account.broker,
         server=account.server,
+        platform_type=account.platform_type.value,
         login=account.login,
         is_active=account.is_active,
         is_default=account.is_default,
@@ -372,6 +396,7 @@ async def set_default_account(
         account_name=account.account_name,
         broker=account.broker,
         server=account.server,
+        platform_type=account.platform_type.value,
         login=account.login,
         is_active=account.is_active,
         is_default=account.is_default,
@@ -411,6 +436,7 @@ async def activate_account(
         account_name=account.account_name,
         broker=account.broker,
         server=account.server,
+        platform_type=account.platform_type.value,
         login=account.login,
         is_active=account.is_active,
         is_default=account.is_default,
@@ -465,6 +491,7 @@ async def deactivate_account(
         account_name=account.account_name,
         broker=account.broker,
         server=account.server,
+        platform_type=account.platform_type.value,
         login=account.login,
         is_active=account.is_active,
         is_default=account.is_default,

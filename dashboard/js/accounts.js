@@ -57,6 +57,11 @@ async function apiRequest(endpoint, options = {}) {
             throw new Error(error.detail || `HTTP ${response.status}`);
         }
 
+        // Handle 204 No Content responses (like DELETE)
+        if (response.status === 204) {
+            return null;
+        }
+
         return await response.json();
     } catch (error) {
         console.error('API request failed:', error);
@@ -251,7 +256,7 @@ function renderAccountsTable() {
     if (filteredAccounts.length === 0) {
         tbody.innerHTML = `
             <tr class="loading-row">
-                <td colspan="8">
+                <td colspan="9">
                     <div class="loading-spinner">
                         <i class="fas fa-inbox"></i> No accounts found
                     </div>
@@ -282,6 +287,11 @@ function renderAccountsTable() {
                         <strong>${account.account_name}</strong>
                         <div style="color: #6b7280; font-size: 0.85rem;">#${account.account_number}</div>
                     </div>
+                </td>
+                <td>
+                    <span class="platform-badge ${account.platform_type === 'MT4' ? 'mt4' : 'mt5'}">
+                        ${account.platform_type || 'MT5'}
+                    </span>
                 </td>
                 <td>${account.broker}</td>
                 <td>${account.server}</td>
@@ -377,13 +387,10 @@ function openEditAccountModal(accountId) {
     document.getElementById('modalTitle').textContent = 'Edit Account';
     document.getElementById('accountId').value = account.id;
     document.getElementById('accountNumber').value = account.account_number;
-    document.getElementById('login').value = account.login;
     document.getElementById('accountName').value = account.account_name;
+    document.getElementById('platformType').value = account.platform_type || 'MT5';
     document.getElementById('broker').value = account.broker;
     document.getElementById('server').value = account.server;
-    document.getElementById('initialBalance').value = account.initial_balance || '';
-    document.getElementById('currency').value = account.currency;
-    document.getElementById('description').value = account.description || '';
     document.getElementById('isDemo').checked = account.is_demo;
     document.getElementById('isActive').checked = account.is_active;
     document.getElementById('isDefault').checked = account.is_default;
@@ -400,16 +407,17 @@ async function handleAccountFormSubmit(event) {
 
     const accountId = document.getElementById('accountId').value;
     const password = document.getElementById('password').value;
+    const accountNumber = parseInt(document.getElementById('accountNumber').value);
+    const brokerValue = document.getElementById('broker').value.trim();
 
     const accountData = {
-        account_number: parseInt(document.getElementById('accountNumber').value),
-        login: parseInt(document.getElementById('login').value),
+        account_number: accountNumber,
+        login: accountNumber,  // Login same as account number
         account_name: document.getElementById('accountName').value,
-        broker: document.getElementById('broker').value,
+        platform_type: document.getElementById('platformType').value,
+        broker: brokerValue || 'Unknown',  // Default to 'Unknown' if empty
         server: document.getElementById('server').value,
-        initial_balance: parseFloat(document.getElementById('initialBalance').value) || null,
-        currency: document.getElementById('currency').value.toUpperCase(),
-        description: document.getElementById('description').value || null,
+        currency: 'USD',  // Default currency
         is_demo: document.getElementById('isDemo').checked,
         is_active: document.getElementById('isActive').checked,
         is_default: document.getElementById('isDefault').checked
@@ -425,7 +433,11 @@ async function handleAccountFormSubmit(event) {
             // Update existing account
             await updateAccount(parseInt(accountId), accountData);
         } else {
-            // Create new account
+            // Create new account (password required for new accounts)
+            if (!password) {
+                showToast('Password is required for new accounts', 'error');
+                return;
+            }
             await createAccount(accountData);
         }
         closeAccountModal();
@@ -452,8 +464,8 @@ function viewAccountDetails(accountId) {
                 <div class="detail-value">${account.account_number}</div>
             </div>
             <div class="detail-row">
-                <div class="detail-label">Login:</div>
-                <div class="detail-value">${account.login}</div>
+                <div class="detail-label">Platform:</div>
+                <div class="detail-value">${account.platform_type || 'MT5'}</div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Broker:</div>
@@ -466,10 +478,6 @@ function viewAccountDetails(accountId) {
             <div class="detail-row">
                 <div class="detail-label">Currency:</div>
                 <div class="detail-value">${account.currency}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Initial Balance:</div>
-                <div class="detail-value">${account.initial_balance ? '$' + account.initial_balance.toFixed(2) : 'N/A'}</div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Type:</div>

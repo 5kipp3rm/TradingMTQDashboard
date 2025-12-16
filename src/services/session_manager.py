@@ -15,8 +15,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, update
 
 from src.connectors.mt5_connector import MT5Connector
-from src.connectors.base import ConnectionStatus
-from src.database.models import TradingAccount
+from src.connectors.mt4_connector import MT4Connector
+from src.connectors.base import ConnectionStatus, BaseMetaTraderConnector
+from src.database.models import TradingAccount, PlatformType
 from src.utils.logger import get_logger
 from src.exceptions import ConnectionError, AuthenticationError
 
@@ -33,7 +34,7 @@ class ConnectionState:
         account_id: int,
         account_number: int,
         is_connected: bool = False,
-        connector: Optional[MT5Connector] = None,
+        connector: Optional[BaseMetaTraderConnector] = None,
         last_connected_at: Optional[datetime] = None,
         last_disconnected_at: Optional[datetime] = None,
         connection_error: Optional[str] = None,
@@ -64,10 +65,11 @@ class ConnectionState:
 
 class MT5SessionManager:
     """
-    Manages multiple MT5 account connections simultaneously.
+    Manages multiple MT4/MT5 account connections simultaneously.
 
     Features:
-    - Connect/disconnect multiple accounts
+    - Connect/disconnect multiple accounts (both MT4 and MT5)
+    - Dynamically selects correct connector based on account platform type
     - Track connection state per account
     - Auto-reconnect on failure
     - Thread-safe operations
@@ -109,9 +111,7 @@ class MT5SessionManager:
                 state = self._sessions[account_id]
                 if state.is_connected and not force_reconnect:
                     logger.info(
-                        "Account already connected",
-                        account_id=account_id,
-                        account_number=account_number
+                        f"Account {account_id} (#{account_number}) already connected"
                     )
                     return True, None
 
@@ -120,16 +120,16 @@ class MT5SessionManager:
                     await self._disconnect_internal(account_id)
 
             logger.info(
-                "Connecting to MT5 account",
-                account_id=account_id,
-                account_number=account_number,
-                broker=account.broker,
-                server=account.server
+                f"Connecting to {account.platform_type.value} account "
+                f"ID={account_id} #{account_number} broker={account.broker} server={account.server}"
             )
 
-            # Create new MT5 connector instance
+            # Create connector based on platform type
             instance_id = f"account_{account_id}_{account_number}"
-            connector = MT5Connector(instance_id=instance_id)
+            if account.platform_type == PlatformType.MT4:
+                connector = MT4Connector(instance_id=instance_id)
+            else:
+                connector = MT5Connector(instance_id=instance_id)
 
             # Initialize connection state
             state = ConnectionState(
@@ -162,9 +162,8 @@ class MT5SessionManager:
                     db.commit()
 
                     logger.info(
-                        "Successfully connected to MT5 account",
-                        account_id=account_id,
-                        account_number=account_number
+                        f"Successfully connected to {account.platform_type.value} account "
+                        f"ID={account_id} #{account_number}"
                     )
 
                     return True, None
@@ -173,10 +172,7 @@ class MT5SessionManager:
                     error_msg = "Connection failed without exception"
                     state.connection_error = error_msg
                     logger.error(
-                        "Failed to connect to MT5 account",
-                        account_id=account_id,
-                        account_number=account_number,
-                        error=error_msg
+                        f"Failed to connect to MT5 account ID={account_id} #{account_number}: {error_msg}"
                     )
                     return False, error_msg
 
@@ -187,10 +183,7 @@ class MT5SessionManager:
                 self._sessions[account_id] = state
 
                 logger.error(
-                    "Authentication error connecting to MT5 account",
-                    account_id=account_id,
-                    account_number=account_number,
-                    error=error_msg
+                    f"Authentication error connecting to MT5 account ID={account_id} #{account_number}: {error_msg}"
                 )
                 return False, error_msg
 
@@ -201,10 +194,7 @@ class MT5SessionManager:
                 self._sessions[account_id] = state
 
                 logger.error(
-                    "Connection error connecting to MT5 account",
-                    account_id=account_id,
-                    account_number=account_number,
-                    error=error_msg
+                    f"Connection error connecting to MT5 account ID={account_id} #{account_number}: {error_msg}"
                 )
                 return False, error_msg
 
@@ -215,10 +205,7 @@ class MT5SessionManager:
                 self._sessions[account_id] = state
 
                 logger.error(
-                    "Unexpected error connecting to MT5 account",
-                    account_id=account_id,
-                    account_number=account_number,
-                    error=error_msg,
+                    f"Unexpected error connecting to MT5 account ID={account_id} #{account_number}: {error_msg}",
                     exc_info=True
                 )
                 return False, error_msg
@@ -252,7 +239,7 @@ class MT5SessionManager:
             Tuple of (success: bool, error_message: Optional[str])
         """
         if account_id not in self._sessions:
-            logger.warning("Account not found in sessions", account_id=account_id)
+            logger.warning(f"Account {account_id} not found in sessions")
             return False, "Account not found in sessions"
 
         state = self._sessions[account_id]
@@ -293,15 +280,15 @@ class MT5SessionManager:
             )
             return False, error_msg
 
-    def get_session(self, account_id: int) -> Optional[MT5Connector]:
+    def get_session(self, account_id: int) -> Optional[BaseMetaTraderConnector]:
         """
-        Get active MT5 connector for account.
+        Get active MT4/MT5 connector for account.
 
         Args:
             account_id: TradingAccount ID
 
         Returns:
-            MT5Connector instance or None if not connected
+            BaseMetaTraderConnector instance (MT4Connector or MT5Connector) or None if not connected
         """
         state = self._sessions.get(account_id)
         if state and state.is_connected and state.connector:
@@ -359,7 +346,7 @@ class MT5SessionManager:
         Returns:
             Tuple of (success: bool, error_message: Optional[str])
         """
-        logger.info("Reconnecting MT5 account", account_id=account_id)
+        logger.info(f"Reconnecting MT5 account {account_id}")
 
         # Disconnect if currently connected
         if account_id in self._sessions:

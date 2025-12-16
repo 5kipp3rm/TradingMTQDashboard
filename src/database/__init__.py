@@ -5,7 +5,7 @@ Provides SQLAlchemy models, repositories, and connection management
 from .models import (
     Base, Trade, Signal, AccountSnapshot, DailyPerformance,
     AlertConfiguration, AlertHistory, AlertType, NotificationChannel,
-    TradingAccount, AccountConnectionState
+    TradingAccount, AccountConnectionState, PlatformType
 )
 from .report_models import (
     ReportConfiguration, ReportHistory, ReportFrequency, ReportFormat
@@ -28,6 +28,7 @@ __all__ = [
     'NotificationChannel',
     'TradingAccount',
     'AccountConnectionState',
+    'PlatformType',
     'ReportConfiguration',
     'ReportHistory',
     'ReportFrequency',

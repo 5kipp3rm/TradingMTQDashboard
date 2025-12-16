@@ -114,6 +114,7 @@
                         <tr>
                             <th>Status</th>
                             <th>Account</th>
+                            <th>Platform</th>
                             <th>Broker</th>
                             <th>Server</th>
                             <th>Type</th>
@@ -124,7 +125,7 @@
                     </thead>
                     <tbody id="accountsTableBody">
                         <tr class="loading-row">
-                            <td colspan="8">
+                            <td colspan="9">
                                 <div class="loading-spinner">
                                     <i class="fas fa-spinner fa-spin"></i> Loading accounts...
                                 </div>
@@ -148,52 +149,43 @@
             <form id="accountForm">
                 <input type="hidden" id="accountId" value="">
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="accountNumber">Account Number *</label>
-                        <input type="number" id="accountNumber" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="login">Login Number *</label>
-                        <input type="number" id="login" required>
-                    </div>
-                </div>
-
                 <div class="form-group">
                     <label for="accountName">Account Name *</label>
-                    <input type="text" id="accountName" required>
+                    <input type="text" id="accountName" required placeholder="e.g., My Trading Account">
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="broker">Broker *</label>
-                        <input type="text" id="broker" required>
+                        <label for="accountNumber">Account Number / Login *</label>
+                        <input type="number" id="accountNumber" required placeholder="12345678">
+                        <small style="color: #666; font-size: 0.85em;">Your MT4/MT5 account number</small>
                     </div>
+                    <div class="form-group">
+                        <label for="platformType">Platform *</label>
+                        <select id="platformType" required>
+                            <option value="MT5" selected>MetaTrader 5 (MT5)</option>
+                            <option value="MT4">MetaTrader 4 (MT4)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label for="server">Server *</label>
-                        <input type="text" id="server" required>
+                        <input type="text" id="server" required placeholder="e.g., ICMarkets-Demo">
+                        <small style="color: #666; font-size: 0.85em;">Your broker's server name</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password *</label>
+                        <input type="password" id="password" placeholder="Account password">
+                        <small style="color: #666; font-size: 0.85em;">Leave blank when editing to keep existing</small>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Leave blank to keep existing">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="initialBalance">Initial Balance</label>
-                        <input type="number" id="initialBalance" step="0.01" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="currency">Currency</label>
-                        <input type="text" id="currency" value="USD" maxlength="10">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" rows="3"></textarea>
+                    <label for="broker">Broker (Optional)</label>
+                    <input type="text" id="broker" placeholder="e.g., IC Markets">
+                    <small style="color: #666; font-size: 0.85em;">Auto-populated after first connection</small>
                 </div>
 
                 <div class="form-checkboxes">

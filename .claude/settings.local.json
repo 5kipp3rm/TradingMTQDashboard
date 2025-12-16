@@ -29,7 +29,19 @@
       "Bash(cat:*)",
       "Bash(cloc:*)",
       "Bash(curl:*)",
-      "Bash(./venv/bin/alembic:*)"
+      "Bash(./venv/bin/alembic:*)",
+      "Bash(node:*)",
+      "Bash(tradingmtq serve)",
+      "Bash(./venv/bin/python:*)",
+      "Bash(./venv/bin/pip install:*)",
+      "Bash(./venv/bin/tradingmtq serve:*)",
+      "Bash(./venv/bin/uvicorn:*)",
+      "Bash(pkill:*)",
+      "Bash(pip search:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs:*)",
+      "Bash(mdfind:*)",
+      "Bash(./venv/bin/pip list)"
     ],
     "deny": [],
     "ask": []
