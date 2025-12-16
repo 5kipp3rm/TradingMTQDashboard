@@ -41,7 +41,18 @@
       "Bash(lsof:*)",
       "Bash(xargs:*)",
       "Bash(mdfind:*)",
-      "Bash(./venv/bin/pip list)"
+      "Bash(./venv/bin/pip list)",
+      "Bash(git checkout:*)",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/src/connectors/mt4_connector_v2_fix.py )",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/src/connectors/mt4_connector_v3_bridge.py )",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/MT5_SOCKET_TEST_INSTRUCTIONS.md)",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/mql5)",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/mtinfo.yml)",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT4_QUICK_START_MAC.md )",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT4_MAC_LIMITATIONS.md )",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT5_QUICK_START_MAC.md )",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT4_IMPLEMENTATION_SUMMARY.md )",
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT5_IMPLEMENTATION_SUMMARY.md)"
     ],
     "deny": [],
     "ask": []

@@ -2,53 +2,8 @@
 MT5 Error Description Module
 Comprehensive error code descriptions for MetaTrader 5
 Copied from MT5 official examples and enhanced
-
-NOTE: These descriptions use MT5 constants which are only available with the
-MetaTrader5 Python package (Windows/Linux). On macOS, numeric codes are used instead.
 """
-
-# Try to import MetaTrader5 - only available on Windows/Linux
-try:
-    import MetaTrader5 as mt5
-    MT5_AVAILABLE = True
-except ImportError:
-    MT5_AVAILABLE = False
-    # Create mock module with numeric constants for error descriptions
-    from types import ModuleType
-    mt5 = ModuleType('MetaTrader5')
-    # Trade return codes (numeric values from MT5 documentation)
-    mt5.TRADE_RETCODE_REQUOTE = 10004
-    mt5.TRADE_RETCODE_REJECT = 10006
-    mt5.TRADE_RETCODE_CANCEL = 10007
-    mt5.TRADE_RETCODE_PLACED = 10008
-    mt5.TRADE_RETCODE_DONE = 10009
-    mt5.TRADE_RETCODE_DONE_PARTIAL = 10010
-    mt5.TRADE_RETCODE_ERROR = 10011
-    mt5.TRADE_RETCODE_TIMEOUT = 10012
-    mt5.TRADE_RETCODE_INVALID = 10013
-    mt5.TRADE_RETCODE_INVALID_VOLUME = 10014
-    mt5.TRADE_RETCODE_INVALID_PRICE = 10015
-    mt5.TRADE_RETCODE_INVALID_STOPS = 10016
-    mt5.TRADE_RETCODE_TRADE_DISABLED = 10017
-    mt5.TRADE_RETCODE_MARKET_CLOSED = 10018
-    mt5.TRADE_RETCODE_NO_MONEY = 10019
-    mt5.TRADE_RETCODE_PRICE_CHANGED = 10020
-    mt5.TRADE_RETCODE_PRICE_OFF = 10021
-    mt5.TRADE_RETCODE_INVALID_EXPIRATION = 10022
-    mt5.TRADE_RETCODE_ORDER_CHANGED = 10023
-    mt5.TRADE_RETCODE_TOO_MANY_REQUESTS = 10024
-    mt5.TRADE_RETCODE_NO_CHANGES = 10025
-    mt5.TRADE_RETCODE_SERVER_DISABLES_AT = 10026
-    mt5.TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
-    mt5.TRADE_RETCODE_LOCKED = 10028
-    mt5.TRADE_RETCODE_FROZEN = 10029
-    mt5.TRADE_RETCODE_INVALID_FILL = 10030
-    mt5.TRADE_RETCODE_CONNECTION = 10031
-    mt5.TRADE_RETCODE_ONLY_REAL = 10032
-    mt5.TRADE_RETCODE_LIMIT_ORDERS = 10033
-    mt5.TRADE_RETCODE_LIMIT_VOLUME = 10034
-    mt5.TRADE_RETCODE_INVALID_ORDER = 10035
-    mt5.TRADE_RETCODE_POSITION_CLOSED = 10036
+import MetaTrader5 as mt5
 
 
 def trade_server_return_code_description(return_code: int) -> str:

@@ -1,53 +1,32 @@
 """
-MT4 Connector - MetaTrader 4 Integration
+MT4 Connector - Implementation using MetaTrader4 Python package
 
-This is a routing module that directs to the appropriate MT4 connector implementation.
+This connector uses the third-party MetaTrader4 Python package.
+Note: This package has limited broker support and may not work with all brokers.
 
-Available MT4 Connector Implementations:
-==========================================
+Installation:
+    pip install MetaTrader4
 
-1. MT4ConnectorV3Bridge (RECOMMENDED for Mac/Most Users)
-   - Bridge solution using MQL4 Expert Advisor
-   - Works with any broker
-   - No broker approval needed
-   - File: src/connectors/mt4_connector_v3_bridge.py
-   - Setup: See mql4/README.md
-
-2. MT4ConnectorV1 (Python Package)
-   - Uses MetaTrader4 Python package
-   - Limited broker support
-   - File: src/connectors/mt4_connector_v1.py
-   - Install: pip install MetaTrader4
-
-3. MT4ConnectorV2FIX (FIX API)
-   - Professional FIX protocol
-   - Requires broker FIX API access
-   - File: src/connectors/mt4_connector_v2_fix.py
-   - Install: pip install simplefix
-
-For detailed comparison and setup instructions, see:
-    docs/MT4_INTEGRATION_GUIDE.md
-
-To use a specific implementation, import directly:
-    from src.connectors.mt4_connector_v3_bridge import MT4ConnectorV3Bridge
+Broker Requirements:
+    - Broker must allow API connections
+    - May require specific broker configuration
 """
+
 from typing import Optional, List
 from datetime import datetime
 import logging
+
+try:
+    import MetaTrader4
+    MT4_AVAILABLE = True
+except ImportError:
+    MT4_AVAILABLE = False
+
 from .base import (
     BaseMetaTraderConnector, PlatformType, OrderType, ConnectionStatus,
     TickData, OHLCBar, SymbolInfo, Position, AccountInfo,
     TradeRequest, TradeResult
 )
-
-# Import recommended implementation
-try:
-    from .mt4_connector_v3_bridge import MT4ConnectorV3Bridge
-    DEFAULT_IMPLEMENTATION = MT4ConnectorV3Bridge
-    IMPLEMENTATION_NAME = "MT4ConnectorV3Bridge"
-except ImportError:
-    DEFAULT_IMPLEMENTATION = None
-    IMPLEMENTATION_NAME = "None"
 
 
 logger = logging.getLogger(__name__)
@@ -55,160 +34,475 @@ logger = logging.getLogger(__name__)
 
 class MT4Connector(BaseMetaTraderConnector):
     """
-    MetaTrader 4 connector - Routes to appropriate implementation
+    MetaTrader 4 connector using MetaTrader4 Python package
 
-    This class automatically uses the best available MT4 connector implementation.
-    By default, it uses MT4ConnectorV3Bridge (MQL4 bridge solution).
-
-    To use a different implementation, import directly:
-        from src.connectors.mt4_connector_v1 import MT4ConnectorV1
-        from src.connectors.mt4_connector_v2_fix import MT4ConnectorV2FIX
-        from src.connectors.mt4_connector_v3_bridge import MT4ConnectorV3Bridge
-
-    For setup instructions, see:
-        - docs/MT4_INTEGRATION_GUIDE.md
-        - mql4/README.md (for bridge solution)
+    This implementation uses the third-party MetaTrader4 package.
+    May not work with all brokers.
     """
 
     def __init__(self, instance_id: str = "default"):
-        """
-        Initialize MT4 connector
-
-        This will automatically select and initialize the best available implementation.
-        For Mac users and most scenarios, this uses MT4ConnectorV3Bridge.
-        """
+        """Initialize MT4 connector"""
         super().__init__(instance_id, PlatformType.MT4)
 
-        if DEFAULT_IMPLEMENTATION is None:
+        if not MT4_AVAILABLE:
             logger.error(
-                f"[{self.instance_id}] No MT4 connector implementation available. "
-                "Please install one of: mt4_connector_v3_bridge (recommended), "
-                "mt4_connector_v1, or mt4_connector_v2_fix. "
-                "See docs/MT4_INTEGRATION_GUIDE.md for details."
+                f"[{self.instance_id}] MetaTrader4 package not installed. "
+                "Install with: pip install MetaTrader4"
             )
-            self._impl = None
-        else:
-            logger.info(
-                f"[{self.instance_id}] Using {IMPLEMENTATION_NAME} for MT4 connection"
-            )
-            self._impl = DEFAULT_IMPLEMENTATION(instance_id=instance_id)
+            self.status = ConnectionStatus.ERROR
+
+        self._mt4 = None
+        logger.info(f"[{self.instance_id}] MT4ConnectorV1 initialized")
 
     def connect(self, login: int, password: str, server: str, **kwargs) -> bool:
         """
-        Connect to MT4
-
-        For MT4ConnectorV3Bridge (default):
-            Requires MQL4 Expert Advisor to be running in MT4.
-            See mql4/README.md for setup instructions.
+        Connect to MT4 account
 
         Args:
             login: MT4 account number
             password: Account password
-            server: Broker server
-            **kwargs: Implementation-specific parameters
+            server: Broker server name
+            **kwargs: Additional connection parameters
+                - timeout: Connection timeout in ms (default: 60000)
+                - portable: Use portable mode (default: False)
 
         Returns:
             True if connection successful
         """
-        if self._impl is None:
-            logger.error(
-                f"[{self.instance_id}] No MT4 connector implementation available. "
-                "See docs/MT4_INTEGRATION_GUIDE.md for setup instructions."
-            )
+        if not MT4_AVAILABLE:
+            logger.error(f"[{self.instance_id}] MetaTrader4 package not available")
+            self.status = ConnectionStatus.ERROR
             return False
 
-        return self._impl.connect(login, password, server, **kwargs)
-    
+        timeout = kwargs.get('timeout', 60000)
+        portable = kwargs.get('portable', False)
+
+        logger.info(
+            f"[{self.instance_id}] Connecting to MT4 account",
+            extra={
+                'login': login,
+                'server': server,
+                'timeout': timeout
+            }
+        )
+
+        try:
+            # Initialize MT4 connection
+            if not MetaTrader4.initialize(
+                login=login,
+                password=password,
+                server=server,
+                timeout=timeout,
+                portable=portable
+            ):
+                error_code = MetaTrader4.last_error()
+                logger.error(
+                    f"[{self.instance_id}] MT4 initialization failed: {error_code}"
+                )
+                self.status = ConnectionStatus.DISCONNECTED
+                return False
+
+            # Verify connection
+            account_info = MetaTrader4.account_info()
+            if account_info is None:
+                logger.error(f"[{self.instance_id}] Failed to retrieve account info")
+                self.status = ConnectionStatus.DISCONNECTED
+                MetaTrader4.shutdown()
+                return False
+
+            self._mt4 = MetaTrader4
+            self.status = ConnectionStatus.CONNECTED
+
+            logger.info(
+                f"[{self.instance_id}] Successfully connected to MT4",
+                extra={
+                    'login': login,
+                    'server': server,
+                    'balance': account_info.balance if account_info else None
+                }
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] MT4 connection error: {str(e)}",
+                exc_info=True
+            )
+            self.status = ConnectionStatus.ERROR
+            return False
+
     def disconnect(self) -> None:
         """Disconnect from MT4"""
-        if self._impl:
-            self._impl.disconnect()
+        logger.info(f"[{self.instance_id}] Disconnecting from MT4")
+
+        try:
+            if self._mt4 and MT4_AVAILABLE:
+                MetaTrader4.shutdown()
+            self.status = ConnectionStatus.DISCONNECTED
+            self._mt4 = None
+
+            logger.info(f"[{self.instance_id}] Successfully disconnected from MT4")
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error during disconnect: {str(e)}",
+                exc_info=True
+            )
 
     def is_connected(self) -> bool:
         """Check if connected to MT4"""
-        if self._impl:
-            return self._impl.is_connected()
-        return False
+        if not self._mt4 or not MT4_AVAILABLE:
+            return False
+
+        try:
+            # Verify connection by checking account info
+            account_info = MetaTrader4.account_info()
+            return account_info is not None
+        except Exception:
+            return False
 
     def reconnect(self) -> bool:
-        """Reconnect to MT4"""
-        if self._impl:
-            return self._impl.reconnect()
+        """Reconnect to MT4 (not implemented)"""
+        logger.warning(f"[{self.instance_id}] Reconnect not implemented for MT4ConnectorV1")
         return False
 
     def get_account_info(self) -> Optional[AccountInfo]:
         """Get account information"""
-        if self._impl:
-            return self._impl.get_account_info()
-        return None
+        if not self.is_connected():
+            return None
+
+        try:
+            info = MetaTrader4.account_info()
+            if not info:
+                return None
+
+            return AccountInfo(
+                login=info.login,
+                server=info.server,
+                name=info.name,
+                balance=float(info.balance),
+                equity=float(info.equity),
+                margin=float(info.margin),
+                margin_free=float(info.margin_free),
+                margin_level=float(info.margin_level) if info.margin > 0 else 0.0,
+                profit=float(info.profit),
+                currency=info.currency,
+                leverage=int(info.leverage),
+                company=info.company
+            )
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error getting account info: {str(e)}",
+                exc_info=True
+            )
+            return None
 
     def get_symbols(self, group: str = "*") -> List[str]:
         """Get available symbols"""
-        if self._impl:
-            return self._impl.get_symbols(group)
-        return []
+        if not self.is_connected():
+            return []
+
+        try:
+            symbols = MetaTrader4.symbols_get(group=group)
+            return [s.name for s in symbols] if symbols else []
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error getting symbols: {str(e)}",
+                exc_info=True
+            )
+            return []
 
     def get_symbol_info(self, symbol: str) -> Optional[SymbolInfo]:
         """Get symbol information"""
-        if self._impl:
-            return self._impl.get_symbol_info(symbol)
-        return None
+        if not self.is_connected():
+            return None
+
+        try:
+            info = MetaTrader4.symbol_info(symbol)
+            if not info:
+                return None
+
+            return SymbolInfo(
+                name=info.name,
+                description=info.description,
+                point=float(info.point),
+                digits=int(info.digits),
+                trade_contract_size=float(info.trade_contract_size),
+                trade_tick_value=float(info.trade_tick_value),
+                trade_tick_size=float(info.trade_tick_size),
+                min_volume=float(info.volume_min),
+                max_volume=float(info.volume_max),
+                volume_step=float(info.volume_step),
+                bid=float(info.bid),
+                ask=float(info.ask),
+                spread=int(info.spread)
+            )
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error getting symbol info: {str(e)}",
+                exc_info=True
+            )
+            return None
 
     def select_symbol(self, symbol: str, enable: bool = True) -> bool:
         """Select symbol in Market Watch"""
-        if self._impl:
-            return self._impl.select_symbol(symbol, enable)
-        return False
+        if not self.is_connected():
+            return False
+
+        try:
+            return MetaTrader4.symbol_select(symbol, enable)
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error selecting symbol: {str(e)}",
+                exc_info=True
+            )
+            return False
 
     def get_tick(self, symbol: str) -> Optional[TickData]:
         """Get last tick for symbol"""
-        if self._impl:
-            return self._impl.get_tick(symbol)
-        return None
+        if not self.is_connected():
+            return None
+
+        try:
+            tick = MetaTrader4.symbol_info_tick(symbol)
+            if not tick:
+                return None
+
+            return TickData(
+                time=datetime.fromtimestamp(tick.time),
+                bid=float(tick.bid),
+                ask=float(tick.ask),
+                last=float(tick.last) if hasattr(tick, 'last') else float(tick.bid),
+                volume=int(tick.volume) if hasattr(tick, 'volume') else 0
+            )
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error getting tick: {str(e)}",
+                exc_info=True
+            )
+            return None
 
     def get_bars(self, symbol: str, timeframe: str, count: int,
                  start_pos: int = 0) -> List[OHLCBar]:
         """Get historical bars"""
-        if self._impl:
-            return self._impl.get_bars(symbol, timeframe, count, start_pos)
-        return []
+        if not self.is_connected():
+            return []
+
+        try:
+            # Convert timeframe string to MT4 constant
+            tf_map = {
+                'M1': MetaTrader4.TIMEFRAME_M1,
+                'M5': MetaTrader4.TIMEFRAME_M5,
+                'M15': MetaTrader4.TIMEFRAME_M15,
+                'M30': MetaTrader4.TIMEFRAME_M30,
+                'H1': MetaTrader4.TIMEFRAME_H1,
+                'H4': MetaTrader4.TIMEFRAME_H4,
+                'D1': MetaTrader4.TIMEFRAME_D1,
+                'W1': MetaTrader4.TIMEFRAME_W1,
+                'MN1': MetaTrader4.TIMEFRAME_MN1,
+            }
+
+            tf = tf_map.get(timeframe.upper(), MetaTrader4.TIMEFRAME_H1)
+
+            rates = MetaTrader4.copy_rates_from_pos(symbol, tf, start_pos, count)
+            if rates is None or len(rates) == 0:
+                return []
+
+            return [
+                OHLCBar(
+                    time=datetime.fromtimestamp(rate['time']),
+                    open=float(rate['open']),
+                    high=float(rate['high']),
+                    low=float(rate['low']),
+                    close=float(rate['close']),
+                    tick_volume=int(rate['tick_volume']),
+                    spread=int(rate['spread']) if 'spread' in rate else 0,
+                    real_volume=int(rate['real_volume']) if 'real_volume' in rate else 0
+                )
+                for rate in rates
+            ]
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error getting bars: {str(e)}",
+                exc_info=True
+            )
+            return []
 
     def send_order(self, request: TradeRequest) -> TradeResult:
         """Send trading order"""
-        if self._impl:
-            return self._impl.send_order(request)
-        return TradeResult(
-            success=False,
-            error_message="No MT4 connector implementation available"
-        )
+        if not self.is_connected():
+            return TradeResult(
+                success=False,
+                error_message="Not connected to MT4"
+            )
+
+        try:
+            # Convert order type
+            action_map = {
+                OrderType.BUY: MetaTrader4.ORDER_TYPE_BUY,
+                OrderType.SELL: MetaTrader4.ORDER_TYPE_SELL,
+                OrderType.BUY_LIMIT: MetaTrader4.ORDER_TYPE_BUY_LIMIT,
+                OrderType.SELL_LIMIT: MetaTrader4.ORDER_TYPE_SELL_LIMIT,
+                OrderType.BUY_STOP: MetaTrader4.ORDER_TYPE_BUY_STOP,
+                OrderType.SELL_STOP: MetaTrader4.ORDER_TYPE_SELL_STOP,
+            }
+
+            mt4_request = {
+                'action': MetaTrader4.TRADE_ACTION_DEAL,
+                'symbol': request.symbol,
+                'volume': request.volume,
+                'type': action_map[request.order_type],
+                'price': request.price or 0.0,
+                'sl': request.sl or 0.0,
+                'tp': request.tp or 0.0,
+                'deviation': request.deviation or 10,
+                'magic': request.magic or 0,
+                'comment': request.comment or "",
+            }
+
+            result = MetaTrader4.order_send(mt4_request)
+
+            if result.retcode == MetaTrader4.TRADE_RETCODE_DONE:
+                return TradeResult(
+                    success=True,
+                    order=result.order,
+                    deal=result.deal,
+                    volume=result.volume,
+                    price=result.price,
+                    comment=result.comment
+                )
+            else:
+                return TradeResult(
+                    success=False,
+                    error_code=result.retcode,
+                    error_message=result.comment
+                )
+
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error sending order: {str(e)}",
+                exc_info=True
+            )
+            return TradeResult(
+                success=False,
+                error_message=str(e)
+            )
 
     def close_position(self, ticket: int) -> TradeResult:
         """Close position by ticket"""
-        if self._impl:
-            return self._impl.close_position(ticket)
-        return TradeResult(
-            success=False,
-            error_message="No MT4 connector implementation available"
-        )
+        if not self.is_connected():
+            return TradeResult(
+                success=False,
+                error_message="Not connected to MT4"
+            )
+
+        try:
+            # Get position info
+            position = self.get_position_by_ticket(ticket)
+            if not position:
+                return TradeResult(
+                    success=False,
+                    error_message=f"Position {ticket} not found"
+                )
+
+            # Create close request
+            close_type = OrderType.SELL if position.type == OrderType.BUY else OrderType.BUY
+
+            request = TradeRequest(
+                symbol=position.symbol,
+                order_type=close_type,
+                volume=position.volume,
+                position=ticket
+            )
+
+            return self.send_order(request)
+
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error closing position: {str(e)}",
+                exc_info=True
+            )
+            return TradeResult(
+                success=False,
+                error_message=str(e)
+            )
 
     def modify_position(self, ticket: int, sl: Optional[float] = None,
                        tp: Optional[float] = None) -> TradeResult:
         """Modify position SL/TP"""
-        if self._impl:
-            return self._impl.modify_position(ticket, sl, tp)
-        return TradeResult(
-            success=False,
-            error_message="No MT4 connector implementation available"
-        )
+        if not self.is_connected():
+            return TradeResult(
+                success=False,
+                error_message="Not connected to MT4"
+            )
+
+        try:
+            request = {
+                'action': MetaTrader4.TRADE_ACTION_SLTP,
+                'position': ticket,
+                'sl': sl or 0.0,
+                'tp': tp or 0.0,
+            }
+
+            result = MetaTrader4.order_send(request)
+
+            if result.retcode == MetaTrader4.TRADE_RETCODE_DONE:
+                return TradeResult(success=True)
+            else:
+                return TradeResult(
+                    success=False,
+                    error_code=result.retcode,
+                    error_message=result.comment
+                )
+
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error modifying position: {str(e)}",
+                exc_info=True
+            )
+            return TradeResult(
+                success=False,
+                error_message=str(e)
+            )
 
     def get_positions(self, symbol: Optional[str] = None) -> List[Position]:
         """Get open positions"""
-        if self._impl:
-            return self._impl.get_positions(symbol)
-        return []
+        if not self.is_connected():
+            return []
+
+        try:
+            positions = MetaTrader4.positions_get(symbol=symbol) if symbol else MetaTrader4.positions_get()
+
+            if not positions:
+                return []
+
+            return [
+                Position(
+                    ticket=int(pos.ticket),
+                    symbol=pos.symbol,
+                    type=OrderType.BUY if pos.type == 0 else OrderType.SELL,
+                    volume=float(pos.volume),
+                    price_open=float(pos.price_open),
+                    price_current=float(pos.price_current),
+                    sl=float(pos.sl),
+                    tp=float(pos.tp),
+                    profit=float(pos.profit),
+                    swap=float(pos.swap),
+                    commission=float(pos.commission) if hasattr(pos, 'commission') else 0.0,
+                    magic=int(pos.magic),
+                    comment=pos.comment,
+                    time=datetime.fromtimestamp(pos.time)
+                )
+                for pos in positions
+            ]
+        except Exception as e:
+            logger.error(
+                f"[{self.instance_id}] Error getting positions: {str(e)}",
+                exc_info=True
+            )
+            return []
 
     def get_position_by_ticket(self, ticket: int) -> Optional[Position]:
         """Get position by ticket"""
-        if self._impl:
-            return self._impl.get_position_by_ticket(ticket)
-        return None
+        positions = self.get_positions()
+        return next((p for p in positions if p.ticket == ticket), None)
