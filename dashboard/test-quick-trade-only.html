@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Trade Test - Isolated</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1>Quick Trade Test (Isolated)</h1>
+                <button id="quickTradeBtn" class="btn btn-primary">⚡ Quick Trade</button>
+            </div>
+        </header>
+
+        <div style="padding: 20px; background: var(--card-bg); border-radius: 8px; margin-top: 20px;">
+            <h2>Testing Quick Trade Modal</h2>
+            <p>Click the button above to test the Quick Trade modal.</p>
+            <p>Open the console (F12) to see debug logs.</p>
+        </div>
+    </div>
+
+    <!-- Quick Trade Modal -->
+    <div id="quickTradeModal" class="modal" style="display: none;">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h2>⚡ Quick Trade</h2>
+                <button class="modal-close" id="closeQuickTradeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="quickTradeForm">
+                    <div class="form-group">
+                        <label for="qtSymbol">Currency Pair *</label>
+                        <select id="qtSymbol" required>
+                            <option value="">Select Currency...</option>
+                            <option value="EURUSD">EURUSD</option>
+                            <option value="GBPUSD">GBPUSD</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="qtVolume">Lots *</label>
+                            <input type="number" id="qtVolume" step="0.01" min="0.01" value="0.10" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Current Price</label>
+                            <div class="price-display">
+                                <span class="bid-price">Bid: <strong id="qtBidPrice">-</strong></span>
+                                <span class="ask-price">Ask: <strong id="qtAskPrice">-</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="qtStopLoss">Stop Loss (SL)</label>
+                            <input type="number" id="qtStopLoss" step="0.00001" placeholder="Optional">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="qtTakeProfit">Take Profit (TP)</label>
+                            <input type="number" id="qtTakeProfit" step="0.00001" placeholder="Optional">
+                        </div>
+                    </div>
+
+                    <div class="profit-calculator">
+                        <h3>📊 Profit Calculator</h3>
+                        <div class="calc-row">
+                            <span class="calc-label">Position Value:</span>
+                            <span class="calc-value" id="qtPositionValue">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Risk (if SL hit):</span>
+                            <span class="calc-value risk" id="qtRiskAmount">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Reward (if TP hit):</span>
+                            <span class="calc-value reward" id="qtRewardAmount">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Risk/Reward Ratio:</span>
+                            <span class="calc-value" id="qtRiskReward">-</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="qtComment">Comment</label>
+                        <input type="text" id="qtComment" placeholder="Optional trade comment" maxlength="30">
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-success btn-lg" id="qtBuyBtn">
+                            📈 BUY
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg" id="qtSellBtn">
+                            📉 SELL
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="qtCancelBtn">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mock API object for testing -->
+    <script>
+        // Mock API for testing
+        window.api = {
+            request: async (endpoint) => {
+                console.log('Mock API request:', endpoint);
+                return { currencies: [] };
+            },
+            openPosition: async (...args) => {
+                console.log('Mock openPosition:', args);
+                alert('This is a test - no actual trade will be executed');
+                return { ticket: 12345 };
+            }
+        };
+    </script>
+
+    <!-- Load Quick Trade Modal -->
+    <script src="js/quick-trade.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== Isolated Quick Trade Test ===');
+            console.log('DOM loaded');
+
+            try {
+                // Initialize without dashboard
+                window.quickTrade = new QuickTradeModal(null);
+                console.log('✓ QuickTradeModal initialized');
+                console.log('Button:', document.getElementById('quickTradeBtn'));
+                console.log('Modal:', document.getElementById('quickTradeModal'));
+            } catch (error) {
+                console.error('✗ QuickTradeModal initialization failed:', error);
+                console.error('Stack:', error.stack);
+            }
+        });
+    </script>
+</body>
+</html>

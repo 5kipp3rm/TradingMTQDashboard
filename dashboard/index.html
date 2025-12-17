@@ -17,8 +17,8 @@
                     <!-- Account Selector -->
                     <div id="accountSelectorContainer"></div>
 
+                    <button id="quickTradeBtn" class="btn btn-primary" style="margin-right: 10px;">⚡ Quick Trade</button>
                     <a href="accounts.html" class="btn btn-secondary" style="margin-right: 10px;">👥 Accounts</a>
-                    <a href="positions.html" class="btn btn-secondary" style="margin-right: 10px;">💹 Positions</a>
                     <a href="currencies.html" class="btn btn-secondary" style="margin-right: 10px;">⚙️ Currencies</a>
                     <a href="charts.html" class="btn btn-secondary" style="margin-right: 10px;">📈 Charts</a>
                     <a href="alerts.html" class="btn btn-secondary" style="margin-right: 10px;">🔔 Alerts</a>
@@ -111,6 +111,44 @@
             </div>
         </section>
 
+        <!-- Open Positions Section -->
+        <section class="table-section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>💹 Open Positions</h3>
+                    <div>
+                        <button id="refreshPositionsBtn" class="btn btn-secondary" style="margin-right: 10px;">🔄 Refresh</button>
+                        <button id="closeAllPositionsBtn" class="btn btn-danger">❌ Close All</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="positionsTable" class="trades-table">
+                            <thead>
+                                <tr>
+                                    <th>Ticket</th>
+                                    <th>Symbol</th>
+                                    <th>Type</th>
+                                    <th>Volume</th>
+                                    <th>Open Price</th>
+                                    <th>Current Price</th>
+                                    <th>SL</th>
+                                    <th>TP</th>
+                                    <th>Profit</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positionsTableBody">
+                                <tr>
+                                    <td colspan="10" class="loading-cell">Loading positions...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Recent Trades Table -->
         <section class="table-section">
             <div class="card">
@@ -176,9 +214,103 @@
         </section>
     </div>
 
+    <!-- Quick Trade Modal -->
+    <div id="quickTradeModal" class="modal" style="display: none;">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h2>⚡ Quick Trade</h2>
+                <button class="modal-close" id="closeQuickTradeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="quickTradeForm">
+                    <!-- Currency Selection -->
+                    <div class="form-group">
+                        <label for="qtSymbol">Currency Pair *</label>
+                        <select id="qtSymbol" required>
+                            <option value="">Select Currency...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <!-- Volume (Lots) -->
+                        <div class="form-group">
+                            <label for="qtVolume">Lots *</label>
+                            <input type="number" id="qtVolume" step="0.01" min="0.01" value="0.10" required>
+                        </div>
+
+                        <!-- Current Price Display -->
+                        <div class="form-group">
+                            <label>Current Price</label>
+                            <div class="price-display">
+                                <span class="bid-price">Bid: <strong id="qtBidPrice">-</strong></span>
+                                <span class="ask-price">Ask: <strong id="qtAskPrice">-</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <!-- Stop Loss -->
+                        <div class="form-group">
+                            <label for="qtStopLoss">Stop Loss (SL)</label>
+                            <input type="number" id="qtStopLoss" step="0.00001" placeholder="Optional">
+                        </div>
+
+                        <!-- Take Profit -->
+                        <div class="form-group">
+                            <label for="qtTakeProfit">Take Profit (TP)</label>
+                            <input type="number" id="qtTakeProfit" step="0.00001" placeholder="Optional">
+                        </div>
+                    </div>
+
+                    <!-- Profit Calculator -->
+                    <div class="profit-calculator">
+                        <h3>📊 Profit Calculator</h3>
+                        <div class="calc-row">
+                            <span class="calc-label">Position Value:</span>
+                            <span class="calc-value" id="qtPositionValue">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Risk (if SL hit):</span>
+                            <span class="calc-value risk" id="qtRiskAmount">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Reward (if TP hit):</span>
+                            <span class="calc-value reward" id="qtRewardAmount">$0.00</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">Risk/Reward Ratio:</span>
+                            <span class="calc-value" id="qtRiskReward">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Comment -->
+                    <div class="form-group">
+                        <label for="qtComment">Comment</label>
+                        <input type="text" id="qtComment" placeholder="Optional trade comment" maxlength="30">
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-success btn-lg" id="qtBuyBtn">
+                            📈 BUY
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg" id="qtSellBtn">
+                            📉 SELL
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="qtCancelBtn">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="js/account-manager.js"></script>
     <script src="js/api.js"></script>
     <script src="js/websocket.js"></script>
+    <script src="js/default-currencies.js"></script>
+    <script src="js/quick-trade.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>

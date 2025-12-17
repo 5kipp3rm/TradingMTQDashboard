@@ -83,6 +83,22 @@ class Dashboard {
         this.elements.exportBtn.addEventListener('click', () => {
             this.exportToCSV();
         });
+
+        // Position controls (check if elements exist)
+        const refreshPositionsBtn = document.getElementById('refreshPositionsBtn');
+        const closeAllPositionsBtn = document.getElementById('closeAllPositionsBtn');
+
+        if (refreshPositionsBtn) {
+            refreshPositionsBtn.addEventListener('click', () => {
+                this.loadOpenPositions();
+            });
+        }
+
+        if (closeAllPositionsBtn) {
+            closeAllPositionsBtn.addEventListener('click', () => {
+                this.closeAllPositions();
+            });
+        }
     }
 
     /**
@@ -257,6 +273,7 @@ class Dashboard {
             await Promise.all([
                 this.loadSummary(),
                 this.loadMetrics(),
+                this.loadOpenPositions(),
                 this.loadTrades(),
                 this.loadDailyPerformance(),
             ]);
@@ -637,9 +654,172 @@ class Dashboard {
             });
         }
     }
+
+    /**
+     * Load open positions
+     */
+    async loadOpenPositions() {
+        const positionsTableBody = document.getElementById('positionsTableBody');
+        if (!positionsTableBody) return;
+
+        try {
+            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
+
+            if (!accountId) {
+                positionsTableBody.innerHTML = '<tr><td colspan="10" class="loading-cell">Please select an account</td></tr>';
+                return;
+            }
+
+            const data = await api.getOpenPositions(accountId);
+            this.renderPositionsTable(data.positions || []);
+        } catch (error) {
+            console.error('Open Positions Load Error:', error);
+            positionsTableBody.innerHTML = '<tr><td colspan="10" class="loading-cell">Failed to load positions</td></tr>';
+        }
+    }
+
+    /**
+     * Render positions table
+     */
+    renderPositionsTable(positions) {
+        const positionsTableBody = document.getElementById('positionsTableBody');
+        if (!positionsTableBody) return;
+
+        if (!positions || positions.length === 0) {
+            positionsTableBody.innerHTML = '<tr><td colspan="10" class="loading-cell">No open positions</td></tr>';
+            return;
+        }
+
+        positionsTableBody.innerHTML = positions.map(pos => `
+            <tr>
+                <td>${pos.ticket}</td>
+                <td><strong>${pos.symbol}</strong></td>
+                <td><span class="badge ${pos.type === 'BUY' ? 'badge-success' : 'badge-danger'}">${pos.type}</span></td>
+                <td>${this.formatNumber(pos.volume, 2)}</td>
+                <td>${this.formatNumber(pos.price_open, 5)}</td>
+                <td>${this.formatNumber(pos.price_current, 5)}</td>
+                <td>${pos.sl > 0 ? this.formatNumber(pos.sl, 5) : '-'}</td>
+                <td>${pos.tp > 0 ? this.formatNumber(pos.tp, 5) : '-'}</td>
+                <td class="${pos.profit >= 0 ? 'profit' : 'loss'}">
+                    ${this.formatCurrency(pos.profit)}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="dashboard.modifyPosition(${pos.ticket})">✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick="dashboard.closePosition(${pos.ticket})">❌</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    /**
+     * Close a specific position
+     */
+    async closePosition(ticket) {
+        if (!confirm(`Close position #${ticket}?`)) return;
+
+        try {
+            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
+            if (!accountId) {
+                alert('Please select an account');
+                return;
+            }
+
+            await api.closePosition(accountId, ticket);
+            alert(`✅ Position #${ticket} closed successfully`);
+
+            // Reload positions and dashboard
+            await this.loadOpenPositions();
+            await this.loadDashboard();
+        } catch (error) {
+            console.error('Close Position Error:', error);
+            alert(`❌ Failed to close position: ${error.message}`);
+        }
+    }
+
+    /**
+     * Modify position SL/TP
+     */
+    async modifyPosition(ticket) {
+        const newSL = prompt('Enter new Stop Loss (or leave empty):');
+        const newTP = prompt('Enter new Take Profit (or leave empty):');
+
+        if (newSL === null && newTP === null) return;
+
+        try {
+            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
+            if (!accountId) {
+                alert('Please select an account');
+                return;
+            }
+
+            const sl = newSL ? parseFloat(newSL) : null;
+            const tp = newTP ? parseFloat(newTP) : null;
+
+            await api.modifyPosition(accountId, ticket, sl, tp);
+            alert(`✅ Position #${ticket} modified successfully`);
+
+            // Reload positions
+            await this.loadOpenPositions();
+        } catch (error) {
+            console.error('Modify Position Error:', error);
+            alert(`❌ Failed to modify position: ${error.message}`);
+        }
+    }
+
+    /**
+     * Close all positions
+     */
+    async closeAllPositions() {
+        if (!confirm('⚠️ Close ALL open positions? This action cannot be undone.')) return;
+
+        try {
+            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
+            if (!accountId) {
+                alert('Please select an account');
+                return;
+            }
+
+            const result = await api.bulkClosePositions(accountId);
+            alert(`✅ Closed ${result.closed_count || 0} positions successfully`);
+
+            // Reload positions and dashboard
+            await this.loadOpenPositions();
+            await this.loadDashboard();
+        } catch (error) {
+            console.error('Close All Positions Error:', error);
+            alert(`❌ Failed to close positions: ${error.message}`);
+        }
+    }
 }
 
 // Initialize dashboard when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new Dashboard();
+    console.log('DOM Content Loaded - Initializing dashboard...');
+
+    try {
+        window.dashboard = new Dashboard();
+        console.log('✓ Dashboard initialized');
+    } catch (error) {
+        console.error('✗ Dashboard initialization failed:', error);
+    }
+
+    // Initialize Quick Trade Modal
+    try {
+        window.quickTrade = new QuickTradeModal(window.dashboard);
+        console.log('✓ QuickTradeModal initialized');
+
+        // Test if button exists
+        const btn = document.getElementById('quickTradeBtn');
+        console.log('Quick Trade button found:', !!btn);
+
+        // Add manual test listener
+        if (btn) {
+            console.log('Adding test click listener to Quick Trade button');
+            btn.addEventListener('click', () => {
+                console.log('TEST: Quick Trade button was clicked (from manual listener)');
+            });
+        }
+    } catch (error) {
+        console.error('✗ QuickTradeModal initialization failed:', error);
+    }
 });
