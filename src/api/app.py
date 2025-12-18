@@ -21,11 +21,12 @@ from fastapi.staticfiles import StaticFiles
 from src.api.routes import (
     analytics, trades, health, websocket as ws_routes, alerts, charts,
     accounts, reports, currencies, account_connections, analytics_aggregated, positions,
-    config
+    config, trading_bot
 )
 from src.api.websocket import connection_manager
 from src.database.connection import init_db
 from src.utils.logger import setup_logging
+from src.services.trading_bot_service import trading_bot_service
 
 
 @asynccontextmanager
@@ -42,7 +43,17 @@ async def lifespan(app: FastAPI):
     # Startup: Start heartbeat loop
     heartbeat_task = asyncio.create_task(connection_manager.heartbeat_loop())
 
+    # Startup: Start trading bot service
+    await trading_bot_service.start()
+
+    logger = logging.getLogger("src.api.app")
+    logger.info("Trading bot service started - will auto-trade on connected accounts")
+
     yield
+
+    # Shutdown: Stop trading bot service
+    await trading_bot_service.stop()
+    logger.info("Trading bot service stopped")
 
     # Shutdown: Cancel heartbeat and close connections
     heartbeat_task.cancel()
@@ -133,6 +144,7 @@ def create_app() -> FastAPI:
     app.include_router(currencies.router, prefix="/api", tags=["currencies"])
     app.include_router(positions.router, prefix="/api", tags=["positions"])
     app.include_router(config.router, tags=["configuration"])
+    app.include_router(trading_bot.router, prefix="/api", tags=["trading-bot"])
 
     # Mount static files for dashboard (must be after API routes)
     dashboard_path = Path(__file__).parent.parent.parent / "dashboard"
