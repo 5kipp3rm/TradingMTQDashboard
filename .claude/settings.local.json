@@ -64,7 +64,10 @@
       "Bash(else)",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(timeout 10 tradingmtq serve:*)",
+      "Bash(timeout 15 python:*)",
+      "Bash(taskkill //F //IM python.exe)"
     ],
     "deny": [],
     "ask": []

@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.database import get_session, TradingAccount
+from src.database import get_db_dependency, TradingAccount
 from src.services.session_manager import session_manager
 from src.api.websocket import connection_manager
 
@@ -53,7 +53,7 @@ class BulkConnectionResponse(BaseModel):
 async def connect_account(
     account_id: int,
     force_reconnect: bool = Query(False, description="Force reconnect if already connected"),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Connect to MT5 account.
@@ -125,7 +125,7 @@ async def connect_account(
 @router.post("/accounts/{account_id}/disconnect", response_model=ConnectionStatusResponse)
 async def disconnect_account(
     account_id: int,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Disconnect from MT5 account.
@@ -170,7 +170,7 @@ async def disconnect_account(
 @router.get("/accounts/{account_id}/status", response_model=ConnectionStatusResponse)
 async def get_connection_status(
     account_id: int,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Get real-time connection status for account.
@@ -231,7 +231,7 @@ async def get_connection_status(
 
 @router.post("/accounts/connect-all", response_model=BulkConnectionResponse)
 async def connect_all_accounts(
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Connect all active accounts.
@@ -292,7 +292,7 @@ async def connect_all_accounts(
 
 @router.post("/accounts/disconnect-all", response_model=BulkConnectionResponse)
 async def disconnect_all_accounts(
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Disconnect all connected accounts.

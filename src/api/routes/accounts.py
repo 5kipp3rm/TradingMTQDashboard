@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, validator
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 
-from src.database import get_session, TradingAccount, AccountConnectionState, PlatformType
+from src.database import get_db_dependency, TradingAccount, AccountConnectionState, PlatformType
 from src.services.session_manager import session_manager
 from src.api.websocket import connection_manager
 
@@ -112,7 +112,7 @@ class AccountListResponse(BaseModel):
 @router.get("/accounts", response_model=AccountListResponse)
 async def list_accounts(
     active_only: bool = Query(False, description="Show only active accounts"),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     List all trading accounts.
@@ -166,7 +166,7 @@ async def list_accounts(
 @router.get("/accounts/{account_id}", response_model=AccountResponse)
 async def get_account(
     account_id: int,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Get specific trading account by ID.
@@ -201,7 +201,7 @@ async def get_account(
 @router.post("/accounts", response_model=AccountResponse, status_code=201)
 async def create_account(
     account_data: AccountCreate,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Create a new trading account.
@@ -275,7 +275,7 @@ async def create_account(
 async def update_account(
     account_id: int,
     account_data: AccountUpdate,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Update an existing trading account.
@@ -326,7 +326,7 @@ async def update_account(
 @router.delete("/accounts/{account_id}", status_code=204)
 async def delete_account(
     account_id: int,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Delete a trading account.
@@ -360,7 +360,7 @@ async def delete_account(
 @router.post("/accounts/{account_id}/set-default", response_model=AccountResponse)
 async def set_default_account(
     account_id: int,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Set an account as the default account.
@@ -413,7 +413,7 @@ async def set_default_account(
 @router.post("/accounts/{account_id}/activate", response_model=AccountResponse)
 async def activate_account(
     account_id: int,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Activate a trading account.
@@ -453,7 +453,7 @@ async def activate_account(
 @router.post("/accounts/{account_id}/deactivate", response_model=AccountResponse)
 async def deactivate_account(
     account_id: int,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Deactivate a trading account.

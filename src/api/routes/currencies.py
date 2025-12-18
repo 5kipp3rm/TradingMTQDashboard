@@ -12,7 +12,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from src.database import get_session, CurrencyConfiguration
+from src.database import get_db_dependency, CurrencyConfiguration
 from src.api.websocket import connection_manager
 
 
@@ -279,7 +279,7 @@ class CurrencyValidationResponse(BaseModel):
 @router.get("/currencies", response_model=CurrencyConfigListResponse)
 async def list_currencies(
     enabled_only: bool = Query(False, description="Show only enabled currencies"),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     List all currency configurations.
@@ -340,7 +340,7 @@ async def list_currencies(
 @router.get("/currencies/{symbol}", response_model=CurrencyConfigResponse)
 async def get_currency(
     symbol: str,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Get specific currency configuration by symbol.
@@ -389,7 +389,7 @@ async def get_currency(
 @router.post("/currencies", response_model=CurrencyConfigResponse, status_code=201)
 async def create_currency(
     config_data: CurrencyConfigCreate,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Create a new currency configuration.
@@ -482,7 +482,7 @@ async def create_currency(
 async def update_currency(
     symbol: str,
     config_data: CurrencyConfigUpdate,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Update an existing currency configuration.
@@ -558,7 +558,7 @@ async def update_currency(
 @router.delete("/currencies/{symbol}", status_code=204)
 async def delete_currency(
     symbol: str,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Delete a currency configuration.
@@ -590,7 +590,7 @@ async def delete_currency(
 @router.post("/currencies/{symbol}/enable", response_model=CurrencyConfigResponse)
 async def enable_currency(
     symbol: str,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Enable a currency for trading.
@@ -651,7 +651,7 @@ async def enable_currency(
 @router.post("/currencies/{symbol}/disable", response_model=CurrencyConfigResponse)
 async def disable_currency(
     symbol: str,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Disable a currency for trading.
@@ -712,7 +712,7 @@ async def disable_currency(
 @router.post("/currencies/validate", response_model=CurrencyValidationResponse)
 async def validate_currency_config(
     config_data: CurrencyConfigCreate,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Validate a currency configuration without saving.
@@ -776,7 +776,7 @@ class SyncResponse(BaseModel):
 
 @router.post("/currencies/reload", response_model=ReloadResponse)
 async def reload_from_yaml(
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Hot-reload currency configurations from YAML file.
@@ -816,7 +816,7 @@ async def reload_from_yaml(
 
 @router.post("/currencies/sync-to-yaml", response_model=SyncResponse)
 async def sync_to_yaml(
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Sync database configurations to YAML file.
@@ -854,7 +854,7 @@ async def sync_to_yaml(
 
 @router.get("/currencies/consistency")
 async def check_consistency(
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Check consistency between database and YAML configuration.
@@ -884,7 +884,7 @@ async def check_consistency(
 @router.post("/currencies/export")
 async def export_configuration(
     export_path: str = Query(..., description="Path to export file"),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Export current database configuration to a file.
@@ -914,7 +914,7 @@ async def export_configuration(
 @router.post("/currencies/import")
 async def import_configuration(
     import_path: str = Query(..., description="Path to import file"),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Import configuration from a file.

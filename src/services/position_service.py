@@ -748,7 +748,7 @@ class PositionExecutionService:
                 }
                 result.append(position_dict)
 
-            logger.info(f"Retrieved {len(result)} open positions", account_id=account_id)
+            logger.info(f"Retrieved {len(result)} open positions", extra={"account_id": account_id})
             return result
 
         except Exception as e:

@@ -14,7 +14,7 @@ from .currency_models import (
     CurrencyConfiguration, StrategyType, Timeframe
 )
 from .repository import TradeRepository, SignalRepository, AccountSnapshotRepository
-from .connection import get_session, init_db, close_db
+from .connection import get_session, get_db_dependency, init_db, close_db
 
 __all__ = [
     'Base',
@@ -40,6 +40,7 @@ __all__ = [
     'SignalRepository',
     'AccountSnapshotRepository',
     'get_session',
+    'get_db_dependency',
     'init_db',
     'close_db',
 ]

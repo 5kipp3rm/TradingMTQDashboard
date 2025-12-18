@@ -65,7 +65,7 @@ def trade(config, aggressive, demo, interval, max_concurrent, enable_ml, enable_
         from ..utils.logger import get_logger
         logger = get_logger(__name__)
         logger.error(f"Trading error: {e}", exc_info=True)
-        click.echo(f"\n❌ Error: {e}", err=True)
+        click.echo(f"\n[ERROR] Error: {e}", err=True)
         raise click.Abort()
 
 
@@ -140,47 +140,47 @@ def aggregate(date, start, end, backfill):
         aggregator = DailyAggregator()
 
         if backfill:
-            click.echo("\n🔄 Backfilling all historical trade data...")
+            click.echo("\n[*] Backfilling all historical trade data...")
             results = aggregator.backfill()
 
             if results:
-                click.echo(f"✅ Aggregated {len(results)} days of data")
+                click.echo(f"[OK] Aggregated {len(results)} days of data")
                 click.echo(f"   Date range: {results[0].date} to {results[-1].date}")
             else:
-                click.echo("ℹ️  No trade data found to aggregate")
+                click.echo("[INFO] No trade data found to aggregate")
 
         elif date:
-            click.echo(f"\n🔄 Aggregating trades for {date.date()}...")
+            click.echo(f"\n[*] Aggregating trades for {date.date()}...")
             result = aggregator.aggregate_day(date.date())
 
             if result:
-                click.echo(f"✅ Aggregated {result.total_trades} trades")
+                click.echo(f"[OK] Aggregated {result.total_trades} trades")
                 click.echo(f"   Net profit: ${result.net_profit:.2f}")
                 click.echo(f"   Win rate: {result.win_rate:.1f}%")
             else:
-                click.echo(f"ℹ️  No closed trades found for {date.date()}")
+                click.echo(f"[INFO] No closed trades found for {date.date()}")
 
         elif start and end:
-            click.echo(f"\n🔄 Aggregating trades from {start.date()} to {end.date()}...")
+            click.echo(f"\n[*] Aggregating trades from {start.date()} to {end.date()}...")
             results = aggregator.aggregate_range(start.date(), end.date())
 
             if results:
-                click.echo(f"✅ Aggregated {len(results)} days of data")
+                click.echo(f"[OK] Aggregated {len(results)} days of data")
                 total_trades = sum(r.total_trades for r in results)
                 total_profit = sum(r.net_profit for r in results)
                 click.echo(f"   Total trades: {total_trades}")
                 click.echo(f"   Total profit: ${total_profit:.2f}")
             else:
-                click.echo("ℹ️  No trade data found in date range")
+                click.echo("[INFO] No trade data found in date range")
 
         else:
-            click.echo("❌ Please specify --backfill, --date, or --start/--end")
+            click.echo("[ERROR] Please specify --backfill, --date, or --start/--end")
             raise click.Abort()
 
         click.echo()
 
     except Exception as e:
-        click.echo(f"\n❌ Aggregation error: {e}", err=True)
+        click.echo(f"\n[ERROR] Aggregation error: {e}", err=True)
         raise click.Abort()
 
 
@@ -208,7 +208,7 @@ def serve(host, port, reload):
         # Initialize database
         init_db()
 
-        click.echo(f"\n🚀 Starting TradingMTQ Analytics API")
+        click.echo(f"\n[*] Starting TradingMTQ Analytics API")
         click.echo(f"   Host: {host}")
         click.echo(f"   Port: {port}")
         click.echo(f"   Docs: http://{host if host != '0.0.0.0' else 'localhost'}:{port}/api/docs")
@@ -225,11 +225,11 @@ def serve(host, port, reload):
         )
 
     except ImportError:
-        click.echo("❌ FastAPI or Uvicorn not installed", err=True)
+        click.echo("[ERROR] FastAPI or Uvicorn not installed", err=True)
         click.echo("   Install with: pip install fastapi uvicorn", err=True)
         raise click.Abort()
     except Exception as e:
-        click.echo(f"\n❌ Server error: {e}", err=True)
+        click.echo(f"\n[ERROR] Server error: {e}", err=True)
         raise click.Abort()
 
 

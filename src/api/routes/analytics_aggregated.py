@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.database import get_session
+from src.database import get_db_dependency
 from src.services.analytics_service import analytics_service
 
 
@@ -91,7 +91,7 @@ class AggregateTradesResponse(BaseModel):
 async def get_aggregate_performance(
     account_ids: Optional[str] = Query(None, description="Comma-separated list of account IDs (e.g., '1,2,3'). If not provided, aggregates all accounts."),
     days: int = Query(30, description="Number of days to look back", ge=1, le=365),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Get aggregated performance metrics across multiple accounts.
@@ -136,7 +136,7 @@ async def get_aggregate_performance(
 async def get_account_comparison(
     account_ids: Optional[str] = Query(None, description="Comma-separated list of account IDs (e.g., '1,2,3'). If not provided, compares all accounts."),
     days: int = Query(30, description="Number of days to look back", ge=1, le=365),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Get side-by-side comparison of performance across accounts.
@@ -180,7 +180,7 @@ async def get_account_comparison(
 
 @router.get("/analytics/summary", response_model=AggregateSummaryResponse)
 async def get_aggregate_summary(
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Get high-level summary across all accounts.
@@ -206,7 +206,7 @@ async def get_aggregate_trades(
     account_ids: Optional[str] = Query(None, description="Comma-separated list of account IDs (e.g., '1,2,3'). If not provided, includes all accounts."),
     limit: int = Query(100, description="Maximum number of trades to return", ge=1, le=1000),
     offset: int = Query(0, description="Number of trades to skip", ge=0),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_db_dependency)
 ):
     """
     Get trades from multiple accounts with pagination.

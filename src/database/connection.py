@@ -255,6 +255,56 @@ async def get_async_session() -> AsyncGenerator[Session, None]:
         logger.debug("Async database session closed")
 
 
+def get_db_dependency() -> Generator[Session, None, None]:
+    """
+    FastAPI dependency function for database sessions
+
+    This function is designed to work with FastAPI's Depends() system.
+    It properly handles session lifecycle including commit/rollback and cleanup.
+
+    Usage in FastAPI routes:
+        @router.get("/endpoint")
+        async def endpoint(db: Session = Depends(get_db_dependency)):
+            # Use db session here
+            pass
+
+    Yields:
+        SQLAlchemy Session instance
+
+    Raises:
+        DatabaseError: If session creation fails
+    """
+    if _SessionFactory is None:
+        raise DatabaseError(
+            "Database not initialized. Call init_db() first.",
+            context={'action': 'get_db_dependency'}
+        )
+
+    session: Session = _SessionFactory()
+
+    try:
+        logger.debug("FastAPI database session started")
+        yield session
+        session.commit()
+        logger.debug("FastAPI database session committed")
+
+    except Exception as e:
+        session.rollback()
+        logger.error(
+            "FastAPI database session error, rolling back",
+            error=str(e),
+            exc_info=True
+        )
+        raise DatabaseError(
+            f"Database session error: {e}",
+            context={'operation': 'fastapi_session_transaction'}
+        )
+
+    finally:
+        session.close()
+        logger.debug("FastAPI database session closed")
+
+
 def get_session_factory() -> sessionmaker:
     """
     Get session factory for manual session management

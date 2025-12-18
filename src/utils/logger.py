@@ -25,11 +25,11 @@ class ColoredFormatter(logging.Formatter):
     }
     
     ICONS = {
-        'DEBUG': '🔍',
-        'INFO': '✓',
-        'WARNING': '⚠️',
-        'ERROR': '✗',
-        'CRITICAL': '🚨',
+        'DEBUG': '[D]',
+        'INFO': '[I]',
+        'WARNING': '[W]',
+        'ERROR': '[E]',
+        'CRITICAL': '[C]',
     }
     
     def format(self, record):
@@ -147,7 +147,7 @@ def setup_logging(log_dir: str = "logs",
                                                'signal' in record.getMessage().lower())
         root_logger.addHandler(trade_handler)
     
-    root_logger.info("✓ Logging system initialized with enhanced formatting")
+    root_logger.info("Logging system initialized with enhanced formatting")
     return root_logger
 
 

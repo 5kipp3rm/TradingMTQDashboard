@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.database.connection import get_session as get_db
+from src.database.connection import get_db_dependency as get_db
 from src.services.position_service import position_service
 from src.api.websocket import connection_manager
 from src.utils.logger import get_logger
