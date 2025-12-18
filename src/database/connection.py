@@ -231,12 +231,15 @@ async def get_async_session() -> AsyncGenerator[Session, None]:
 
     session: Session = _SessionFactory()
 
+    # Set correlation context without using 'with' statement
+    ctx = CorrelationContext()
+    ctx.__enter__()
+
     try:
-        with CorrelationContext():
-            logger.debug("Async database session started")
-            yield session
-            session.commit()
-            logger.debug("Async database session committed")
+        logger.debug("Async database session started")
+        yield session
+        session.commit()
+        logger.debug("Async database session committed")
 
     except Exception as e:
         session.rollback()
@@ -251,6 +254,7 @@ async def get_async_session() -> AsyncGenerator[Session, None]:
         )
 
     finally:
+        ctx.__exit__(None, None, None)
         session.close()
         logger.debug("Async database session closed")
 
