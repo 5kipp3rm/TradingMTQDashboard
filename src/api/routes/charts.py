@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from collections import defaultdict
 
-from src.database.connection import get_session
+from src.database.connection import get_async_session
 from src.database.models import Trade, TradeStatus, SignalType, DailyPerformance, AccountSnapshot
 from sqlalchemy import func, and_, extract
 from src.utils.structured_logger import StructuredLogger
@@ -49,7 +49,7 @@ async def get_equity_curve(
         start_date = end_date - timedelta(days=90)
 
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             if granularity == "daily":
                 # Use daily performance data
                 start_dt = datetime.combine(start_date, datetime.min.time())
@@ -151,7 +151,7 @@ async def get_trade_distribution(
         start_date = end_date - timedelta(days=90)
 
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 
@@ -219,7 +219,7 @@ async def get_symbol_performance(
         start_date = end_date - timedelta(days=90)
 
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 
@@ -296,7 +296,7 @@ async def get_win_loss_analysis(
         start_date = end_date - timedelta(days=90)
 
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 
@@ -409,7 +409,7 @@ async def get_monthly_comparison(
         end_date = date.today()
         start_date = end_date - timedelta(days=months * 31)
 
-        with get_session() as session:
+        async with get_async_session() as session:
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 
@@ -483,7 +483,7 @@ async def get_risk_reward_scatter(
         start_date = end_date - timedelta(days=90)
 
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 

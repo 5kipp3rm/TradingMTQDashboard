@@ -34,14 +34,14 @@ async def get_status():
     Returns:
         Detailed system status
     """
-    from src.database.connection import get_session
+    from src.database.connection import get_async_session
     from src.analytics import get_scheduler
     from sqlalchemy import text
 
     # Check database connection
     db_status = "connected"
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             session.execute(text("SELECT 1"))
     except Exception as e:
         db_status = f"error: {str(e)}"

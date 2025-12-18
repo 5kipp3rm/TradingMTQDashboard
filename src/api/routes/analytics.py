@@ -9,7 +9,7 @@ from typing import Optional
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from src.database.connection import get_session
+from src.database.connection import get_async_session
 from src.database.repository import DailyPerformanceRepository
 from src.database.models import DailyPerformance
 from src.analytics import DailyAggregator
@@ -35,7 +35,7 @@ async def get_summary(
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
 
-    with get_session() as session:
+    async with get_async_session() as session:
         repo = DailyPerformanceRepository()
 
         # Use existing get_performance_summary method
@@ -87,7 +87,7 @@ async def get_daily_performance(
     if start_date is None:
         start_date = end_date - timedelta(days=limit)
 
-    with get_session() as session:
+    async with get_async_session() as session:
         # Query directly using SQLAlchemy
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
@@ -128,7 +128,7 @@ async def get_daily_performance_by_date(target_date: date):
     Returns:
         Daily performance metrics for the specified date
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         repo = DailyPerformanceRepository()
         record = repo.get_by_date(session, target_date)
 
@@ -189,7 +189,7 @@ async def get_performance_metrics(
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
 
-    with get_session() as session:
+    async with get_async_session() as session:
         # Query directly using SQLAlchemy
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
@@ -216,7 +216,11 @@ async def get_performance_metrics(
         for record in records:
             cumulative_profit += float(record.net_profit)
 
-            dates.append(record.date.date().isoformat() if isinstance(record.date, datetime) else record.date.isoformat())
+            dates.append(
+                record.date.date().isoformat()
+                if isinstance(record.date, datetime)
+                else record.date.isoformat()
+            )
             profits.append(round(cumulative_profit, 2))
             win_rates.append(float(record.win_rate) if record.win_rate else 0)
             trade_counts.append(record.total_trades)

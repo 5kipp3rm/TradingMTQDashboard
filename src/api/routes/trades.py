@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from datetime import date, datetime, timedelta
 
-from src.database.connection import get_session
+from src.database.connection import get_async_session
 from src.database.repository import TradeRepository
 from src.database.models import TradeStatus
 
@@ -36,7 +36,7 @@ async def get_trades(
     Returns:
         List of trades matching the filters
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         repo = TradeRepository()
 
         # Parse status if provided
@@ -109,7 +109,7 @@ async def get_trade_by_ticket(ticket: int):
     Returns:
         Trade details
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         repo = TradeRepository()
         trade = repo.get_by_ticket(session, ticket)
 
@@ -154,7 +154,7 @@ async def get_stats_by_symbol(days: int = Query(default=30, ge=1, le=365)):
     end_date = datetime.combine(date.today(), datetime.max.time())
     start_date = end_date - timedelta(days=days)
 
-    with get_session() as session:
+    async with get_async_session() as session:
         repo = TradeRepository()
         trades = repo.get_trades_by_date(
             session=session,

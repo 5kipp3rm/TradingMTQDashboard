@@ -103,7 +103,7 @@ async def list_report_configurations(
 
     Returns list of scheduled report configurations.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         query = session.query(ReportConfiguration)
 
         if active_only:
@@ -124,7 +124,7 @@ async def get_report_configuration(config_id: int):
 
     Returns detailed configuration information.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         config = session.get(ReportConfiguration, config_id)
 
         if not config:
@@ -140,7 +140,7 @@ async def create_report_configuration(config_data: ReportConfigCreate):
 
     Creates a new scheduled report configuration.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         # Convert frequency string to enum
         frequency = ReportFrequency(config_data.frequency)
         report_format = ReportFormat(config_data.report_format)
@@ -186,7 +186,7 @@ async def update_report_configuration(config_id: int, config_data: ReportConfigU
 
     Updates configuration parameters. Only provided fields are updated.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         config = session.get(ReportConfiguration, config_id)
 
         if not config:
@@ -224,7 +224,7 @@ async def delete_report_configuration(config_id: int):
 
     Deletes scheduled report configuration and associated history.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         config = session.get(ReportConfiguration, config_id)
 
         if not config:
@@ -245,7 +245,7 @@ async def activate_report_configuration(config_id: int):
 
     Sets configuration as active to enable scheduled generation.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         config = session.get(ReportConfiguration, config_id)
 
         if not config:
@@ -269,7 +269,7 @@ async def deactivate_report_configuration(config_id: int):
 
     Sets configuration as inactive to disable scheduled generation.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         config = session.get(ReportConfiguration, config_id)
 
         if not config:
@@ -341,7 +341,7 @@ async def get_report_history(
 
     Returns historical report generation records with status and details.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         query = session.query(ReportHistory)
 
         if config_id:
@@ -367,7 +367,7 @@ async def get_report_history_detail(history_id: int):
 
     Returns detailed information about a specific report generation.
     """
-    with get_session() as session:
+    async with get_async_session() as session:
         history = session.get(ReportHistory, history_id)
 
         if not history:

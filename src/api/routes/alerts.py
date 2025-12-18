@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from src.database.models import AlertConfiguration, AlertHistory, AlertType, NotificationChannel
-from src.database.connection import get_session
+from src.database.connection import get_async_session
 from src.utils.structured_logger import StructuredLogger
 
 logger = StructuredLogger(__name__)
@@ -82,7 +82,7 @@ async def get_alert_configurations():
         List of alert configurations
     """
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             configs = session.query(AlertConfiguration).all()
 
             result = []
@@ -131,7 +131,7 @@ async def get_alert_configuration(alert_type: str):
                 detail=f"Invalid alert_type. Valid types: {[t.value for t in AlertType]}"
             )
 
-        with get_session() as session:
+        async with get_async_session() as session:
             config = session.query(AlertConfiguration).filter(
                 AlertConfiguration.alert_type == alert_type_enum
             ).first()
@@ -183,7 +183,7 @@ async def create_alert_configuration(request: AlertConfigRequest):
                 detail=f"Invalid alert_type. Valid types: {[t.value for t in AlertType]}"
             )
 
-        with get_session() as session:
+        async with get_async_session() as session:
             # Check if configuration already exists
             existing = session.query(AlertConfiguration).filter(
                 AlertConfiguration.alert_type == alert_type_enum
@@ -260,7 +260,7 @@ async def update_alert_configuration(alert_type: str, request: AlertConfigReques
                 detail=f"Invalid alert_type. Valid types: {[t.value for t in AlertType]}"
             )
 
-        with get_session() as session:
+        async with get_async_session() as session:
             config = session.query(AlertConfiguration).filter(
                 AlertConfiguration.alert_type == alert_type_enum
             ).first()
@@ -326,7 +326,7 @@ async def delete_alert_configuration(alert_type: str):
                 detail=f"Invalid alert_type. Valid types: {[t.value for t in AlertType]}"
             )
 
-        with get_session() as session:
+        async with get_async_session() as session:
             config = session.query(AlertConfiguration).filter(
                 AlertConfiguration.alert_type == alert_type_enum
             ).first()
@@ -368,7 +368,7 @@ async def get_alert_history(
         List of alert history records
     """
     try:
-        with get_session() as session:
+        async with get_async_session() as session:
             query = session.query(AlertHistory)
 
             if alert_type:

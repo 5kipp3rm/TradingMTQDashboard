@@ -7,8 +7,8 @@ Uses Phase 0 patterns:
 - Automatic retry for transient failures
 - Connection pooling for performance
 """
-from typing import Optional, Generator
-from contextlib import contextmanager
+from typing import Optional, Generator, AsyncGenerator
+from contextlib import contextmanager, asynccontextmanager
 import os
 
 from sqlalchemy import create_engine, event, Engine
@@ -204,6 +204,55 @@ def get_session() -> Generator[Session, None, None]:
     finally:
         session.close()
         logger.debug("Database session closed")
+
+
+@asynccontextmanager
+async def get_async_session() -> AsyncGenerator[Session, None]:
+    """
+    Get database session context manager for async functions
+
+    Usage:
+        async with get_async_session() as session:
+            trade = Trade(...)
+            session.add(trade)
+            session.commit()
+
+    Yields:
+        SQLAlchemy Session instance
+
+    Raises:
+        DatabaseError: If session creation fails
+    """
+    if _SessionFactory is None:
+        raise DatabaseError(
+            "Database not initialized. Call init_db() first.",
+            context={'action': 'get_async_session'}
+        )
+
+    session: Session = _SessionFactory()
+
+    try:
+        with CorrelationContext():
+            logger.debug("Async database session started")
+            yield session
+            session.commit()
+            logger.debug("Async database session committed")
+
+    except Exception as e:
+        session.rollback()
+        logger.error(
+            "Async database session error, rolling back",
+            error=str(e),
+            exc_info=True
+        )
+        raise DatabaseError(
+            f"Database session error: {e}",
+            context={'operation': 'async_session_transaction'}
+        )
+
+    finally:
+        session.close()
+        logger.debug("Async database session closed")
 
 
 def get_session_factory() -> sessionmaker:
