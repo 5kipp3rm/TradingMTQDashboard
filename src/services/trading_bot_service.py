@@ -16,7 +16,8 @@ from src.database.models import TradingAccount
 from src.services.session_manager import session_manager
 from src.database import currency_models
 from src.strategies import SimpleMovingAverageStrategy
-from src.trading import CurrencyTraderConfig
+from src.trading.orchestrator import MultiCurrencyOrchestrator
+from src.trading.currency_trader import CurrencyTraderConfig
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -43,7 +44,7 @@ class TradingBotService:
         self.check_interval = check_interval
         self.is_running = False
         self._task: Optional[asyncio.Task] = None
-        self._traders: Dict[int, Any] = {}  # account_id -> trader instance
+        self._orchestrators: Dict[int, MultiCurrencyOrchestrator] = {}  # account_id -> orchestrator
 
         logger.info(f"Trading bot service initialized with {check_interval}s interval")
 
@@ -71,8 +72,8 @@ class TradingBotService:
             except asyncio.CancelledError:
                 pass
 
-        # Cleanup traders
-        self._traders.clear()
+        # Cleanup orchestrators
+        self._orchestrators.clear()
 
         logger.info("Trading bot service stopped")
 
@@ -112,7 +113,7 @@ class TradingBotService:
 
     async def _trade_account(self, account_id: int, db: Session):
         """
-        Execute trading logic for a single account.
+        Execute trading logic for a single account using MultiCurrencyOrchestrator.
 
         Args:
             account_id: Account ID to trade
@@ -130,7 +131,7 @@ class TradingBotService:
             logger.debug(f"Account {account_id} not active, skipping")
             return
 
-        # Get enabled currency configurations for this account
+        # Get enabled currency configurations from database
         currency_configs = db.query(currency_models.CurrencyConfiguration).filter(
             currency_models.CurrencyConfiguration.enabled == True
         ).all()
@@ -142,177 +143,82 @@ class TradingBotService:
         logger.info(f"Trading account {account_id} ({account.account_name}) - "
                    f"{len(currency_configs)} active currencies")
 
-        # Execute trades for each enabled currency
-        for config in currency_configs:
-            try:
-                await self._trade_currency(connector, account, config, db)
-            except Exception as e:
-                logger.error(f"Error trading {config.symbol} on account {account_id}: {e}")
-
-    async def _trade_currency(self, connector, account: TradingAccount,
-                             config: currency_models.CurrencyConfiguration, db: Session):
-        """
-        Execute trading logic for a single currency on an account.
-
-        Args:
-            connector: MT5 connector instance
-            account: Trading account
-            config: Currency configuration
-            db: Database session
-        """
-        symbol = config.symbol
-
-        # Check if currency is available on MT5
-        try:
-            symbol_info = connector.get_symbol_info(symbol)
-            if not symbol_info:
-                logger.warning(f"Symbol {symbol} not available on account {account.account_number}")
-                return
-        except Exception as e:
-            logger.error(f"Failed to get symbol info for {symbol}: {e}")
-            return
-
-        # Get current positions for this symbol
-        positions = connector.get_positions_by_symbol(symbol)
-
-        # Create strategy
-        strategy = SimpleMovingAverageStrategy(
-            fast_period=config.fast_period,
-            slow_period=config.slow_period,
-            timeframe=config.timeframe
-        )
-
-        # Get historical data
-        try:
-            candles = connector.get_historical_data(
-                symbol=symbol,
-                timeframe=config.timeframe,
-                count=config.slow_period + 50  # Get enough bars for indicators
+        # Get or create orchestrator for this account
+        if account_id not in self._orchestrators:
+            logger.info(f"Creating new orchestrator for account {account_id}")
+            orchestrator = MultiCurrencyOrchestrator(
+                connector=connector,
+                max_concurrent_trades=15,  # Default from config
+                portfolio_risk_percent=10.0,  # Default from config
+                use_intelligent_manager=False  # Disable AI features for now
             )
 
-            if not candles or len(candles) < config.slow_period:
-                logger.warning(f"Insufficient data for {symbol}")
-                return
-        except Exception as e:
-            logger.error(f"Failed to get historical data for {symbol}: {e}")
-            return
+            # Add all enabled currencies to orchestrator
+            for config in currency_configs:
+                try:
+                    # Create strategy
+                    strategy = SimpleMovingAverageStrategy({
+                        'fast_period': config.fast_period,
+                        'slow_period': config.slow_period,
+                        'sl_pips': config.sl_pips,
+                        'tp_pips': config.tp_pips
+                    })
 
-        # Generate signal
-        signal = strategy.generate_signal(candles)
+                    # Create trader config
+                    trader_config = CurrencyTraderConfig(
+                        symbol=config.symbol,
+                        strategy=strategy,
+                        risk_percent=config.risk_percent,
+                        timeframe=config.timeframe,
+                        cooldown_seconds=60,  # 1 minute cooldown
+                        max_position_size=config.max_position_size,
+                        min_position_size=config.min_position_size,
+                        use_position_trading=True,  # Use position-based trading
+                        allow_position_stacking=False,  # Disable stacking for safety
+                        max_positions_same_direction=1,
+                        max_total_positions=5,
+                        stacking_risk_multiplier=1.0,
+                        fast_period=config.fast_period,
+                        slow_period=config.slow_period,
+                        sl_pips=config.sl_pips,
+                        tp_pips=config.tp_pips
+                    )
 
-        if signal == 0:  # No signal
-            logger.debug(f"{symbol}: No signal")
-            return
+                    # Add currency to orchestrator
+                    trader = orchestrator.add_currency(trader_config)
+                    if trader:
+                        logger.info(f"Added {config.symbol} to orchestrator for account {account_id}")
+                    else:
+                        logger.warning(f"Failed to add {config.symbol} to orchestrator (symbol not available)")
 
-        # Determine order type
-        order_type = "BUY" if signal > 0 else "SELL"
+                except Exception as e:
+                    logger.error(f"Error adding {config.symbol} to orchestrator: {e}")
 
-        # Check if we already have a position in this direction
-        existing_position = None
-        for pos in positions:
-            if pos.type == order_type:
-                existing_position = pos
-                break
+            # Store orchestrator
+            self._orchestrators[account_id] = orchestrator
+            logger.info(f"Orchestrator created with {len(orchestrator.traders)} currency pairs")
+        else:
+            orchestrator = self._orchestrators[account_id]
+            logger.debug(f"Using existing orchestrator for account {account_id}")
 
-        if existing_position:
-            logger.debug(f"{symbol}: Already have {order_type} position #{existing_position.ticket}")
-            return
-
-        # Calculate position size based on risk
-        volume = self._calculate_position_size(
-            connector, symbol, config, account
-        )
-
-        if volume <= 0:
-            logger.warning(f"{symbol}: Invalid volume calculated: {volume}")
-            return
-
-        # Calculate SL/TP
-        current_price = symbol_info.ask if order_type == "BUY" else symbol_info.bid
-        point = symbol_info.point
-
-        sl_price = None
-        tp_price = None
-
-        if config.sl_pips > 0:
-            sl_distance = config.sl_pips * 10 * point  # Convert pips to price
-            sl_price = current_price - sl_distance if order_type == "BUY" else current_price + sl_distance
-
-        if config.tp_pips > 0:
-            tp_distance = config.tp_pips * 10 * point  # Convert pips to price
-            tp_price = current_price + tp_distance if order_type == "BUY" else current_price - tp_distance
-
-        # Execute trade
-        logger.info(f"{symbol}: {order_type} signal - Opening position (volume: {volume})")
-
+        # Execute one trading cycle using orchestrator
         try:
-            result = connector.open_position(
-                symbol=symbol,
-                order_type=order_type,
-                volume=volume,
-                stop_loss=sl_price,
-                take_profit=tp_price,
-                comment=f"TradingMTQ Auto - {config.strategy_type}"
-            )
+            logger.info(f"Processing trading cycle for account {account_id}")
+            results = orchestrator.process_single_cycle(management_config=None)
 
-            if result and result.get('success'):
-                ticket = result.get('ticket')
-                logger.info(f"{symbol}: Position opened successfully - Ticket #{ticket}")
+            # Log results
+            executed_count = sum(1 for r in results['currencies'].values() if r.get('executed'))
+            if executed_count > 0:
+                logger.info(f"Account {account_id}: {executed_count} trades executed this cycle")
             else:
-                error = result.get('error', 'Unknown error') if result else 'No response'
-                logger.error(f"{symbol}: Failed to open position - {error}")
+                logger.debug(f"Account {account_id}: No trades executed this cycle")
+
+            if results.get('errors'):
+                for error in results['errors']:
+                    logger.error(f"Account {account_id} cycle error: {error}")
 
         except Exception as e:
-            logger.error(f"{symbol}: Exception opening position - {e}", exc_info=True)
-
-    def _calculate_position_size(self, connector, symbol: str,
-                                 config: currency_models.CurrencyConfiguration,
-                                 account: TradingAccount) -> float:
-        """
-        Calculate position size based on risk management rules.
-
-        Args:
-            connector: MT5 connector
-            symbol: Trading symbol
-            config: Currency configuration
-            account: Trading account
-
-        Returns:
-            Position size in lots
-        """
-        try:
-            account_info = connector.get_account_info()
-            if not account_info:
-                return config.min_position_size
-
-            balance = account_info.balance
-
-            # Simple risk-based calculation
-            risk_amount = balance * (config.risk_percent / 100)
-
-            # Get symbol info for tick value
-            symbol_info = connector.get_symbol_info(symbol)
-            if not symbol_info:
-                return config.min_position_size
-
-            # Calculate lot size (simplified)
-            # In production, this should account for pip value, stop loss distance, etc.
-            volume = config.min_position_size
-
-            # Apply max position size limit
-            volume = min(volume, config.max_position_size)
-
-            # Ensure within broker limits
-            if hasattr(symbol_info, 'volume_min'):
-                volume = max(volume, symbol_info.volume_min)
-            if hasattr(symbol_info, 'volume_max'):
-                volume = min(volume, symbol_info.volume_max)
-
-            return round(volume, 2)
-
-        except Exception as e:
-            logger.error(f"Error calculating position size: {e}")
-            return config.min_position_size
+            logger.error(f"Error in trading cycle for account {account_id}: {e}", exc_info=True)
 
     def get_status(self) -> Dict[str, Any]:
         """
@@ -323,12 +229,17 @@ class TradingBotService:
         """
         connected_accounts = session_manager.list_active_sessions()
 
+        # Count total currency traders across all orchestrators
+        total_traders = sum(
+            len(orch.traders) for orch in self._orchestrators.values()
+        )
+
         return {
             "is_running": self.is_running,
             "check_interval": self.check_interval,
             "connected_accounts": len(connected_accounts),
             "account_ids": connected_accounts,
-            "active_traders": len(self._traders)
+            "active_traders": total_traders
         }
 
 
