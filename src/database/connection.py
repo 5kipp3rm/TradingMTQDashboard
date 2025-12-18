@@ -23,6 +23,7 @@ from src.utils.error_handlers import handle_mt5_errors
 from .models import Base
 # Import all models to ensure tables are created
 from . import currency_models  # noqa: F401
+from . import bot_models  # noqa: F401
 
 logger = StructuredLogger(__name__)
 

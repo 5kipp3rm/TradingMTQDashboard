@@ -13,6 +13,9 @@ from .report_models import (
 from .currency_models import (
     CurrencyConfiguration, StrategyType, Timeframe
 )
+from .bot_models import (
+    BotState, BotStatus
+)
 from .repository import TradeRepository, SignalRepository, AccountSnapshotRepository
 from .connection import get_session, get_db_dependency, init_db, close_db
 
@@ -36,6 +39,8 @@ __all__ = [
     'CurrencyConfiguration',
     'StrategyType',
     'Timeframe',
+    'BotState',
+    'BotStatus',
     'TradeRepository',
     'SignalRepository',
     'AccountSnapshotRepository',
