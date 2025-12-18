@@ -252,7 +252,7 @@ class PositionExecutionService:
 
             except OrderExecutionError as e:
                 error_msg = str(e)
-                logger.error("Order execution error", error=error_msg, exc_info=True)
+                logger.error(f"Order execution error: {error_msg}", exc_info=True)
                 return False, None, error_msg
             except Exception as e:
                 error_msg = f"Unexpected error during order execution: {str(e)}"
@@ -281,7 +281,7 @@ class PositionExecutionService:
         Returns:
             Tuple of (success: bool, error_message: Optional[str])
         """
-        logger.info("Closing position", account_id=account_id, ticket=ticket)
+        logger.info(f"Closing position - account_id={account_id}, ticket={ticket}")
 
         try:
             # Get account from database
@@ -330,7 +330,7 @@ class PositionExecutionService:
 
             except OrderExecutionError as e:
                 error_msg = str(e)
-                logger.error("Order execution error during close", error=error_msg, exc_info=True)
+                logger.error(f"Order execution error during close: {error_msg}", exc_info=True)
                 return False, error_msg
             except Exception as e:
                 error_msg = f"Unexpected error closing position: {str(e)}"
@@ -468,7 +468,7 @@ class PositionExecutionService:
 
             except OrderExecutionError as e:
                 error_msg = str(e)
-                logger.error("Order execution error during modify", error=error_msg, exc_info=True)
+                logger.error(f"Order execution error during modify: {error_msg}", exc_info=True)
                 return False, error_msg
             except Exception as e:
                 error_msg = f"Unexpected error modifying position: {str(e)}"
@@ -689,7 +689,7 @@ class PositionExecutionService:
                 "contract_size": symbol_info.contract_size
             }
 
-            logger.info("Position preview generated", account_id=account_id, preview=preview)
+            logger.info(f"Position preview generated - account_id={account_id}")
             return preview
 
         except Exception as e:
@@ -714,7 +714,7 @@ class PositionExecutionService:
         Returns:
             List of position dictionaries
         """
-        logger.info("Getting open positions", account_id=account_id, symbol=symbol)
+        logger.info(f"Getting open positions - account_id={account_id}, symbol={symbol}")
 
         try:
             # Get account from database

@@ -285,11 +285,7 @@ async def open_position(
     - **message**: Error message (if failed)
     """
     logger.info(
-        "API: Open position request",
-        account_id=request.account_id,
-        symbol=request.symbol,
-        order_type=request.order_type,
-        volume=request.volume
+        f"API: Open position request - account_id={request.account_id}, symbol={request.symbol}, order_type={request.order_type}, volume={request.volume}"
     )
 
     try:
@@ -364,9 +360,7 @@ async def close_position(
     - **message**: Error message (if failed)
     """
     logger.info(
-        "API: Close position request",
-        ticket=ticket,
-        account_id=account_id
+        f"API: Close position request - ticket={ticket}, account_id={account_id}"
     )
 
     try:
@@ -435,11 +429,7 @@ async def modify_position(
     - **message**: Error message (if failed)
     """
     logger.info(
-        "API: Modify position request",
-        ticket=ticket,
-        account_id=account_id,
-        new_sl=request.stop_loss,
-        new_tp=request.take_profit
+        f"API: Modify position request - ticket={ticket}, account_id={account_id}, new_sl={request.stop_loss}, new_tp={request.take_profit}"
     )
 
     try:
@@ -504,9 +494,7 @@ async def bulk_close_positions(
     - **results**: Detailed results for each position
     """
     logger.info(
-        "API: Bulk close positions request",
-        account_id=request.account_id,
-        symbol=request.symbol
+        f"API: Bulk close positions request - account_id={request.account_id}, symbol={request.symbol}"
     )
 
     try:
@@ -570,11 +558,7 @@ async def preview_position(
     - Whether margin is sufficient
     """
     logger.info(
-        "API: Preview position request",
-        account_id=request.account_id,
-        symbol=request.symbol,
-        order_type=request.order_type,
-        volume=request.volume
+        f"API: Preview position request - account_id={request.account_id}, symbol={request.symbol}, order_type={request.order_type}, volume={request.volume}"
     )
 
     try:
@@ -633,9 +617,7 @@ async def get_open_positions(
     - Current profit/loss
     """
     logger.info(
-        "API: Get open positions request",
-        account_id=account_id,
-        symbol=symbol
+        f"API: Get open positions request - account_id={account_id}, symbol={symbol}"
     )
 
     try:

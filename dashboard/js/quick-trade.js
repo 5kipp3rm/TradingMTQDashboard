@@ -171,13 +171,22 @@ class QuickTradeModal {
      */
     async loadCurrencies() {
         try {
-            // Use the currencies API endpoint
-            const response = await api.request('/currencies?enabled=true');
-            this.currencies = response.currencies || [];
+            // Try the new config API first
+            const response = await api.request('/config/currencies?enabled_only=true');
 
-            // If API returns no currencies, use defaults
+            if (response && Array.isArray(response)) {
+                this.currencies = response;
+                console.log(`Loaded ${this.currencies.length} currencies from config API`);
+            } else {
+                // Fallback to old currencies API
+                console.log('Config API returned no data, trying old currencies API');
+                const fallbackResponse = await api.request('/currencies?enabled=true');
+                this.currencies = fallbackResponse.currencies || [];
+            }
+
+            // If still no currencies, use defaults from default-currencies.js
             if (this.currencies.length === 0 && typeof getEnabledDefaultCurrencies === 'function') {
-                console.log('No currencies from API, using default currencies');
+                console.log('No currencies from API, using default currencies from JS');
                 this.currencies = getEnabledDefaultCurrencies();
             }
 

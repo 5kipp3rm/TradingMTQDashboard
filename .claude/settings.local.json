@@ -52,7 +52,19 @@
       "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT4_MAC_LIMITATIONS.md )",
       "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT5_QUICK_START_MAC.md )",
       "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT4_IMPLEMENTATION_SUMMARY.md )",
-      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT5_IMPLEMENTATION_SUMMARY.md)"
+      "Bash(/Users/mfinkels/CodePlatform/PersonalCode/TradingMTQ/docs/MT5_IMPLEMENTATION_SUMMARY.md)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(sqlite3:*)",
+      "Bash(for file in account-manager.js api.js websocket.js quick-trade.js dashboard.js)",
+      "Bash(do)",
+      "Bash(if:*)",
+      "Bash(then)",
+      "Bash(echo:*)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(kill:*)"
     ],
     "deny": [],
     "ask": []

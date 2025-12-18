@@ -3,8 +3,7 @@
  * Handles CRUD operations, filtering, and validation for currency pairs
  */
 
-// API Client
-const api = new APIClient();
+// API Client (already declared in api.js, so we use the global instance)
 
 // State
 let currencies = [];
