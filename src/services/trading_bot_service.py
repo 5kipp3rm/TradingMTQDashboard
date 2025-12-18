@@ -131,8 +131,8 @@ class TradingBotService:
             return
 
         # Get enabled currency configurations for this account
-        currency_configs = db.query(currency_models.CurrencyConfig).filter(
-            currency_models.CurrencyConfig.enabled == True
+        currency_configs = db.query(currency_models.CurrencyConfiguration).filter(
+            currency_models.CurrencyConfiguration.enabled == True
         ).all()
 
         if not currency_configs:
@@ -150,7 +150,7 @@ class TradingBotService:
                 logger.error(f"Error trading {config.symbol} on account {account_id}: {e}")
 
     async def _trade_currency(self, connector, account: TradingAccount,
-                             config: currency_models.CurrencyConfig, db: Session):
+                             config: currency_models.CurrencyConfiguration, db: Session):
         """
         Execute trading logic for a single currency on an account.
 
@@ -266,7 +266,7 @@ class TradingBotService:
             logger.error(f"{symbol}: Exception opening position - {e}", exc_info=True)
 
     def _calculate_position_size(self, connector, symbol: str,
-                                 config: currency_models.CurrencyConfig,
+                                 config: currency_models.CurrencyConfiguration,
                                  account: TradingAccount) -> float:
         """
         Calculate position size based on risk management rules.
