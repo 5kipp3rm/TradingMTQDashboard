@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Settings - TradingMTQ</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/currencies.css">
+    <style>
+        .config-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .config-tab {
+            padding: 1rem 2rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .config-tab:hover {
+            color: var(--text-primary);
+            background: rgba(var(--primary-rgb), 0.05);
+        }
+
+        .config-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .category-group {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .category-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .currency-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .currency-card {
+            padding: 1rem;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .currency-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .currency-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .currency-symbol {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .currency-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        .currency-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .currency-detail {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+        }
+
+        .currency-detail strong {
+            color: var(--text-primary);
+        }
+
+        .currency-actions {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .preferences-form {
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .form-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .favorites-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .favorite-tag {
+            padding: 0.5rem 1rem;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .favorite-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            padding: 1.5rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <h1>⚙️ Configuration Settings</h1>
+        </div>
+        <div class="navbar-links">
+            <a href="index.html">Dashboard</a>
+            <a href="accounts.html">Accounts</a>
+            <a href="positions.html">Positions</a>
+            <a href="currencies.html">Trading Strategies</a>
+            <a href="config.html" class="active">Settings</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Initializing...</span>
+            </div>
+            <div class="status-item">
+                <span id="lastUpdate">Not updated yet</span>
+            </div>
+        </div>
+
+        <!-- Configuration Tabs -->
+        <div class="config-tabs">
+            <button class="config-tab active" data-tab="currencies">Trading Currencies</button>
+            <button class="config-tab" data-tab="preferences">Trading Preferences</button>
+            <button class="config-tab" data-tab="favorites">Favorites & Recent</button>
+            <button class="config-tab" data-tab="stats">Statistics</button>
+        </div>
+
+        <!-- Currencies Tab -->
+        <div id="currencies-tab" class="tab-content active">
+            <div class="toolbar">
+                <div class="toolbar-section">
+                    <input type="text" id="currencySearch" placeholder="Search currencies..." class="search-input">
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="all">All Categories</option>
+                    </select>
+                    <select id="statusFilterCurr" class="filter-select">
+                        <option value="all">All Status</option>
+                        <option value="enabled">Enabled Only</option>
+                        <option value="disabled">Disabled Only</option>
+                    </select>
+                </div>
+                <div class="toolbar-section">
+                    <button class="btn btn-primary" id="addCurrencyBtn">
+                        ➕ Add Custom Currency
+                    </button>
+                    <button class="btn" id="refreshCurrenciesBtn">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div id="currenciesContainer"></div>
+        </div>
+
+        <!-- Preferences Tab -->
+        <div id="preferences-tab" class="tab-content">
+            <form id="preferencesForm" class="preferences-form">
+                <div class="form-section">
+                    <h3 class="form-section-title">Default Trading Parameters</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="defaultVolume">Default Volume (lots)</label>
+                            <input type="number" id="defaultVolume" step="0.01" min="0.01" max="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="defaultSlPips">Default SL (pips)</label>
+                            <input type="number" id="defaultSlPips" step="1" min="0">
+                            <small>Leave 0 for no default</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="defaultTpPips">Default TP (pips)</label>
+                            <input type="number" id="defaultTpPips" step="1" min="0">
+                            <small>Leave 0 for no default</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3 class="form-section-title">Risk Management</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="maxRiskPercent">Max Risk Per Trade (%)</label>
+                            <input type="number" id="maxRiskPercent" step="0.1" min="0.1" max="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxDailyLossPercent">Max Daily Loss (%)</label>
+                            <input type="number" id="maxDailyLossPercent" step="0.1" min="0.1" max="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxPositions">Max Open Positions</label>
+                            <input type="number" id="maxPositions" step="1" min="1" max="100" required>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">💾 Save Preferences</button>
+            </form>
+        </div>
+
+        <!-- Favorites Tab -->
+        <div id="favorites-tab" class="tab-content">
+            <div class="stats-grid" style="margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-value" id="favoritesCount">0</div>
+                    <div class="stat-label">Favorite Currencies</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="recentCount">0</div>
+                    <div class="stat-label">Recent Currencies</div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">⭐ Favorite Currencies</h3>
+                <div class="favorites-list" id="favoritesList"></div>
+                <p class="empty-state-text" id="emptyFavorites" style="display: none;">No favorites yet. Enable currencies you trade frequently.</p>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">🕒 Recently Used</h3>
+                <div class="favorites-list" id="recentList"></div>
+                <p class="empty-state-text" id="emptyRecent" style="display: none;">No recent currencies yet.</p>
+            </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="stats-tab" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalCurrencies">0</div>
+                    <div class="stat-label">Total Currencies</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="enabledCurrencies">0</div>
+                    <div class="stat-label">Enabled</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="disabledCurrencies">0</div>
+                    <div class="stat-label">Disabled</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="customCurrencies">0</div>
+                    <div class="stat-label">Custom</div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">By Category</h3>
+                <div id="categoryStats"></div>
+            </div>
+
+            <div class="toolbar" style="margin-top: 2rem;">
+                <div class="toolbar-section">
+                    <button class="btn btn-primary" id="exportConfigBtn">
+                        📥 Export Configuration
+                    </button>
+                    <button class="btn" id="importConfigBtn">
+                        📤 Import Configuration
+                    </button>
+                    <button class="btn btn-danger" id="resetConfigBtn">
+                        ⚠️ Reset to Defaults
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Currency Modal -->
+    <div class="modal" id="currencyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Custom Currency</h2>
+                <button class="modal-close" id="modalCloseBtn">&times;</button>
+            </div>
+            <form id="currencyForm">
+                <div class="form-group">
+                    <label for="symbol">Symbol *</label>
+                    <input type="text" id="symbol" required maxlength="20" placeholder="e.g., CUSTOM">
+                </div>
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <input type="text" id="description" required maxlength="200" placeholder="e.g., My Custom Pair">
+                </div>
+                <div class="form-group">
+                    <label for="category">Category *</label>
+                    <input type="text" id="category" required maxlength="50" placeholder="e.g., Custom">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="digits">Digits</label>
+                        <input type="number" id="digits" min="0" max="8" value="5" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="point">Point</label>
+                        <input type="number" id="point" step="0.00001" value="0.00001" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contractSize">Contract Size</label>
+                        <input type="number" id="contractSize" min="1" value="100000" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="minLot">Min Lot</label>
+                        <input type="number" id="minLot" step="0.01" value="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="maxLot">Max Lot</label>
+                        <input type="number" id="maxLot" step="0.01" value="100.0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lotStep">Lot Step</label>
+                        <input type="number" id="lotStep" step="0.01" value="0.01" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="spreadTypical">Typical Spread (pips)</label>
+                    <input type="number" id="spreadTypical" step="0.1" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="enabled" checked>
+                        Enabled
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Currency</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/config.js"></script>
+</body>
+</html>

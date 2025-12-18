@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modal Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #0f172a;
+            color: white;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        /* Modal Overlay */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal[style*="display: flex"],
+        .modal[style*="display:flex"] {
+            display: flex !important;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modal Test Page</h1>
+    <p>This is a simple test to verify the modal functionality works.</p>
+
+    <button id="testBtn" class="btn">⚡ Open Test Modal</button>
+
+    <div id="testModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Test Modal</h2>
+                <button class="modal-close" id="closeBtn">&times;</button>
+            </div>
+            <div>
+                <p>If you can see this, the modal is working correctly!</p>
+                <button class="btn" id="closeBtn2">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('=== Modal Test Script ===');
+
+        const btn = document.getElementById('testBtn');
+        const modal = document.getElementById('testModal');
+        const closeBtn = document.getElementById('closeBtn');
+        const closeBtn2 = document.getElementById('closeBtn2');
+
+        console.log('Button:', btn);
+        console.log('Modal:', modal);
+        console.log('Modal initial display:', window.getComputedStyle(modal).display);
+
+        function openModal() {
+            console.log('Opening modal...');
+            modal.style.display = 'flex';
+            console.log('Modal display set to:', modal.style.display);
+            console.log('Modal computed display:', window.getComputedStyle(modal).display);
+        }
+
+        function closeModal() {
+            console.log('Closing modal...');
+            modal.style.display = 'none';
+        }
+
+        btn.addEventListener('click', (e) => {
+            console.log('Button clicked!');
+            e.preventDefault();
+            openModal();
+        });
+
+        closeBtn.addEventListener('click', closeModal);
+        closeBtn2.addEventListener('click', closeModal);
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        console.log('Event listeners attached');
+    </script>
+</body>
+</html>
