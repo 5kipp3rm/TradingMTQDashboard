@@ -120,6 +120,7 @@ class MT5Connector(BaseMetaTraderConnector):
         super().__init__(instance_id, PlatformType.MT5)
         self._initialized = False
         self._no_bars_count = {}  # Track consecutive no-bar warnings per symbol
+        self._autotrading_warned = False  # Track if we've warned about AutoTrading
         logger.info("MT5Connector initialized", instance_id=instance_id)
 
     @handle_mt5_errors(retry_count=3, retry_delay=2.0)
@@ -206,6 +207,9 @@ class MT5Connector(BaseMetaTraderConnector):
                 instance_id=self.instance_id
             )
 
+            # Check AutoTrading status and warn if disabled
+            self._check_autotrading_status()
+
             return True
 
     def disconnect(self) -> None:
@@ -239,6 +243,58 @@ class MT5Connector(BaseMetaTraderConnector):
             return account is not None
         except:
             return False
+
+    def _check_autotrading_status(self) -> bool:
+        """
+        Check if AutoTrading is enabled in the MT5 terminal
+
+        Returns:
+            True if AutoTrading is enabled, False otherwise
+
+        Note:
+            The MT5 Python API does not provide a direct way to check AutoTrading status.
+            We detect it by examining the account_info trade_allowed flag, though this
+            isn't perfect as it can be disabled for other reasons.
+        """
+        try:
+            account = mt5.account_info()
+            if account is None:
+                return False
+
+            # Check if trading is allowed on the account
+            if not account.trade_allowed:
+                if not self._autotrading_warned:
+                    logger.warning(
+                        "Trading is disabled on this account",
+                        account_login=account.login,
+                        instance_id=self.instance_id,
+                        instructions="\n\n"
+                        "*** IMPORTANT: AutoTrading may be disabled ***\n\n"
+                        "To enable AutoTrading in MetaTrader 5:\n"
+                        "1. Open MetaTrader 5 terminal\n"
+                        "2. Click the 'AutoTrading' button in the toolbar (or press Alt+A)\n"
+                        "3. Or go to: Tools -> Options -> Expert Advisors -> Check 'Allow algorithmic trading'\n"
+                        "4. Ensure the account allows trading (check account settings with your broker)\n\n"
+                        "Note: The Python API cannot enable AutoTrading programmatically for security reasons.\n"
+                        "This is a terminal-level security feature that requires manual user activation.\n"
+                    )
+                    self._autotrading_warned = True
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.error("Failed to check AutoTrading status", error=str(e), exc_info=True)
+            return False
+
+    def is_autotrading_enabled(self) -> bool:
+        """
+        Public method to check AutoTrading status
+
+        Returns:
+            True if AutoTrading appears to be enabled, False otherwise
+        """
+        return self._check_autotrading_status()
 
     @handle_mt5_errors(retry_count=2, retry_delay=1.0)
     def reconnect(self) -> bool:
@@ -665,6 +721,42 @@ class MT5Connector(BaseMetaTraderConnector):
 
             if result.retcode != mt5.TRADE_RETCODE_DONE:
                 error_desc = trade_server_return_code_description(result.retcode)
+
+                # Special handling for AutoTrading disabled error (10027)
+                if result.retcode == 10027:  # TRADE_RETCODE_CLIENT_DISABLES_AT
+                    logger.error(
+                        "AutoTrading is DISABLED - Cannot execute orders",
+                        retcode=result.retcode,
+                        instructions="\n\n"
+                        "===============================================\n"
+                        "*** AUTOTRADING IS DISABLED IN MT5 TERMINAL ***\n"
+                        "===============================================\n\n"
+                        "To enable AutoTrading:\n\n"
+                        "METHOD 1 - Toolbar Button:\n"
+                        "  1. Open MetaTrader 5 terminal\n"
+                        "  2. Look for the 'AutoTrading' button in the toolbar\n"
+                        "  3. Click it (or press Alt+A) to enable\n"
+                        "  4. The button should be highlighted/pressed when enabled\n\n"
+                        "METHOD 2 - Options Menu:\n"
+                        "  1. Open MetaTrader 5 terminal\n"
+                        "  2. Go to: Tools -> Options -> Expert Advisors\n"
+                        "  3. Check the box: 'Allow algorithmic trading'\n"
+                        "  4. Click OK\n\n"
+                        "IMPORTANT:\n"
+                        "  - AutoTrading CANNOT be enabled programmatically via Python\n"
+                        "  - This is a security feature of MetaTrader 5\n"
+                        "  - You must manually enable it in the terminal\n"
+                        "  - After enabling, retry your trading command\n\n"
+                    )
+                    raise OrderExecutionError(
+                        f"Order not executed: {error_desc}\n\n"
+                        "AutoTrading is disabled in MetaTrader 5 terminal.\n"
+                        "Enable it manually by clicking the AutoTrading button in MT5 toolbar (or press Alt+A),\n"
+                        "or go to Tools -> Options -> Expert Advisors -> Check 'Allow algorithmic trading'",
+                        error_code=result.retcode,
+                        context=build_order_context(request.symbol, request.action.value, request.volume, ticket=result.order)
+                    )
+
                 logger.warning("Order not executed", retcode=result.retcode, error_desc=error_desc)
                 raise OrderExecutionError(
                     f"Order not executed: {error_desc}",
