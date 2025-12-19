@@ -125,7 +125,7 @@ class MT5Connector(BaseMetaTraderConnector):
 
     @handle_mt5_errors(retry_count=3, retry_delay=2.0)
     def connect(self, login: int, password: str, server: str,
-                timeout: int = 60000, portable: bool = False, **kwargs) -> bool:
+                timeout: int = 60000, portable: bool = False, path: Optional[str] = None, **kwargs) -> bool:
         """
         Connect to MT5 terminal
 
@@ -135,6 +135,7 @@ class MT5Connector(BaseMetaTraderConnector):
             server: Broker server
             timeout: Connection timeout in milliseconds
             portable: Use portable mode
+            path: Path to MT5 terminal directory (required for portable mode with multiple instances)
 
         Returns:
             True if connected successfully
@@ -145,23 +146,55 @@ class MT5Connector(BaseMetaTraderConnector):
         """
         with CorrelationContext():
             self.status = ConnectionStatus.CONNECTING
+
+            # Generate default path if portable mode is enabled but no path provided
+            if portable and path is None:
+                # Use instance_id to create unique path for each account
+                import os
+                import platform
+
+                if platform.system() == 'Windows':
+                    base_dir = os.path.join(os.environ.get('APPDATA', 'C:\\'), 'TradingMTQ', 'MT5_Instances')
+                else:
+                    base_dir = os.path.join(os.path.expanduser('~'), '.tradingmtq', 'mt5_instances')
+
+                path = os.path.join(base_dir, str(self.instance_id))
+
+                # Create directory if it doesn't exist
+                os.makedirs(path, exist_ok=True)
+
+                logger.info(
+                    "Generated portable mode path",
+                    path=path,
+                    instance_id=self.instance_id
+                )
+
             logger.info(
                 "Connecting to MT5",
                 server=server,
                 login=login,
                 timeout=timeout,
+                portable=portable,
+                path=path,
                 instance_id=self.instance_id
             )
 
             # Initialize MT5
             if not self._initialized:
-                if not mt5.initialize(
-                    login=login,
-                    password=password,
-                    server=server,
-                    timeout=timeout,
-                    portable=portable
-                ):
+                # Build initialization parameters
+                init_params = {
+                    'login': login,
+                    'password': password,
+                    'server': server,
+                    'timeout': timeout,
+                    'portable': portable
+                }
+
+                # Add path parameter only if provided (for portable mode)
+                if path is not None:
+                    init_params['path'] = path
+
+                if not mt5.initialize(**init_params):
                     error = mt5.last_error()
                     error_code = error[0] if isinstance(error, tuple) else error
 
@@ -187,7 +220,8 @@ class MT5Connector(BaseMetaTraderConnector):
                 'password': password,
                 'server': server,
                 'timeout': timeout,
-                'portable': portable
+                'portable': portable,
+                'path': path
             }
 
             # Verify connection

@@ -28,6 +28,7 @@ class ConnectCommand(ICommand):
     server: str
     timeout: int = 60000
     portable: bool = False
+    path: Optional[str] = None  # Path for portable mode (enables multi-instance support)
 
     def get_type(self) -> str:
         return "connect"
@@ -40,6 +41,7 @@ class ConnectCommand(ICommand):
             "server": self.server,
             "timeout": self.timeout,
             "portable": self.portable,
+            "path": self.path,
         }
 
     @classmethod
@@ -50,6 +52,7 @@ class ConnectCommand(ICommand):
             server=data["server"],
             timeout=data.get("timeout", 60000),
             portable=data.get("portable", False),
+            path=data.get("path"),
         )
 
 

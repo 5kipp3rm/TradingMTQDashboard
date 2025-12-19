@@ -141,6 +141,7 @@ class WorkerManagerService:
                 server=request.server,
                 timeout=request.timeout,
                 portable=request.portable,
+                path=request.path,
                 auto_connect=request.auto_connect,
             )
 

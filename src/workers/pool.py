@@ -85,6 +85,7 @@ class WorkerPoolManager:
         server: str,
         timeout: int = 60000,
         portable: bool = False,
+        path: Optional[str] = None,
         auto_connect: bool = True
     ) -> str:
         """
@@ -97,6 +98,7 @@ class WorkerPoolManager:
             server: Broker server
             timeout: Connection timeout (ms)
             portable: Use portable mode
+            path: Path for portable mode (auto-generated if None and portable=True)
             auto_connect: Automatically connect after starting
 
         Returns:
@@ -118,6 +120,25 @@ class WorkerPoolManager:
             raise ValueError(
                 f"Maximum workers limit reached ({self.max_workers})"
             )
+
+        # Generate path for portable mode if not provided
+        # Note: MT5Connector will also auto-generate path if needed, but we
+        # can optionally generate it here for visibility and control
+        if portable and path is None:
+            import os
+            import platform
+
+            if platform.system() == 'Windows':
+                base_dir = os.path.join(os.environ.get('APPDATA', 'C:\\'), 'TradingMTQ', 'MT5_Instances')
+            else:
+                base_dir = os.path.join(os.path.expanduser('~'), '.tradingmtq', 'mt5_instances')
+
+            path = os.path.join(base_dir, str(account_id))
+
+            # Create directory if it doesn't exist
+            os.makedirs(path, exist_ok=True)
+
+            logger.info(f"Generated portable mode path for account {account_id}: {path}")
 
         # Create worker ID
         worker_id = f"worker-{account_id}-{int(datetime.utcnow().timestamp())}"
@@ -148,6 +169,7 @@ class WorkerPoolManager:
                 "server": server,
                 "timeout": timeout,
                 "portable": portable,
+                "path": path,
             }
         )
 
@@ -167,7 +189,8 @@ class WorkerPoolManager:
                 password=password,
                 server=server,
                 timeout=timeout,
-                portable=portable
+                portable=portable,
+                path=path  # Pass the path to the connect command
             )
 
             result = handle.send_command(connect_cmd, timeout=10.0)

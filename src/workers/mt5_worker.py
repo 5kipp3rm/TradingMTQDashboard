@@ -162,7 +162,8 @@ class MT5Worker(BaseWorker):
             password=command.password,
             server=command.server,
             timeout=command.timeout,
-            portable=command.portable
+            portable=command.portable,
+            path=command.path
         )
 
         self._connected = success

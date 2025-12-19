@@ -34,6 +34,7 @@ class WorkerCreationRequest:
     server: str
     timeout: int = 60000
     portable: bool = False
+    path: Optional[str] = None  # Path for portable mode (enables multi-instance support)
     auto_connect: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
@@ -45,6 +46,7 @@ class WorkerCreationRequest:
             "server": self.server,
             "timeout": self.timeout,
             "portable": self.portable,
+            "path": self.path,
             "auto_connect": self.auto_connect,
         }
 
