@@ -55,7 +55,7 @@ class WorkerManagerService:
         self,
         config_service: ConfigurationService,
         worker_pool: WorkerPoolManager,
-        validator: Optional[AccountConfigValidator] = None,
+        validator: Optional[AccountConfigurationValidator] = None,
     ):
         """
         Initialize worker manager service
