@@ -67,7 +67,7 @@ class WorkerManagerService:
         """
         self.config_service = config_service
         self.worker_pool = worker_pool
-        self.validator = validator or AccountConfigValidator()
+        self.validator = validator or AccountConfigurationValidator()
         self._worker_info: Dict[str, WorkerInfo] = {}  # account_id -> WorkerInfo
 
         logger.info(
