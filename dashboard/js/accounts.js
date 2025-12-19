@@ -148,64 +148,121 @@ async function deleteAccount(accountId) {
 async function connectAccount(accountId) {
     try {
         showToast('Connecting account...', 'info');
-        await apiRequest(`/accounts/${accountId}/connect`, {
-            method: 'POST'
-        });
-        showToast('Account connected successfully', 'success');
+
+        // Get account details
+        const account = accounts.find(a => a.id === accountId);
+        if (!account) {
+            throw new Error('Account not found');
+        }
+
+        // Use Phase 4 worker system
+        if (typeof workerConnector !== 'undefined') {
+            await workerConnector.connectAccount(account);
+            showToast('✅ Phase 4 worker started successfully!', 'success');
+        } else {
+            // Fallback to old system if worker connector not available
+            await apiRequest(`/accounts/${accountId}/connect`, {
+                method: 'POST'
+            });
+            showToast('Account connected successfully', 'success');
+        }
+
         await loadConnectionStates();
         renderAccountsTable();
     } catch (error) {
         console.error('Failed to connect account:', error);
+        showToast(`Failed to connect: ${error.message}`, 'error');
     }
 }
 
 async function disconnectAccount(accountId) {
     try {
         showToast('Disconnecting account...', 'info');
-        await apiRequest(`/accounts/${accountId}/disconnect`, {
-            method: 'POST'
-        });
-        showToast('Account disconnected successfully', 'success');
+
+        // Get account details
+        const account = accounts.find(a => a.id === accountId);
+        if (!account) {
+            throw new Error('Account not found');
+        }
+
+        // Use Phase 4 worker system
+        if (typeof workerConnector !== 'undefined') {
+            await workerConnector.disconnectAccount(account);
+            showToast('✅ Phase 4 worker stopped successfully!', 'success');
+        } else {
+            // Fallback to old system if worker connector not available
+            await apiRequest(`/accounts/${accountId}/disconnect`, {
+                method: 'POST'
+            });
+            showToast('Account disconnected successfully', 'success');
+        }
+
         await loadConnectionStates();
         renderAccountsTable();
     } catch (error) {
         console.error('Failed to disconnect account:', error);
+        showToast(`Failed to disconnect: ${error.message}`, 'error');
     }
 }
 
 async function connectAllAccounts() {
-    if (!confirm('Connect to all active accounts?')) {
+    if (!confirm('Connect to all active accounts using Phase 4 workers?')) {
         return;
     }
 
     try {
         showToast('Connecting all accounts...', 'info');
-        const result = await apiRequest('/accounts/connect-all', {
-            method: 'POST'
-        });
-        showToast(`Connected ${result.successful} of ${result.total} accounts`, 'success');
+
+        // Use Phase 4 worker system
+        if (typeof workerConnector !== 'undefined') {
+            const result = await workerConnector.connectAllAccounts(accounts);
+            showToast(`✅ Phase 4: Connected ${result.successful} of ${result.total} accounts`, 'success');
+
+            // Show details if there were failures
+            if (result.failed > 0) {
+                console.warn('Some accounts failed to connect:', result.results.filter(r => !r.success));
+            }
+        } else {
+            // Fallback to old system
+            const result = await apiRequest('/accounts/connect-all', {
+                method: 'POST'
+            });
+            showToast(`Connected ${result.successful} of ${result.total} accounts`, 'success');
+        }
+
         await loadConnectionStates();
         renderAccountsTable();
     } catch (error) {
         console.error('Failed to connect all accounts:', error);
+        showToast(`Failed to connect accounts: ${error.message}`, 'error');
     }
 }
 
 async function disconnectAllAccounts() {
-    if (!confirm('Disconnect from all connected accounts?')) {
+    if (!confirm('Disconnect from all connected Phase 4 workers?')) {
         return;
     }
 
     try {
         showToast('Disconnecting all accounts...', 'info');
-        const result = await apiRequest('/accounts/disconnect-all', {
-            method: 'POST'
-        });
-        showToast(`Disconnected ${result.successful} of ${result.total} accounts`, 'success');
+
+        // Use Phase 4 worker system
+        if (typeof workerConnector !== 'undefined') {
+            const result = await workerConnector.disconnectAllWorkers();
+            showToast(`✅ Phase 4: Disconnected ${result.successful} workers`, 'success');
+        } else {
+            // Fallback to old system
+            const result = await apiRequest('/accounts/disconnect-all', {
+                method: 'POST'
+            });
+            showToast(`Disconnected ${result.successful} of ${result.total} accounts`, 'success');
+        }
+
         await loadConnectionStates();
         renderAccountsTable();
     } catch (error) {
         console.error('Failed to disconnect all accounts:', error);
+        showToast(`Failed to disconnect accounts: ${error.message}`, 'error');
     }
 }
 

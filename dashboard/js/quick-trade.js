@@ -30,6 +30,7 @@ class QuickTradeModal {
             closeQuickTradeModal: document.getElementById('closeQuickTradeModal'),
 
             // Form fields
+            qtAccount: document.getElementById('qtAccount'),
             qtSymbol: document.getElementById('qtSymbol'),
             qtVolume: document.getElementById('qtVolume'),
             qtStopLoss: document.getElementById('qtStopLoss'),
@@ -130,6 +131,9 @@ class QuickTradeModal {
         try {
             console.log('Opening Quick Trade modal...');
 
+            // Load connected accounts
+            await this.loadConnectedAccounts();
+
             // Load currencies if not loaded
             if (this.currencies.length === 0) {
                 await this.loadCurrencies();
@@ -152,6 +156,48 @@ class QuickTradeModal {
         } catch (error) {
             console.error('Error opening Quick Trade modal:', error);
             alert('Failed to open Quick Trade modal');
+        }
+    }
+
+    /**
+     * Load connected accounts for dropdown
+     */
+    async loadConnectedAccounts() {
+        try {
+            // Get connected Phase 4 workers
+            if (typeof workerConnector !== 'undefined') {
+                const workers = await workerConnector.getConnectedWorkers();
+                this.populateAccountDropdown(workers);
+                console.log(`Loaded ${workers.length} connected Phase 4 workers`);
+            } else {
+                console.warn('Worker connector not available, account dropdown will be empty');
+            }
+        } catch (error) {
+            console.error('Error loading connected accounts:', error);
+        }
+    }
+
+    /**
+     * Populate account dropdown
+     */
+    populateAccountDropdown(workers) {
+        this.elements.qtAccount.innerHTML = '<option value="">Select Account...</option>';
+
+        if (!workers || workers.length === 0) {
+            this.elements.qtAccount.innerHTML += '<option value="" disabled>No connected accounts</option>';
+            return;
+        }
+
+        workers.forEach(worker => {
+            const option = document.createElement('option');
+            option.value = worker.account_id;
+            option.textContent = `${worker.account_id}`;
+            this.elements.qtAccount.appendChild(option);
+        });
+
+        // Auto-select first account if only one is available
+        if (workers.length === 1) {
+            this.elements.qtAccount.value = workers[0].account_id;
         }
     }
 
@@ -401,24 +447,24 @@ class QuickTradeModal {
      */
     async executeTrade(orderType) {
         try {
-            // Validate
-            const symbol = this.elements.qtSymbol.value;
-            const volume = parseFloat(this.elements.qtVolume.value);
+            // Validate account selection
+            const accountId = this.elements.qtAccount.value;
+            if (!accountId) {
+                alert('Please select a trading account');
+                return;
+            }
 
+            // Validate symbol
+            const symbol = this.elements.qtSymbol.value;
             if (!symbol) {
                 alert('Please select a currency pair');
                 return;
             }
 
+            // Validate volume
+            const volume = parseFloat(this.elements.qtVolume.value);
             if (!volume || volume <= 0) {
                 alert('Please enter a valid volume');
-                return;
-            }
-
-            // Get account ID
-            const accountId = typeof accountManager !== 'undefined' ? accountManager.currentAccountId : null;
-            if (!accountId) {
-                alert('Please select an account first');
                 return;
             }
 
