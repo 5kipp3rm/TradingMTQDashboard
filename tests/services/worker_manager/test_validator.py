@@ -5,6 +5,7 @@ Tests validation logic for account configurations based on Phase 1 model structu
 """
 
 import pytest
+from unittest.mock import Mock
 from src.services.worker_manager.validator import AccountConfigurationValidator
 from src.services.worker_manager.models import ValidationResult
 from src.config.v2.models import (
@@ -14,6 +15,7 @@ from src.config.v2.models import (
     StrategyConfig,
     StrategyType,
     TimeFrame,
+    PositionManagementConfig,
 )
 
 
@@ -39,18 +41,43 @@ def valid_risk_config():
 def valid_strategy_config():
     """Create valid strategy configuration"""
     return StrategyConfig(
-        strategy_type=StrategyType.POSITION,
+        strategy_type=StrategyType.SIMPLE_MA,
         timeframe=TimeFrame.M5,
     )
 
 
 @pytest.fixture
-def valid_currency():
+def valid_position_management_config():
+    """Create valid position management configuration"""
+    return PositionManagementConfig(
+        enable_breakeven=True,
+        breakeven_trigger_pips=15.0,
+        breakeven_offset_pips=2.0,
+        enable_trailing=True,
+        trailing_start_pips=20.0,
+        trailing_distance_pips=10.0,
+    )
+
+
+@pytest.fixture
+def valid_currency(valid_risk_config, valid_strategy_config, valid_position_management_config):
     """Create valid currency configuration"""
     return CurrencyConfiguration(
         symbol="EURUSD",
         enabled=True,
+        risk=valid_risk_config,
+        strategy=valid_strategy_config,
+        position_management=valid_position_management_config,
     )
+
+
+@pytest.fixture
+def invalid_currency():
+    """Create mock invalid currency configuration with empty symbol"""
+    currency = Mock(spec=CurrencyConfiguration)
+    currency.symbol = ""
+    currency.enabled = True
+    return currency
 
 
 @pytest.fixture
@@ -91,10 +118,11 @@ class TestValidatorAccountIdValidation:
 
     def test_validate_empty_account_id_fails(self, validator, valid_currency):
         """Empty account ID should fail validation"""
-        config = AccountConfig(
-            account_id="",
-            currencies=[valid_currency],
-        )
+        # AccountConfig fails at creation with empty account_id, so we use Mock
+        config = Mock(spec=AccountConfig)
+        config.account_id = ""
+        config.currencies = [valid_currency]
+        config.default_risk = None
 
         result = validator.validate(config)
 
@@ -104,10 +132,11 @@ class TestValidatorAccountIdValidation:
 
     def test_validate_whitespace_account_id_fails(self, validator, valid_currency):
         """Whitespace-only account ID should fail validation"""
-        config = AccountConfig(
-            account_id="   ",
-            currencies=[valid_currency],
-        )
+        # AccountConfig fails at creation with empty account_id, so we use Mock
+        config = Mock(spec=AccountConfig)
+        config.account_id = "   "
+        config.currencies = [valid_currency]
+        config.default_risk = None
 
         result = validator.validate(config)
 
@@ -143,21 +172,23 @@ class TestValidatorRiskParametersValidation:
 
     def test_validate_high_risk_percent_warns(self, validator, valid_currency):
         """High risk_percent (but within valid range) should warn"""
-        # risk_percent > 10 warns, but RiskConfig only allows up to 10.0
-        # So we test at the boundary
-        risk = RiskConfig(
-            risk_percent=10.0,  # At the upper limit
-            max_positions=5,
-        )
-        config = AccountConfig(
-            account_id="test-account",
-            currencies=[valid_currency],
-            default_risk=risk,
-        )
+        # Validator warns when risk_percent > 10, so test at boundary
+        # Since RiskConfig allows 0.1-10.0, we can't test > 10 with real config
+        # So we use Mock to test the warning logic
+        risk = Mock(spec=RiskConfig)
+        risk.risk_percent = 10.5  # Above 10 triggers warning
+        risk.max_positions = 5
+        risk.portfolio_risk_percent = None
+        risk.max_concurrent_trades = None
+
+        config = Mock(spec=AccountConfig)
+        config.account_id = "test-account"
+        config.currencies = [valid_currency]
+        config.default_risk = risk
 
         result = validator.validate(config)
 
-        # At exactly 10.0, validator should warn
+        # Above 10.0, validator should warn
         assert result.valid is True
         assert result.has_warnings
         assert any("risk_percent is high" in warning for warning in result.warnings)
@@ -204,26 +235,24 @@ class TestValidatorCurrencyValidation:
                 default_risk=valid_risk_config,
             )
 
-    def test_validate_empty_currency_symbol_fails(self, validator):
+    def test_validate_empty_currency_symbol_fails(self, validator, invalid_currency):
         """Empty currency symbol should fail validation"""
-        currency = CurrencyConfiguration(symbol="", enabled=True)
-        config = AccountConfig(
-            account_id="test-account",
-            currencies=[currency],
-        )
+        config = Mock(spec=AccountConfig)
+        config.account_id = "test-account"
+        config.currencies = [invalid_currency]
+        config.default_risk = None
 
         result = validator.validate(config)
 
         assert result.valid is False
         assert any("Currency symbol cannot be empty" in error for error in result.errors)
 
-    def test_validate_enabled_currency_without_symbol_fails(self, validator):
+    def test_validate_enabled_currency_without_symbol_fails(self, validator, invalid_currency):
         """Enabled currency without symbol should fail validation"""
-        currency = CurrencyConfiguration(symbol="", enabled=True)
-        config = AccountConfig(
-            account_id="test-account",
-            currencies=[currency],
-        )
+        config = Mock(spec=AccountConfig)
+        config.account_id = "test-account"
+        config.currencies = [invalid_currency]
+        config.default_risk = None
 
         result = validator.validate(config)
 
@@ -247,13 +276,12 @@ class TestValidatorBatchOperations:
         assert len(results) == 2
         assert all(isinstance(r, ValidationResult) for r in results)
 
-    def test_validate_batch_returns_all_results(self, validator, valid_config, valid_currency):
+    def test_validate_batch_returns_all_results(self, validator, valid_config, invalid_currency):
         """Should return result for each config, even if invalid"""
-        invalid_currency = CurrencyConfiguration(symbol="", enabled=True)
-        invalid_config = AccountConfig(
-            account_id="test-invalid",
-            currencies=[invalid_currency],
-        )
+        invalid_config = Mock(spec=AccountConfig)
+        invalid_config.account_id = "test-invalid"
+        invalid_config.currencies = [invalid_currency]
+        invalid_config.default_risk = None
 
         configs = [valid_config, invalid_config]
         results = validator.validate_batch(configs)
@@ -262,13 +290,12 @@ class TestValidatorBatchOperations:
         assert results[0].valid is True
         assert results[1].valid is False
 
-    def test_get_invalid_configs_filters_correctly(self, validator, valid_config, valid_currency):
+    def test_get_invalid_configs_filters_correctly(self, validator, valid_config, invalid_currency):
         """Should return only invalid configs with results"""
-        invalid_currency = CurrencyConfiguration(symbol="", enabled=True)
-        invalid_config = AccountConfig(
-            account_id="test-invalid",
-            currencies=[invalid_currency],
-        )
+        invalid_config = Mock(spec=AccountConfig)
+        invalid_config.account_id = "test-invalid"
+        invalid_config.currencies = [invalid_currency]
+        invalid_config.default_risk = None
 
         configs = [valid_config, invalid_config]
         invalid_list = validator.get_invalid_configs(configs)
@@ -288,18 +315,18 @@ class TestValidatorBatchOperations:
 class TestValidationResultProperties:
     """Test ValidationResult helper properties"""
 
-    def test_has_errors_property(self, validator, valid_config, valid_currency):
+    def test_has_errors_property(self, validator, valid_config, invalid_currency):
         """has_errors property should work correctly"""
         # Valid config
         result = validator.validate(valid_config)
         assert result.has_errors is False
 
         # Invalid config
-        invalid_currency = CurrencyConfiguration(symbol="", enabled=True)
-        invalid_config = AccountConfig(
-            account_id="test-invalid",
-            currencies=[invalid_currency],
-        )
+        invalid_config = Mock(spec=AccountConfig)
+        invalid_config.account_id = "test-invalid"
+        invalid_config.currencies = [invalid_currency]
+        invalid_config.default_risk = None
+
         result = validator.validate(invalid_config)
         assert result.has_errors is True
 
