@@ -237,24 +237,65 @@ class WorkerManagerService:
     # =============================================================================
 
     def start_all_enabled_workers(
-        self, apply_defaults: bool = True
+        self, apply_defaults: bool = True, validate: bool = True
     ) -> Dict[str, WorkerInfo]:
         """
         Start workers for all enabled accounts
 
         Args:
             apply_defaults: Apply default configurations
+            validate: Validate configurations before starting
 
         Returns:
             Dictionary of account_id -> WorkerInfo for successfully started workers
         """
         logger.info("Starting all enabled workers")
 
-        # TODO: Load list of enabled accounts from config service
-        # For now, this is a placeholder showing the intended API
         started_workers = {}
+        failed_workers = {}
 
-        logger.info(f"Started {len(started_workers)} workers")
+        # Get list of all accounts
+        try:
+            account_ids = self.config_service.list_accounts()
+            logger.info(f"Found {len(account_ids)} accounts in configuration")
+        except Exception as e:
+            logger.error(f"Failed to list accounts: {e}")
+            return started_workers
+
+        # Start each account
+        for account_id in account_ids:
+            try:
+                # Load config to check if enabled
+                config = self.config_service.load_account_config(
+                    account_id=account_id, apply_defaults=apply_defaults
+                )
+
+                # Check if account is enabled (if attribute exists)
+                if hasattr(config, "enabled") and not config.enabled:
+                    logger.debug(f"Skipping disabled account {account_id}")
+                    continue
+
+                # Start worker
+                worker_info = self.start_worker_from_config(
+                    account_id=account_id,
+                    apply_defaults=apply_defaults,
+                    validate=validate,
+                )
+                started_workers[account_id] = worker_info
+                logger.info(f"Started worker for account {account_id}")
+
+            except Exception as e:
+                logger.error(f"Failed to start worker for account {account_id}: {e}")
+                failed_workers[account_id] = str(e)
+
+        logger.info(
+            f"Started {len(started_workers)} workers, "
+            f"failed {len(failed_workers)} workers"
+        )
+
+        if failed_workers:
+            logger.warning(f"Failed accounts: {', '.join(failed_workers.keys())}")
+
         return started_workers
 
     def stop_all_workers(self, timeout: Optional[float] = None) -> int:
@@ -289,11 +330,60 @@ class WorkerManagerService:
         """
         logger.info("Validating all configurations")
 
-        # TODO: Load all account configs from config service
-        # For now, this is a placeholder showing the intended API
         results = {}
 
-        logger.info(f"Validated {len(results)} configurations")
+        # Get list of all accounts
+        try:
+            account_ids = self.config_service.list_accounts()
+            logger.info(f"Found {len(account_ids)} accounts to validate")
+        except Exception as e:
+            logger.error(f"Failed to list accounts: {e}")
+            return results
+
+        # Validate each account configuration
+        for account_id in account_ids:
+            try:
+                # Load configuration
+                config = self.config_service.load_account_config(
+                    account_id=account_id, apply_defaults=True
+                )
+
+                # Validate configuration
+                validation_result = self.validator.validate(config)
+                results[account_id] = validation_result
+
+                if not validation_result.valid:
+                    logger.warning(
+                        f"Configuration invalid for account {account_id}: "
+                        f"{len(validation_result.errors)} errors"
+                    )
+                elif validation_result.has_warnings:
+                    logger.info(
+                        f"Configuration valid for account {account_id} "
+                        f"with {len(validation_result.warnings)} warnings"
+                    )
+                else:
+                    logger.debug(f"Configuration valid for account {account_id}")
+
+            except Exception as e:
+                logger.error(f"Failed to validate account {account_id}: {e}")
+                # Create error validation result
+                results[account_id] = ValidationResult(
+                    valid=False,
+                    account_id=account_id,
+                    errors=(f"Failed to load configuration: {str(e)}",),
+                    warnings=(),
+                )
+
+        # Summary statistics
+        valid_count = sum(1 for r in results.values() if r.valid)
+        invalid_count = len(results) - valid_count
+
+        logger.info(
+            f"Validated {len(results)} configurations: "
+            f"{valid_count} valid, {invalid_count} invalid"
+        )
+
         return results
 
     # =============================================================================

@@ -48,58 +48,49 @@ class AccountConfigurationValidator:
         if not config.account_id or not config.account_id.strip():
             errors.append("Account ID is required")
 
-        # Validate MT5 credentials
-        if not hasattr(config, 'login') or config.login is None:
-            errors.append("MT5 login is required")
-        elif config.login <= 0:
-            errors.append(f"MT5 login must be positive, got {config.login}")
-
-        if not hasattr(config, 'password') or not config.password:
-            errors.append("MT5 password is required")
-        elif len(config.password) < 4:
-            warnings.append("MT5 password seems too short (< 4 characters)")
-
-        if not hasattr(config, 'server') or not config.server:
-            errors.append("MT5 server is required")
-        elif not config.server.strip():
-            errors.append("MT5 server cannot be empty")
-
-        # Validate risk parameters
-        if config.risk:
-            if config.risk.max_daily_loss_pct <= 0:
+        # Validate default_risk parameters
+        if config.default_risk:
+            # Validate risk_percent
+            if config.default_risk.risk_percent <= 0:
                 errors.append(
-                    f"max_daily_loss_pct must be positive, got {config.risk.max_daily_loss_pct}"
+                    f"risk_percent must be positive, got {config.default_risk.risk_percent}"
                 )
-            elif config.risk.max_daily_loss_pct > 50:
+            elif config.default_risk.risk_percent > 10:
                 warnings.append(
-                    f"max_daily_loss_pct is very high ({config.risk.max_daily_loss_pct}%), "
+                    f"risk_percent is high ({config.default_risk.risk_percent}%), "
                     "consider reducing"
                 )
 
-            if config.risk.max_position_size_pct <= 0:
+            # Validate max_positions
+            if config.default_risk.max_positions <= 0:
                 errors.append(
-                    f"max_position_size_pct must be positive, got {config.risk.max_position_size_pct}"
-                )
-            elif config.risk.max_position_size_pct > 100:
-                errors.append(
-                    f"max_position_size_pct cannot exceed 100%, got {config.risk.max_position_size_pct}"
+                    f"max_positions must be positive, got {config.default_risk.max_positions}"
                 )
 
-            if config.risk.risk_per_trade_pct <= 0:
-                errors.append(
-                    f"risk_per_trade_pct must be positive, got {config.risk.risk_per_trade_pct}"
-                )
-            elif config.risk.risk_per_trade_pct > 10:
-                warnings.append(
-                    f"risk_per_trade_pct is high ({config.risk.risk_per_trade_pct}%), "
-                    "consider reducing"
-                )
+            # Validate portfolio_risk_percent if present
+            if config.default_risk.portfolio_risk_percent is not None:
+                if config.default_risk.portfolio_risk_percent <= 0:
+                    errors.append(
+                        f"portfolio_risk_percent must be positive, got {config.default_risk.portfolio_risk_percent}"
+                    )
+                elif config.default_risk.portfolio_risk_percent > 20:
+                    warnings.append(
+                        f"portfolio_risk_percent is very high ({config.default_risk.portfolio_risk_percent}%), "
+                        "consider reducing"
+                    )
+
+            # Validate max_concurrent_trades if present
+            if config.default_risk.max_concurrent_trades is not None:
+                if config.default_risk.max_concurrent_trades <= 0:
+                    errors.append(
+                        f"max_concurrent_trades must be positive, got {config.default_risk.max_concurrent_trades}"
+                    )
         else:
-            warnings.append("No risk parameters configured, will use defaults")
+            warnings.append("No default risk parameters configured, will use system defaults")
 
         # Validate currency configurations
         if not config.currencies or len(config.currencies) == 0:
-            warnings.append("No currencies configured for trading")
+            errors.append("No currencies configured for trading")
         else:
             for currency in config.currencies:
                 if not currency.symbol or not currency.symbol.strip():
@@ -110,16 +101,6 @@ class AccountConfigurationValidator:
                         f"Currency at index {config.currencies.index(currency)} "
                         "is enabled but has no symbol"
                     )
-
-        # Validate MT5 connection parameters
-        if hasattr(config, 'timeout'):
-            if config.timeout <= 0:
-                errors.append(f"Connection timeout must be positive, got {config.timeout}")
-            elif config.timeout > 300000:  # 5 minutes
-                warnings.append(
-                    f"Connection timeout is very high ({config.timeout}ms), "
-                    "consider reducing"
-                )
 
         # Log validation result
         if errors:

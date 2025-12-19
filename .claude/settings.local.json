@@ -67,7 +67,12 @@
       "Bash(kill:*)",
       "Bash(timeout 10 tradingmtq serve:*)",
       "Bash(timeout 15 python:*)",
-      "Bash(taskkill //F //IM python.exe)"
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(./venv/bin/pytest tests/services/trading_control/ -v)",
+      "Bash(./venv/bin/pytest tests/services/trading_control/ -v --tb=short)",
+      "Bash(timeout:*)",
+      "Bash(./venv/bin/pytest:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []
