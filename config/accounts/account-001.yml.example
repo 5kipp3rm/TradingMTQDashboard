@@ -1,0 +1,109 @@
+# Phase 4 Worker Configuration - Account 001
+# Copy this file to account-{YOUR_LOGIN}.yml and update with your details
+
+account_id: "account-001"              # Unique identifier for this worker
+login: 5012345678                      # Your MT5 account login number
+password: "your_password_here"         # Your MT5 account password
+server: "ICMarkets-Demo"               # Your broker's server name (e.g., ICMarkets-Demo, Pepperstone-Demo)
+platform_type: "MT5"                   # MT5 or MT4
+portable: true                         # MUST be true for multi-instance support
+
+# Risk Management (overrides defaults from default.yml)
+risk:
+  risk_percent: 1.0                    # Risk 1% per trade
+  max_positions: 5                     # Max positions per pair
+  max_concurrent_trades: 15            # Max total trades
+  portfolio_risk_percent: 10.0         # Max portfolio risk
+  stop_loss_pips: 50                   # Default SL in pips
+  take_profit_pips: 100                # Default TP in pips
+
+# Currency pairs to trade
+currencies:
+  # Major Pairs
+  - symbol: "EURUSD"
+    enabled: true
+    risk:
+      risk_percent: 1.0
+      max_positions: 3
+      stop_loss_pips: 50
+      take_profit_pips: 100
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M5"
+      fast_period: 10
+      slow_period: 20
+
+  - symbol: "GBPUSD"
+    enabled: true
+    risk:
+      risk_percent: 1.0
+      max_positions: 3
+      stop_loss_pips: 50
+      take_profit_pips: 100
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M5"
+      fast_period: 10
+      slow_period: 20
+
+  - symbol: "USDJPY"
+    enabled: true
+    risk:
+      risk_percent: 1.0
+      max_positions: 3
+      stop_loss_pips: 50
+      take_profit_pips: 100
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M5"
+      fast_period: 10
+      slow_period: 20
+
+  - symbol: "AUDUSD"
+    enabled: true
+    risk:
+      risk_percent: 1.0
+      max_positions: 3
+      stop_loss_pips: 50
+      take_profit_pips: 100
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M5"
+      fast_period: 10
+      slow_period: 20
+
+  # Cross Pairs (optional)
+  - symbol: "EURJPY"
+    enabled: false                     # Disabled by default
+    risk:
+      risk_percent: 0.5                # Lower risk for cross pairs
+      max_positions: 2
+      stop_loss_pips: 60
+      take_profit_pips: 120
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M15"
+      fast_period: 12
+      slow_period: 26
+
+  # Commodities (optional)
+  - symbol: "XAUUSD"
+    enabled: false                     # Gold - disabled by default
+    risk:
+      risk_percent: 0.5
+      max_positions: 2
+      stop_loss_pips: 100              # Wider stops for gold
+      take_profit_pips: 200
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M15"
+      fast_period: 10
+      slow_period: 20
+
+# Notes:
+# 1. Account ID format: account-{login_number}
+# 2. portable MUST be true for multi-instance MT5
+# 3. Enable/disable pairs by setting enabled: true/false
+# 4. Risk settings cascade: default.yml → account config → currency config
+# 5. Strategy types: SIMPLE_MA, RSI, MACD, CUSTOM
+# 6. Timeframes: M1, M5, M15, M30, H1, H4, D1, W1, MN1

@@ -1,0 +1,72 @@
+# Phase 4 Worker Configuration - Account 002
+# Copy this file to account-{YOUR_LOGIN}.yml and update with your details
+
+account_id: "account-002"              # Unique identifier for this worker
+login: 5098765432                      # Your MT5 account login number
+password: "your_password_here"         # Your MT5 account password
+server: "Pepperstone-Demo"             # Your broker's server name
+platform_type: "MT5"                   # MT5 or MT4
+portable: true                         # MUST be true for multi-instance support
+
+# Risk Management - More conservative example
+risk:
+  risk_percent: 0.5                    # Risk only 0.5% per trade (more conservative)
+  max_positions: 3                     # Fewer positions per pair
+  max_concurrent_trades: 10            # Fewer total trades
+  portfolio_risk_percent: 5.0          # Lower portfolio risk
+  stop_loss_pips: 40                   # Tighter stops
+  take_profit_pips: 80                 # Tighter targets
+
+# Currency pairs to trade (fewer pairs for conservative approach)
+currencies:
+  # Only trade major pairs with tight spreads
+  - symbol: "EURUSD"
+    enabled: true
+    risk:
+      risk_percent: 0.5
+      max_positions: 2
+      stop_loss_pips: 40
+      take_profit_pips: 80
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M15"                 # Longer timeframe for less noise
+      fast_period: 12
+      slow_period: 26
+
+  - symbol: "GBPUSD"
+    enabled: true
+    risk:
+      risk_percent: 0.5
+      max_positions: 2
+      stop_loss_pips: 40
+      take_profit_pips: 80
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M15"
+      fast_period: 12
+      slow_period: 26
+
+  - symbol: "USDJPY"
+    enabled: true
+    risk:
+      risk_percent: 0.5
+      max_positions: 2
+      stop_loss_pips: 40
+      take_profit_pips: 80
+    strategy:
+      strategy_type: "SIMPLE_MA"
+      timeframe: "M15"
+      fast_period: 12
+      slow_period: 26
+
+# Notes for Conservative Trading:
+# - Lower risk per trade (0.5% vs 1%)
+# - Fewer currency pairs (3 vs 4-6)
+# - Longer timeframes (M15 vs M5)
+# - Tighter position limits (2 vs 3-5)
+# - Lower portfolio risk (5% vs 10%)
+# - This configuration is suitable for:
+#   * Smaller accounts
+#   * Risk-averse traders
+#   * Testing new strategies
+#   * Learning the system
