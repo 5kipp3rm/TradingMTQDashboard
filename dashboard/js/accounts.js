@@ -4,8 +4,13 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000/api';
-const WS_URL = 'ws://localhost:8000/api/ws';
+// Only declare if not already defined
+if (typeof API_BASE_URL === 'undefined') {
+    var API_BASE_URL = 'http://localhost:8000/api';
+}
+if (typeof WS_URL === 'undefined') {
+    var WS_URL = 'ws://localhost:8000/api/ws';
+}
 
 // Global State
 let accounts = [];

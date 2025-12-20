@@ -5,9 +5,12 @@
  * Provides a unified interface for connecting accounts using the multi-instance worker system.
  */
 
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:8000/api'
-    : '/api';
+// Only declare if not already defined
+if (typeof API_BASE_URL === 'undefined') {
+    var API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:8000/api'
+        : '/api';
+}
 
 class WorkerConnector {
     constructor() {

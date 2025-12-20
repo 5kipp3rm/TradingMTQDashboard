@@ -2,7 +2,10 @@
  * API Client for TradingMTQ Analytics
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Only declare if not already defined
+if (typeof API_BASE_URL === 'undefined') {
+    var API_BASE_URL = 'http://localhost:8000/api';
+}
 
 class APIClient {
     constructor(baseURL = API_BASE_URL) {

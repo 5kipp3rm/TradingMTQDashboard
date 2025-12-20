@@ -3,7 +3,10 @@
  * Handles report configuration CRUD, quick generation, and history display
  */
 
-const API_BASE_URL = '/api';
+// Only declare if not already defined
+if (typeof API_BASE_URL === 'undefined') {
+    var API_BASE_URL = '/api';
+}
 
 // State management
 let currentEditingId = null;
