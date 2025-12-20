@@ -553,12 +553,24 @@ async def get_account_configuration(
     """
     # Get account
     account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
-    
+
     if not account:
         raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
-    
-    # For now, return a default configuration since we haven't added the database columns yet
-    # This allows the UI to work immediately
+
+    # Check if account has saved configuration
+    if account.trading_config_json:
+        # Return saved configuration
+        return AccountConfigResponse(
+            account_id=account.id,
+            account_number=account.account_number,
+            account_name=account.account_name,
+            config_source=account.config_source or "hybrid",
+            config_path=account.config_path,
+            portable=True,
+            trading_config=account.trading_config_json
+        )
+
+    # Return default configuration if none saved yet
     default_config = {
         "risk": {
             "risk_percent": 1.0,
@@ -587,12 +599,12 @@ async def get_account_configuration(
         },
         "currencies": []
     }
-    
+
     return AccountConfigResponse(
         account_id=account.id,
         account_number=account.account_number,
         account_name=account.account_name,
-        config_source="hybrid",  # Default to hybrid mode
+        config_source="hybrid",
         config_path=f"config/accounts/account-{account.account_number}.yml",
         portable=True,
         trading_config=default_config
@@ -628,31 +640,46 @@ async def update_account_configuration(
     """
     # Get account
     account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
-    
+
     if not account:
         raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
-    
-    # For now, just return success
-    # Once we add the database columns, we'll actually save the configuration
-    
+
+    # Update configuration columns
+    if config_update.config_source is not None:
+        account.config_source = config_update.config_source
+
+    if config_update.config_path is not None:
+        account.config_path = config_update.config_path
+
+    if config_update.trading_config is not None:
+        account.trading_config_json = config_update.trading_config
+
+    # Update validation timestamp
+    from datetime import datetime
+    account.config_validated_at = datetime.utcnow()
+    account.config_validation_error = None  # Clear any previous errors
+
+    # Commit changes
+    db.commit()
+    db.refresh(account)
+
     # Log the configuration (for debugging)
     import logging
     logger = logging.getLogger(__name__)
     logger.info(f"Configuration saved for account {account_id}")
-    logger.info(f"Config source: {config_update.config_source}")
-    logger.info(f"Config path: {config_update.config_path}")
+    logger.info(f"Config source: {account.config_source}")
+    logger.info(f"Config path: {account.config_path}")
     logger.info(f"Portable: {config_update.portable}")
-    logger.info(f"Trading config: {config_update.trading_config}")
-    
+
     # Return the updated configuration
     return AccountConfigResponse(
         account_id=account.id,
         account_number=account.account_number,
         account_name=account.account_name,
-        config_source=config_update.config_source or "hybrid",
-        config_path=config_update.config_path,
+        config_source=account.config_source or "hybrid",
+        config_path=account.config_path,
         portable=config_update.portable if config_update.portable is not None else True,
-        trading_config=config_update.trading_config
+        trading_config=account.trading_config_json
     )
 
 

@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 from decimal import Decimal
 
-from sqlalchemy import String, Integer, Float, DateTime, Boolean, Text, Enum as SQLEnum, Numeric, ForeignKey
+from sqlalchemy import String, Integer, Float, DateTime, Boolean, Text, Enum as SQLEnum, Numeric, ForeignKey, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import enum
 
@@ -97,6 +97,13 @@ class TradingAccount(Base):
 
     # Metadata
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Configuration (Hybrid Mode Support)
+    config_source: Mapped[Optional[str]] = mapped_column(String(20), default="hybrid", nullable=True)
+    config_path: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    trading_config_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    config_validated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    config_validation_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Audit Trail
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
