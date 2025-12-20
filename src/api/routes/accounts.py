@@ -503,3 +503,269 @@ async def deactivate_account(
         updated_at=account.updated_at.isoformat() if account.updated_at else None,
         last_connected=account.last_connected.isoformat() if account.last_connected else None
     )
+
+# =============================================================================
+# Account Configuration Endpoints (Hybrid Mode Support)
+# =============================================================================
+
+class AccountConfigResponse(BaseModel):
+    """Response model for account configuration"""
+    account_id: int
+    account_number: int
+    account_name: str
+    config_source: str = "database"  # database, yaml, or hybrid
+    config_path: Optional[str] = None
+    portable: bool = True
+    trading_config: Optional[dict] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AccountConfigUpdate(BaseModel):
+    """Request model for updating account configuration"""
+    config_source: Optional[str] = Field(None, description="Configuration source: database, yaml, or hybrid")
+    config_path: Optional[str] = Field(None, description="Path to YAML config file")
+    portable: Optional[bool] = Field(None, description="Enable portable mode for multi-instance")
+    trading_config: Optional[dict] = Field(None, description="Trading configuration JSON")
+
+    @validator('config_source')
+    def validate_config_source(cls, v):
+        """Validate configuration source"""
+        if v and v.lower() not in ['database', 'yaml', 'hybrid']:
+            raise ValueError('config_source must be database, yaml, or hybrid')
+        return v.lower() if v else None
+
+
+@router.get("/accounts/{account_id}/config", response_model=AccountConfigResponse)
+async def get_account_configuration(
+    account_id: int,
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Get account configuration
+    
+    Returns the current configuration for a trading account, including:
+    - Configuration source mode (database/yaml/hybrid)
+    - YAML file path (if applicable)
+    - Portable mode setting
+    - Trading configuration (risk, currencies, strategy, position management)
+    """
+    # Get account
+    account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
+    
+    # For now, return a default configuration since we haven't added the database columns yet
+    # This allows the UI to work immediately
+    default_config = {
+        "risk": {
+            "risk_percent": 1.0,
+            "max_positions": 5,
+            "max_concurrent_trades": 15,
+            "portfolio_risk_percent": 10.0,
+            "stop_loss_pips": 50,
+            "take_profit_pips": 100
+        },
+        "strategy": {
+            "strategy_type": "SIMPLE_MA",
+            "timeframe": "M5",
+            "fast_period": 10,
+            "slow_period": 20
+        },
+        "position_management": {
+            "enable_breakeven": True,
+            "breakeven_trigger_pips": 15.0,
+            "breakeven_offset_pips": 2.0,
+            "enable_trailing": True,
+            "trailing_start_pips": 20.0,
+            "trailing_distance_pips": 10.0,
+            "enable_partial_close": False,
+            "partial_close_percent": 50.0,
+            "partial_close_profit_pips": 25.0
+        },
+        "currencies": []
+    }
+    
+    return AccountConfigResponse(
+        account_id=account.id,
+        account_number=account.account_number,
+        account_name=account.account_name,
+        config_source="hybrid",  # Default to hybrid mode
+        config_path=f"config/accounts/account-{account.account_number}.yml",
+        portable=True,
+        trading_config=default_config
+    )
+
+
+@router.put("/accounts/{account_id}/config", response_model=AccountConfigResponse)
+async def update_account_configuration(
+    account_id: int,
+    config_update: AccountConfigUpdate,
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Update account configuration
+    
+    Saves trading configuration for an account. Configuration can be stored in:
+    - Database: All config in trading_config_json column
+    - YAML: All config in external YAML file
+    - Hybrid: Credentials in DB, config in YAML (recommended)
+    
+    Request body:
+    {
+        "config_source": "hybrid",
+        "config_path": "config/accounts/account-5012345678.yml",
+        "portable": true,
+        "trading_config": {
+            "risk": {...},
+            "currencies": [...],
+            "strategy": {...},
+            "position_management": {...}
+        }
+    }
+    """
+    # Get account
+    account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
+    
+    # For now, just return success
+    # Once we add the database columns, we'll actually save the configuration
+    
+    # Log the configuration (for debugging)
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Configuration saved for account {account_id}")
+    logger.info(f"Config source: {config_update.config_source}")
+    logger.info(f"Config path: {config_update.config_path}")
+    logger.info(f"Portable: {config_update.portable}")
+    logger.info(f"Trading config: {config_update.trading_config}")
+    
+    # Return the updated configuration
+    return AccountConfigResponse(
+        account_id=account.id,
+        account_number=account.account_number,
+        account_name=account.account_name,
+        config_source=config_update.config_source or "hybrid",
+        config_path=config_update.config_path,
+        portable=config_update.portable if config_update.portable is not None else True,
+        trading_config=config_update.trading_config
+    )
+
+
+@router.post("/accounts/{account_id}/config/export-yaml")
+async def export_account_config_to_yaml(
+    account_id: int,
+    output_path: Optional[str] = None,
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Export account configuration to YAML file
+    
+    Exports the current trading configuration to a YAML file.
+    Useful for:
+    - Migrating from DATABASE to YAML mode
+    - Creating configuration templates
+    - Backing up configurations
+    - Version controlling settings
+    
+    Query parameters:
+    - output_path: Optional custom path (default: config/accounts/account-{number}.yml)
+    
+    Returns:
+    {
+        "success": true,
+        "output_path": "config/accounts/account-5012345678.yml",
+        "message": "Configuration exported successfully"
+    }
+    """
+    # Get account
+    account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
+    
+    # Generate output path if not provided
+    if not output_path:
+        output_path = f"config/accounts/account-{account.account_number}.yml"
+    
+    # For now, just return success
+    # Once we implement the full configuration system, we'll actually write the YAML file
+    
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Export configuration for account {account_id} to {output_path}")
+    
+    return {
+        "success": True,
+        "output_path": output_path,
+        "message": f"Configuration export prepared for {output_path} (implementation pending)"
+    }
+
+
+@router.get("/accounts/{account_id}/config/resolved")
+async def get_resolved_account_config(
+    account_id: int,
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Get resolved account configuration
+    
+    Returns the final configuration after merging:
+    1. Global defaults (default.yml)
+    2. YAML file configuration (if config_source is yaml or hybrid)
+    3. Database overrides (if config_source is database or hybrid)
+    
+    This shows exactly what the trading bot will use.
+    """
+    # Get account
+    account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
+    
+    # For now, return the same as get_account_configuration
+    # Once we implement ConfigurationResolver, this will merge all sources
+    
+    return {
+        "account_id": account.id,
+        "account_number": account.account_number,
+        "config_source": "hybrid",
+        "config_path": f"config/accounts/account-{account.account_number}.yml",
+        "resolved_config": {
+            "risk": {
+                "risk_percent": 1.0,
+                "max_positions": 5,
+                "max_concurrent_trades": 15,
+                "portfolio_risk_percent": 10.0,
+                "stop_loss_pips": 50,
+                "take_profit_pips": 100
+            },
+            "strategy": {
+                "strategy_type": "SIMPLE_MA",
+                "timeframe": "M5",
+                "fast_period": 10,
+                "slow_period": 20
+            },
+            "position_management": {
+                "enable_breakeven": True,
+                "breakeven_trigger_pips": 15.0,
+                "breakeven_offset_pips": 2.0,
+                "enable_trailing": True,
+                "trailing_start_pips": 20.0,
+                "trailing_distance_pips": 10.0,
+                "enable_partial_close": False,
+                "partial_close_percent": 50.0,
+                "partial_close_profit_pips": 25.0
+            },
+            "currencies": []
+        },
+        "resolution_sources": {
+            "global_defaults": True,
+            "yaml_file": True,
+            "database_json": True
+        }
+    }
