@@ -382,7 +382,10 @@ function renderAccountsTable() {
                                 <i class="fas fa-plug"></i>
                                </button>`
                         }
-                        <button class="btn-icon edit" onclick="openEditAccountModal(${account.id})" title="Edit">
+                        <button class="btn-icon config" onclick="openAccountConfig(${account.id})" title="Configure Trading Settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="btn-icon edit" onclick="openEditAccountModal(${account.id})" title="Edit Account">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn-icon" onclick="viewAccountDetails(${account.id})" title="View Details">
