@@ -16,9 +16,11 @@ except ImportError:
     MT5_AVAILABLE = False
     import sys
     from types import ModuleType
+    from collections import namedtuple
 
     # Create a mock MT5 module for development
     mt5 = ModuleType('MetaTrader5')
+
     # Timeframes
     mt5.TIMEFRAME_M1 = 1
     mt5.TIMEFRAME_M5 = 5
@@ -29,6 +31,7 @@ except ImportError:
     mt5.TIMEFRAME_D1 = 1440
     mt5.TIMEFRAME_W1 = 10080
     mt5.TIMEFRAME_MN1 = 43200
+
     # Order types
     mt5.ORDER_TYPE_BUY = 0
     mt5.ORDER_TYPE_SELL = 1
@@ -36,22 +39,96 @@ except ImportError:
     mt5.ORDER_TYPE_SELL_LIMIT = 3
     mt5.ORDER_TYPE_BUY_STOP = 4
     mt5.ORDER_TYPE_SELL_STOP = 5
+
     # Trade actions
     mt5.TRADE_ACTION_DEAL = 1
     mt5.TRADE_ACTION_PENDING = 5
     mt5.TRADE_ACTION_SLTP = 2
     mt5.TRADE_ACTION_MODIFY = 3
     mt5.TRADE_ACTION_REMOVE = 4
+
     # Order filling types
     mt5.ORDER_FILLING_FOK = 0
     mt5.ORDER_FILLING_IOC = 1
     mt5.ORDER_FILLING_RETURN = 2
+
     # Order time types
     mt5.ORDER_TIME_GTC = 0
     mt5.ORDER_TIME_SPECIFIED = 2
     mt5.ORDER_TIME_SPECIFIED_DAY = 3
+
     # Trade return codes
     mt5.TRADE_RETCODE_DONE = 10009
+
+    # Symbol trade modes
+    mt5.SYMBOL_TRADE_MODE_DISABLED = 0
+    mt5.SYMBOL_TRADE_MODE_LONGONLY = 1
+    mt5.SYMBOL_TRADE_MODE_SHORTONLY = 2
+    mt5.SYMBOL_TRADE_MODE_CLOSEONLY = 3
+    mt5.SYMBOL_TRADE_MODE_FULL = 4
+
+    # Mock functions that return failure (MT5 not available)
+    def _mock_initialize(*args, **kwargs):
+        """Mock initialize - always fails on non-Windows"""
+        return False
+
+    def _mock_last_error():
+        """Mock last_error - returns error indicating MT5 unavailable"""
+        MockError = namedtuple('Error', ['error', 'description'])
+        return MockError(
+            error=-1,
+            description="MT5 is not available on this platform (macOS/Linux). Install MetaTrader 5 on Windows to connect."
+        )
+
+    def _mock_shutdown():
+        """Mock shutdown - does nothing"""
+        return None
+
+    def _mock_account_info():
+        """Mock account_info - returns None"""
+        return None
+
+    def _mock_symbols_get(*args, **kwargs):
+        """Mock symbols_get - returns empty list"""
+        return []
+
+    def _mock_symbol_info(*args, **kwargs):
+        """Mock symbol_info - returns None"""
+        return None
+
+    def _mock_symbol_info_tick(*args, **kwargs):
+        """Mock symbol_info_tick - returns None"""
+        return None
+
+    def _mock_symbol_select(*args, **kwargs):
+        """Mock symbol_select - returns False"""
+        return False
+
+    def _mock_copy_rates_from_pos(*args, **kwargs):
+        """Mock copy_rates_from_pos - returns None"""
+        return None
+
+    def _mock_order_send(*args, **kwargs):
+        """Mock order_send - returns None"""
+        return None
+
+    def _mock_positions_get(*args, **kwargs):
+        """Mock positions_get - returns empty tuple"""
+        return ()
+
+    # Add mock methods to module
+    mt5.initialize = _mock_initialize
+    mt5.last_error = _mock_last_error
+    mt5.shutdown = _mock_shutdown
+    mt5.account_info = _mock_account_info
+    mt5.symbols_get = _mock_symbols_get
+    mt5.symbol_info = _mock_symbol_info
+    mt5.symbol_info_tick = _mock_symbol_info_tick
+    mt5.symbol_select = _mock_symbol_select
+    mt5.copy_rates_from_pos = _mock_copy_rates_from_pos
+    mt5.order_send = _mock_order_send
+    mt5.positions_get = _mock_positions_get
+
     sys.modules['MetaTrader5'] = mt5
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
@@ -62,7 +139,7 @@ from src.exceptions import (
     OrderExecutionError, OrderTimeoutError, DataNotAvailableError,
     build_connection_context, build_order_context
 )
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 from src.utils.error_handlers import handle_mt5_errors
 
 from .base import (
@@ -73,7 +150,7 @@ from .base import (
 from .error_descriptions import trade_server_return_code_description, error_description
 
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class MT5Connector(BaseMetaTraderConnector):
@@ -144,7 +221,7 @@ class MT5Connector(BaseMetaTraderConnector):
             ConnectionError: If MT5 initialization fails
             AuthenticationError: If credentials are invalid
         """
-        with CorrelationContext():
+        with LogContext():
             self.status = ConnectionStatus.CONNECTING
 
             # Generate default path if portable mode is enabled but no path provided
@@ -253,7 +330,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             ConnectionError: If disconnect fails
         """
-        with CorrelationContext():
+        with LogContext():
             try:
                 if self._initialized:
                     mt5.shutdown()
@@ -341,7 +418,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             ConnectionError: If no connection parameters stored or reconnection fails
         """
-        with CorrelationContext():
+        with LogContext():
             if not self._connection_params:
                 raise ConnectionError(
                     "No connection parameters stored for reconnection",
@@ -363,7 +440,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             ConnectionError: If MT5 is not connected
         """
-        with CorrelationContext():
+        with LogContext():
             if not self._initialized:
                 raise ConnectionError(
                     "MT5 not initialized",
@@ -413,7 +490,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Returns:
             List of symbol names
         """
-        with CorrelationContext():
+        with LogContext():
             symbols = mt5.symbols_get(group=group)
             if symbols is None:
                 logger.warning("No symbols found", group=group, instance_id=self.instance_id)
@@ -440,7 +517,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             InvalidSymbolError: If symbol not found
         """
-        with CorrelationContext():
+        with LogContext():
             info = mt5.symbol_info(symbol)
             if info is None:
                 raise InvalidSymbolError(
@@ -480,7 +557,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             InvalidSymbolError: If symbol selection fails
         """
-        with CorrelationContext():
+        with LogContext():
             result = mt5.symbol_select(symbol, enable)
             if not result:
                 raise InvalidSymbolError(
@@ -535,7 +612,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             DataNotAvailableError: If tick data not available
         """
-        with CorrelationContext():
+        with LogContext():
             tick = mt5.symbol_info_tick(symbol)
             if tick is None:
                 raise DataNotAvailableError(
@@ -571,7 +648,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             DataNotAvailableError: If bars not available
         """
-        with CorrelationContext():
+        with LogContext():
             tf = self.TIMEFRAMES.get(timeframe.upper())
             if tf is None:
                 raise DataNotAvailableError(
@@ -644,7 +721,7 @@ class MT5Connector(BaseMetaTraderConnector):
             InvalidSymbolError: If symbol not found
             OrderExecutionError: If order execution fails
         """
-        with CorrelationContext():
+        with LogContext():
             logger.info(
                 "Sending order",
                 symbol=request.symbol,
@@ -830,7 +907,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             OrderExecutionError: If position not found or close fails
         """
-        with CorrelationContext():
+        with LogContext():
             logger.info("Closing position", ticket=ticket, instance_id=self.instance_id)
 
             # Get position info
@@ -944,7 +1021,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             OrderExecutionError: If position not found or modification fails
         """
-        with CorrelationContext():
+        with LogContext():
             logger.info("Modifying position", ticket=ticket, sl=sl, tp=tp)
 
             positions = mt5.positions_get(ticket=ticket)
@@ -1001,7 +1078,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Returns:
             List of Position objects
         """
-        with CorrelationContext():
+        with LogContext():
             if symbol:
                 positions = mt5.positions_get(symbol=symbol)
             else:
@@ -1077,7 +1154,7 @@ class MT5Connector(BaseMetaTraderConnector):
             InvalidSymbolError: If symbol not found
             OrderExecutionError: If order placement fails
         """
-        with CorrelationContext():
+        with LogContext():
             logger.info(
                 "Placing pending order",
                 symbol=symbol,
@@ -1196,7 +1273,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             OrderExecutionError: If order deletion fails
         """
-        with CorrelationContext():
+        with LogContext():
             logger.info("Deleting order", ticket=ticket)
 
             request = {
@@ -1253,7 +1330,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Raises:
             OrderExecutionError: If order not found or modification fails
         """
-        with CorrelationContext():
+        with LogContext():
             logger.info("Modifying order", ticket=ticket, price=price)
 
             # Get the order
@@ -1334,7 +1411,7 @@ class MT5Connector(BaseMetaTraderConnector):
         Returns:
             Updated SymbolInfo or None if failed
         """
-        with CorrelationContext():
+        with LogContext():
             # Toggle symbol selection to force refresh
             mt5.symbol_select(symbol, False)
             mt5.symbol_select(symbol, True)

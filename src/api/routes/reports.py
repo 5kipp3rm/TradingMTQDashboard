@@ -20,9 +20,9 @@ from src.database.report_models import (
     ReportFormat
 )
 from src.reports.generator import ReportGenerator
-from src.utils.structured_logger import StructuredLogger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 router = APIRouter()
 
 

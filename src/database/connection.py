@@ -17,7 +17,7 @@ from sqlalchemy.pool import QueuePool
 
 # Phase 0 imports
 from src.exceptions import DatabaseError, ConnectionError as TradingConnectionError
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 from src.utils.error_handlers import handle_mt5_errors
 
 from .models import Base
@@ -25,7 +25,7 @@ from .models import Base
 from . import currency_models  # noqa: F401
 from . import bot_models  # noqa: F401
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 # Global engine and session factory
 _engine: Optional[Engine] = None
@@ -84,7 +84,7 @@ def init_db(database_url: Optional[str] = None, echo: bool = False) -> Engine:
     """
     global _engine, _SessionFactory
 
-    with CorrelationContext():
+    with LogContext():
         if _engine is not None:
             logger.warning("Database already initialized", action="skip")
             return _engine
@@ -147,7 +147,7 @@ def close_db() -> None:
     """
     global _engine, _SessionFactory
 
-    with CorrelationContext():
+    with LogContext():
         if _engine is not None:
             logger.info("Closing database connection")
             _engine.dispose()
@@ -184,7 +184,7 @@ def get_session() -> Generator[Session, None, None]:
     session: Session = _SessionFactory()
 
     try:
-        with CorrelationContext():
+        with LogContext():
             logger.debug("Database session started")
             yield session
             session.commit()
@@ -233,7 +233,7 @@ async def get_async_session() -> AsyncGenerator[Session, None]:
     session: Session = _SessionFactory()
 
     # Set correlation context without using 'with' statement
-    ctx = CorrelationContext()
+    ctx = LogContext()
     ctx.__enter__()
 
     try:

@@ -20,6 +20,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 # Import models and Base
 from src.database.models import Base
+from src.database.currency_models import CurrencyConfiguration
+from src.database.account_currency_models import AccountCurrencyConfig
 from src.utils.structured_logger import StructuredLogger
 
 # this is the Alembic Config object, which provides

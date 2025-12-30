@@ -110,6 +110,13 @@ class TradingAccount(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     last_connected: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Relationships
+    currency_configs: Mapped[list["AccountCurrencyConfig"]] = relationship(
+        "AccountCurrencyConfig",
+        back_populates="account",
+        cascade="all, delete-orphan"
+    )
+
     def __repr__(self) -> str:
         return (f"<TradingAccount(id={self.id}, account={self.account_number}, "
                 f"name='{self.account_name}', active={self.is_active})>")
@@ -595,4 +602,88 @@ class AlertHistory(Base):
             'recipient': self.recipient,
             'trade_id': self.trade_id,
             'subject': self.subject,
+        }
+
+
+class CurrencyCategory(enum.Enum):
+    """Currency pair categories"""
+    MAJOR = "major"
+    CROSS = "cross"
+    EXOTIC = "exotic"
+    COMMODITY = "commodity"
+    CRYPTO = "crypto"
+    INDEX = "index"
+
+
+class AvailableCurrency(Base):
+    """
+    Available Currency Pairs Master List
+
+    Stores the master list of tradable currency pairs that users can add to their accounts.
+    Includes metadata like pip value, spread, and trading characteristics.
+    """
+    __tablename__ = 'available_currencies'
+
+    # Primary Key
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Symbol & Description
+    symbol: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+    # Category
+    category: Mapped[CurrencyCategory] = mapped_column(
+        SQLEnum(CurrencyCategory),
+        default=CurrencyCategory.MAJOR,
+        nullable=False,
+        index=True
+    )
+
+    # Currency Components
+    base_currency: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    quote_currency: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+
+    # Trading Characteristics
+    pip_value: Mapped[Decimal] = mapped_column(Numeric(precision=10, scale=5), default=Decimal('0.0001'), nullable=False)
+    decimal_places: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    min_lot_size: Mapped[Decimal] = mapped_column(Numeric(precision=10, scale=2), default=Decimal('0.01'), nullable=False)
+    max_lot_size: Mapped[Decimal] = mapped_column(Numeric(precision=10, scale=2), default=Decimal('100.0'), nullable=False)
+
+    # Market Info
+    typical_spread: Mapped[Optional[Decimal]] = mapped_column(Numeric(precision=10, scale=5), nullable=True)
+
+    # Status
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+
+    # Trading Hours (Optional)
+    trading_hours_start: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)  # HH:MM format
+    trading_hours_end: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)    # HH:MM format
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return (f"<AvailableCurrency(id={self.id}, symbol={self.symbol}, "
+                f"category={self.category.value}, active={self.is_active})>")
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary"""
+        return {
+            'id': self.id,
+            'symbol': self.symbol,
+            'description': self.description,
+            'category': self.category.value if isinstance(self.category, enum.Enum) else self.category,
+            'base_currency': self.base_currency,
+            'quote_currency': self.quote_currency,
+            'pip_value': float(self.pip_value) if self.pip_value else None,
+            'decimal_places': self.decimal_places,
+            'min_lot_size': float(self.min_lot_size) if self.min_lot_size else None,
+            'max_lot_size': float(self.max_lot_size) if self.max_lot_size else None,
+            'typical_spread': float(self.typical_spread) if self.typical_spread else None,
+            'is_active': self.is_active,
+            'trading_hours_start': self.trading_hours_start,
+            'trading_hours_end': self.trading_hours_end,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

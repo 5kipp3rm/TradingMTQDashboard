@@ -7,9 +7,9 @@ from typing import Optional, Dict, List
 import MetaTrader5 as mt5
 
 from src.connectors.base import BaseMetaTraderConnector, Position, OrderType
-from src.utils.logger import get_logger, log_config
+from src.utils.unified_logger import UnifiedLogger
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class PositionManager:

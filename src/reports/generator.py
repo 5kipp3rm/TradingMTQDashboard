@@ -23,9 +23,9 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
 from src.database import get_session, TradingAccount
 from src.database.repository import DailyPerformanceRepository, TradeRepository
-from src.utils.structured_logger import StructuredLogger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class ReportGenerator:

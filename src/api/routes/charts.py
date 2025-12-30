@@ -17,9 +17,9 @@ from collections import defaultdict
 from src.database.connection import get_async_session
 from src.database.models import Trade, TradeStatus, SignalType, DailyPerformance, AccountSnapshot
 from sqlalchemy import func, and_, extract
-from src.utils.structured_logger import StructuredLogger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 router = APIRouter()
 
 

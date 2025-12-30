@@ -6,12 +6,12 @@ import os
 import joblib
 import warnings
 from typing import Dict, Optional
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 
 # Suppress sklearn feature name warnings for ensemble models
 warnings.filterwarnings('ignore', message='X does not have valid feature names')
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class ModelLoader:

@@ -25,8 +25,10 @@ from src.api.routes import (
 )
 from src.api.websocket import connection_manager
 from src.database.connection import init_db
-from src.utils.logger import setup_logging
+from src.utils.unified_logger import UnifiedLogger, OutputFormat, LogContext
 from src.services.trading_bot_service import trading_bot_service
+
+logger = UnifiedLogger.get_logger(__name__)
 
 
 @asynccontextmanager
@@ -34,8 +36,15 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup and shutdown events.
     """
-    # Startup: Initialize logging
-    setup_logging(log_dir="logs", log_level="INFO", console_output=True, file_output=True)
+    # Startup: Initialize unified logging system
+    UnifiedLogger.configure(
+        log_dir="logs",
+        log_level="INFO",
+        console_output=True,
+        console_format=OutputFormat.COLORED,  # Colored console for development
+        file_output=True,
+        file_format=OutputFormat.JSON  # JSON files for production/monitoring
+    )
 
     # Startup: Initialize database
     init_db()
@@ -46,7 +55,6 @@ async def lifespan(app: FastAPI):
     # Startup: Start trading bot service
     await trading_bot_service.start()
 
-    logger = logging.getLogger("src.api.app")
     logger.info("Trading bot service started - will auto-trade on connected accounts")
 
     yield
@@ -80,54 +88,47 @@ def create_app() -> FastAPI:
         lifespan=lifespan
     )
 
-    # HTTP request logging middleware
+    # HTTP request logging middleware with correlation ID
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
-        logger = logging.getLogger("src.api.app")
-        start_time = time.time()
+        # Create correlation context for this request
+        with LogContext() as ctx:
+            start_time = time.time()
 
-        # Log request
-        logger.info(
-            f"--> {request.method} {request.url.path}",
-            extra={
-                'method': request.method,
-                'path': request.url.path,
-                'client': request.client.host if request.client else None
-            }
-        )
+            # Log request with correlation_id
+            logger.info(
+                f"→ {request.method} {request.url.path}",
+                method=request.method,
+                path=request.url.path,
+                client=request.client.host if request.client else None,
+                correlation_id=ctx.correlation_id
+            )
 
-        # Process request
-        response = await call_next(request)
+            # Process request
+            response = await call_next(request)
 
-        # Log response
-        duration = time.time() - start_time
-        logger.info(
-            f"<-- {request.method} {request.url.path} - {response.status_code} ({duration:.3f}s)",
-            extra={
-                'method': request.method,
-                'path': request.url.path,
-                'status_code': response.status_code,
-                'duration': duration
-            }
-        )
+            # Log response with correlation_id
+            duration = time.time() - start_time
+            logger.info(
+                f"← {request.method} {request.url.path} - {response.status_code} ({duration:.3f}s)",
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+                duration=duration,
+                correlation_id=ctx.correlation_id
+            )
 
-        return response
+            return response
 
     # CORS middleware for web dashboard access
+    # TEMPORARY: Allow all origins for debugging (REMOVE IN PRODUCTION!)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",  # React dev server
-            "http://localhost:5173",  # Vite dev server
-            "http://localhost:8000",  # FastAPI server (for static files)
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:8000",
-            "http://0.0.0.0:8000",    # Allow 0.0.0.0 origin
-        ],
-        allow_credentials=True,
+        allow_origins=["*"],         # Allow all origins (DEVELOPMENT ONLY!)
+        allow_credentials=False,     # Must be False when allow_origins=["*"]
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
     )
 
     # Register routers

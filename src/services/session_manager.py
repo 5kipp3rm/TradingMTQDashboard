@@ -18,11 +18,11 @@ from src.connectors.mt5_connector import MT5Connector
 from src.connectors.mt4_connector import MT4Connector
 from src.connectors.base import ConnectionStatus, BaseMetaTraderConnector
 from src.database.models import TradingAccount, PlatformType
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 from src.exceptions import ConnectionError, AuthenticationError
 
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class ConnectionState:

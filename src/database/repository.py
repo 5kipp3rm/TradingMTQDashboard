@@ -15,12 +15,12 @@ from sqlalchemy.orm import Session
 
 # Phase 0 imports
 from src.exceptions import DatabaseError, DataNotAvailableError
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 
 from .models import Trade, Signal, AccountSnapshot, DailyPerformance, TradeStatus, SignalType
 from .connection import get_session
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class BaseRepository:
@@ -67,7 +67,7 @@ class TradeRepository(BaseRepository):
         Raises:
             DatabaseError: If creation fails
         """
-        with CorrelationContext():
+        with LogContext():
             try:
                 trade = Trade(**kwargs)
                 session.add(trade)
@@ -102,7 +102,7 @@ class TradeRepository(BaseRepository):
         Returns:
             Updated Trade instance or None if not found
         """
-        with CorrelationContext():
+        with LogContext():
             try:
                 trade = session.query(Trade).filter(Trade.ticket == ticket).first()
 
@@ -199,7 +199,7 @@ class TradeRepository(BaseRepository):
         Returns:
             Dictionary with statistics
         """
-        with CorrelationContext():
+        with LogContext():
             try:
                 query = session.query(Trade).filter(Trade.status == TradeStatus.CLOSED)
 
@@ -265,7 +265,7 @@ class TradeRepository(BaseRepository):
         Returns:
             Earliest Trade or None if no trades exist
         """
-        with CorrelationContext():
+        with LogContext():
             try:
                 stmt = select(Trade).order_by(Trade.entry_time.asc()).limit(1)
                 result = session.execute(stmt)
@@ -292,7 +292,7 @@ class TradeRepository(BaseRepository):
         Returns:
             List of Trade instances
         """
-        with CorrelationContext():
+        with LogContext():
             try:
                 # Use exit_time for closed trades, entry_time for open trades
                 stmt = select(Trade)
@@ -341,7 +341,7 @@ class SignalRepository(BaseRepository):
 
     def create(self, session: Session, **kwargs) -> Signal:
         """Create new signal record"""
-        with CorrelationContext():
+        with LogContext():
             try:
                 signal = Signal(**kwargs)
                 session.add(signal)
@@ -430,7 +430,7 @@ class AccountSnapshotRepository(BaseRepository):
 
     def create(self, session: Session, **kwargs) -> AccountSnapshot:
         """Create new account snapshot"""
-        with CorrelationContext():
+        with LogContext():
             try:
                 snapshot = AccountSnapshot(**kwargs)
                 session.add(snapshot)
@@ -483,7 +483,7 @@ class DailyPerformanceRepository(BaseRepository):
 
     def create_or_update(self, session: Session, target_date: date, **kwargs) -> DailyPerformance:
         """Create or update daily performance record"""
-        with CorrelationContext():
+        with LogContext():
             try:
                 # Convert date to datetime for the date field
                 date_dt = datetime.combine(target_date, datetime.min.time())

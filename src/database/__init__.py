@@ -5,13 +5,17 @@ Provides SQLAlchemy models, repositories, and connection management
 from .models import (
     Base, Trade, Signal, AccountSnapshot, DailyPerformance,
     AlertConfiguration, AlertHistory, AlertType, NotificationChannel,
-    TradingAccount, AccountConnectionState, PlatformType
+    TradingAccount, AccountConnectionState, PlatformType,
+    AvailableCurrency, CurrencyCategory
 )
 from .report_models import (
     ReportConfiguration, ReportHistory, ReportFrequency, ReportFormat
 )
 from .currency_models import (
     CurrencyConfiguration, StrategyType, Timeframe
+)
+from .account_currency_models import (
+    AccountCurrencyConfig
 )
 from .bot_models import (
     BotState, BotStatus
@@ -32,11 +36,14 @@ __all__ = [
     'TradingAccount',
     'AccountConnectionState',
     'PlatformType',
+    'AvailableCurrency',
+    'CurrencyCategory',
     'ReportConfiguration',
     'ReportHistory',
     'ReportFrequency',
     'ReportFormat',
     'CurrencyConfiguration',
+    'AccountCurrencyConfig',
     'StrategyType',
     'Timeframe',
     'BotState',

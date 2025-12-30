@@ -15,9 +15,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.database import CurrencyConfiguration, get_session
-from src.utils.structured_logger import StructuredLogger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class ConfigurationService:

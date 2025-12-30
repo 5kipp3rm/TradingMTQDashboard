@@ -17,7 +17,7 @@ from src.exceptions import (
     DataNotAvailableError, InvalidSymbolError, OrderExecutionError,
     IndicatorCalculationError, SignalGenerationError
 )
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 from src.utils.error_handlers import handle_mt5_errors
 
 from src.connectors.base import BaseMetaTraderConnector, OrderType, TradeRequest
@@ -29,7 +29,7 @@ from src.database.repository import TradeRepository, SignalRepository
 from src.database.connection import get_session
 from src.database.models import TradeStatus, SignalType as DBSignalType
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 # Optional ML/LLM imports
 try:
@@ -160,7 +160,7 @@ class CurrencyTrader:
 
     def enable_ml_enhancement(self, ml_model):
         """Enable ML-enhanced trading"""
-        with CorrelationContext():
+        with LogContext():
             if ML_AVAILABLE:
                 self.ml_model = ml_model
                 self.use_ml_enhancement = True
@@ -178,7 +178,7 @@ class CurrencyTrader:
 
     def enable_sentiment_filter(self, sentiment_analyzer, market_analyst=None):
         """Enable LLM sentiment filtering"""
-        with CorrelationContext():
+        with LogContext():
             if LLM_AVAILABLE:
                 self.sentiment_analyzer = sentiment_analyzer
                 self.market_analyst = market_analyst
@@ -226,7 +226,7 @@ class CurrencyTrader:
             DataNotAvailableError: If market data not available
             IndicatorCalculationError: If indicator calculation fails
         """
-        with CorrelationContext():
+        with LogContext():
             # Get market data
             bars = self.connector.get_bars(
                 self.config.symbol,
@@ -483,7 +483,7 @@ class CurrencyTrader:
         Returns:
             True if should trade, False otherwise
         """
-        with CorrelationContext():
+        with LogContext():
             # No trade on HOLD
             if signal.type == SignalType.HOLD:
                 logger.info(
@@ -575,7 +575,7 @@ class CurrencyTrader:
         Returns:
             Lot size (volume)
         """
-        with CorrelationContext():
+        with LogContext():
             # Convert signal type to MT5 order type
             mt5_order_type = (mt5.ORDER_TYPE_BUY
                              if signal.type == SignalType.BUY
@@ -646,7 +646,7 @@ class CurrencyTrader:
         Raises:
             OrderExecutionError: If order execution fails
         """
-        with CorrelationContext():
+        with LogContext():
             # Calculate lot size
             lot_size = self.calculate_lot_size(signal)
 
@@ -719,7 +719,7 @@ class CurrencyTrader:
         Returns:
             Dictionary with cycle results
         """
-        with CorrelationContext():
+        with LogContext():
             result = {
                 'symbol': self.config.symbol,
                 'timestamp': datetime.now(),

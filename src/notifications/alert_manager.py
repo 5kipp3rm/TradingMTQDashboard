@@ -13,9 +13,9 @@ from src.database.models import (
 from src.database.connection import get_session
 from src.notifications.email_service import EmailNotificationService
 from src.api.websocket import connection_manager
-from src.utils.structured_logger import StructuredLogger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class AlertManager:

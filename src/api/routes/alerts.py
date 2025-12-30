@@ -10,9 +10,9 @@ from datetime import datetime
 
 from src.database.models import AlertConfiguration, AlertHistory, AlertType, NotificationChannel
 from src.database.connection import get_async_session
-from src.utils.structured_logger import StructuredLogger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 router = APIRouter()
 
 

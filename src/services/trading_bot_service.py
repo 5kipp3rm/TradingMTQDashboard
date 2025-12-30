@@ -18,9 +18,9 @@ from src.database import currency_models
 from src.strategies import SimpleMovingAverageStrategy
 from src.trading.orchestrator import MultiCurrencyOrchestrator
 from src.trading.currency_trader import CurrencyTraderConfig
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class TradingBotService:

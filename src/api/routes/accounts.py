@@ -11,10 +11,15 @@ from pydantic import BaseModel, Field, validator
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 
-from src.database import get_db_dependency, TradingAccount, AccountConnectionState, PlatformType
+from src.database import get_db_dependency, TradingAccount, AccountConnectionState, PlatformType, Trade
+from src.database.currency_models import CurrencyConfiguration
+from src.database.account_currency_models import AccountCurrencyConfig
 from src.services.session_manager import session_manager
 from src.api.websocket import connection_manager
 
+from src.utils.unified_logger import UnifiedLogger
+
+logger = UnifiedLogger.get_logger(__name__)
 
 router = APIRouter()
 
@@ -25,7 +30,7 @@ class AccountCreate(BaseModel):
     """Request model for creating a new trading account"""
     account_number: int = Field(..., description="MT5 account number", gt=0)
     account_name: str = Field(..., description="Friendly account name", min_length=1, max_length=100)
-    broker: str = Field(..., description="Broker name", min_length=1, max_length=100)
+    broker: str = Field("Unknown", description="Broker name (optional, defaults to 'Unknown')", max_length=100)
     server: str = Field(..., description="MT5 server address", min_length=1, max_length=100)
     platform_type: str = Field("MT5", description="Platform type (MT4 or MT5)")
     login: int = Field(..., description="MT5 login number", gt=0)
@@ -36,6 +41,13 @@ class AccountCreate(BaseModel):
     initial_balance: Optional[float] = Field(None, description="Initial account balance", gt=0)
     currency: str = Field("USD", description="Account currency", min_length=3, max_length=10)
     description: Optional[str] = Field(None, description="Account description", max_length=500)
+
+    @validator('broker', pre=True)
+    def broker_default_if_empty(cls, v):
+        """Set default broker if empty string provided"""
+        if not v or v.strip() == '':
+            return 'Unknown'
+        return v
 
     @validator('platform_type')
     def platform_type_valid(cls, v):
@@ -236,15 +248,15 @@ async def create_account(
         account_name=account_data.account_name,
         broker=account_data.broker,
         server=account_data.server,
-        platform_type=PlatformType[account_data.platform_type],
+        platform_type=PlatformType[account_data.platform_type.upper()],
         login=account_data.login,
-        password_encrypted=account_data.password,  # TODO: Implement encryption
+        password_encrypted=account_data.password if account_data.password else "",  # TODO: Implement encryption
         is_demo=account_data.is_demo,
         is_active=account_data.is_active,
         is_default=is_default,
         initial_balance=account_data.initial_balance,
         currency=account_data.currency,
-        description=account_data.description
+        description=account_data.description if account_data.description else None
     )
 
     db.add(new_account)
@@ -539,23 +551,77 @@ class AccountConfigUpdate(BaseModel):
 
 @router.get("/accounts/{account_id}/config", response_model=AccountConfigResponse)
 async def get_account_configuration(
-    account_id: int,
+    account_id: str,  # Changed to str to handle "all" or "*"
     db: Session = Depends(get_db_dependency)
 ):
     """
     Get account configuration
-    
+
     Returns the current configuration for a trading account, including:
     - Configuration source mode (database/yaml/hybrid)
     - YAML file path (if applicable)
     - Portable mode setting
     - Trading configuration (risk, currencies, strategy, position management)
+
+    Special values:
+    - "all" or "*": Returns a default/global configuration (not account-specific)
     """
+    # Handle special case for "all accounts"
+    if account_id.lower() in ["all", "*"]:
+        # Return a default global configuration
+        default_config = {
+            "risk": {
+                "risk_percent": 1.0,
+                "max_positions": 5,
+                "max_concurrent_trades": 15,
+                "portfolio_risk_percent": 10.0,
+                "stop_loss_pips": 50,
+                "take_profit_pips": 100
+            },
+            "strategy": {
+                "strategy_type": "SIMPLE_MA",
+                "timeframe": "M5",
+                "fast_period": 10,
+                "slow_period": 20
+            },
+            "position_management": {
+                "enable_breakeven": True,
+                "breakeven_trigger_pips": 15.0,
+                "breakeven_offset_pips": 2.0,
+                "enable_trailing": True,
+                "trailing_start_pips": 20.0,
+                "trailing_distance_pips": 10.0,
+                "enable_partial_close": False,
+                "partial_close_percent": 50.0,
+                "partial_close_profit_pips": 25.0
+            },
+            "currencies": []
+        }
+
+        return AccountConfigResponse(
+            account_id=0,  # Special ID for "all accounts"
+            account_number=0,
+            account_name="All Accounts (Global Default)",
+            config_source="yaml",
+            config_path="config/currencies.yaml",
+            portable=False,
+            trading_config=default_config
+        )
+
+    # Validate account_id is a valid integer
+    try:
+        account_id_int = int(account_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid account_id: '{account_id}'. Must be an integer or 'all'/'*'"
+        )
+
     # Get account
-    account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
+    account = db.query(TradingAccount).filter(TradingAccount.id == account_id_int).first()
 
     if not account:
-        raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
+        raise HTTPException(status_code=404, detail=f"Account with ID {account_id_int} not found")
 
     # Check if account has saved configuration
     if account.trading_config_json:
@@ -613,17 +679,19 @@ async def get_account_configuration(
 
 @router.put("/accounts/{account_id}/config", response_model=AccountConfigResponse)
 async def update_account_configuration(
-    account_id: int,
+    account_id: str,  # Changed to str to handle "all" or "*"
     config_update: AccountConfigUpdate,
     db: Session = Depends(get_db_dependency)
 ):
     """
     Update account configuration
-    
+
     Saves trading configuration for an account. Configuration can be stored in:
     - Database: All config in trading_config_json column
     - YAML: All config in external YAML file
     - Hybrid: Credentials in DB, config in YAML (recommended)
+
+    Note: Cannot update configuration for "all" accounts (account_id="all" or "*")
     
     Request body:
     {
@@ -638,11 +706,27 @@ async def update_account_configuration(
         }
     }
     """
+    # Handle special case for "all accounts" - not allowed for updates
+    if account_id.lower() in ["all", "*"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot update configuration for 'all' accounts. Please select a specific account."
+        )
+
+    # Validate account_id is a valid integer
+    try:
+        account_id_int = int(account_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid account_id: '{account_id}'. Must be an integer."
+        )
+
     # Get account
-    account = db.query(TradingAccount).filter(TradingAccount.id == account_id).first()
+    account = db.query(TradingAccount).filter(TradingAccount.id == account_id_int).first()
 
     if not account:
-        raise HTTPException(status_code=404, detail=f"Account with ID {account_id} not found")
+        raise HTTPException(status_code=404, detail=f"Account with ID {account_id_int} not found")
 
     # Update configuration columns
     if config_update.config_source is not None:
@@ -664,12 +748,13 @@ async def update_account_configuration(
     db.refresh(account)
 
     # Log the configuration (for debugging)
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"Configuration saved for account {account_id}")
-    logger.info(f"Config source: {account.config_source}")
-    logger.info(f"Config path: {account.config_path}")
-    logger.info(f"Portable: {config_update.portable}")
+    logger.log_config(
+        "Configuration saved for account",
+        account_id=account_id,
+        config_source=account.config_source,
+        config_path=account.config_path,
+        portable=config_update.portable if config_update.portable is not None else True
+    )
 
     # Return the updated configuration
     return AccountConfigResponse(
@@ -721,10 +806,12 @@ async def export_account_config_to_yaml(
     
     # For now, just return success
     # Once we implement the full configuration system, we'll actually write the YAML file
-    
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"Export configuration for account {account_id} to {output_path}")
+
+    logger.log_config(
+        "Export configuration for account",
+        account_id=account_id,
+        output_path=output_path
+    )
     
     return {
         "success": True,
@@ -796,3 +883,389 @@ async def get_resolved_account_config(
             "database_json": True
         }
     }
+
+
+# =============================================================================
+# Per-Account Currency Configuration Endpoints
+# =============================================================================
+
+class AccountCurrencyResponse(BaseModel):
+    """Response model for account currency configuration"""
+    id: int
+    account_id: int
+    symbol: str
+    enabled: bool
+
+    # Risk settings (NULL = use global default)
+    risk_percent: Optional[float]
+    max_position_size: Optional[float]
+    min_position_size: Optional[float]
+
+    # Strategy settings
+    strategy_type: Optional[str]
+    timeframe: Optional[str]
+
+    # Indicators
+    fast_period: Optional[int]
+    slow_period: Optional[int]
+
+    # SL/TP
+    sl_pips: Optional[int]
+    tp_pips: Optional[int]
+
+    # Trading Rules
+    cooldown_seconds: Optional[int]
+    trade_on_signal_change: Optional[bool]
+
+    # Position Stacking
+    allow_position_stacking: Optional[bool]
+    max_positions_same_direction: Optional[int]
+    max_total_positions: Optional[int]
+    stacking_risk_multiplier: Optional[float]
+
+    # Metadata
+    description: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class AccountCurrencyCreate(BaseModel):
+    """Request model for creating/updating account currency configuration"""
+    symbol: str = Field(..., description="Currency pair symbol (e.g., EURUSD)")
+    enabled: bool = Field(True, description="Whether this currency is enabled for trading")
+
+    # Risk settings (NULL = use global default)
+    risk_percent: Optional[float] = Field(None, description="Risk per trade (%)", ge=0.1, le=10.0)
+    max_position_size: Optional[float] = Field(None, description="Max position size (lots)", gt=0)
+    min_position_size: Optional[float] = Field(None, description="Min position size (lots)", gt=0)
+
+    # Strategy settings
+    strategy_type: Optional[str] = Field(None, description="Strategy type: crossover or position")
+    timeframe: Optional[str] = Field(None, description="Trading timeframe (M1, M5, M15, etc.)")
+
+    # Indicators
+    fast_period: Optional[int] = Field(None, description="Fast MA period", gt=0)
+    slow_period: Optional[int] = Field(None, description="Slow MA period", gt=0)
+
+    # SL/TP
+    sl_pips: Optional[int] = Field(None, description="Stop Loss in pips", gt=0)
+    tp_pips: Optional[int] = Field(None, description="Take Profit in pips", gt=0)
+
+    # Trading Rules
+    cooldown_seconds: Optional[int] = Field(None, description="Cooldown between trades (seconds)", ge=0)
+    trade_on_signal_change: Optional[bool] = Field(None, description="Require signal change before re-entry")
+
+    # Position Stacking
+    allow_position_stacking: Optional[bool] = Field(None, description="Allow multiple positions in same direction")
+    max_positions_same_direction: Optional[int] = Field(None, description="Max positions same direction", gt=0)
+    max_total_positions: Optional[int] = Field(None, description="Max total positions for this symbol", gt=0)
+    stacking_risk_multiplier: Optional[float] = Field(None, description="Risk multiplier for stacked positions", gt=0)
+
+
+class AccountCurrencyListResponse(BaseModel):
+    """Response model for list of account currencies"""
+    currencies: List[AccountCurrencyResponse]
+    total: int
+    account_id: int
+    account_name: str
+
+
+@router.get("/accounts/{account_id}/currencies", response_model=AccountCurrencyListResponse)
+async def get_account_currencies(
+    account_id: int,
+    enabled_only: bool = Query(False, description="Show only enabled currencies"),
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Get all currency configurations for an account.
+
+    Returns list of currencies with account-specific settings merged with global defaults.
+    """
+    # Verify account exists
+    account = db.get(TradingAccount, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+    # Get account-specific currencies (exclude deleted currencies)
+    # ONLY return currencies that have been explicitly added to this account
+    account_configs_query = select(AccountCurrencyConfig).where(
+        AccountCurrencyConfig.account_id == account_id,
+        AccountCurrencyConfig.is_deleted == False  # Filter out soft-deleted currencies
+    )
+
+    if enabled_only:
+        account_configs_query = account_configs_query.where(AccountCurrencyConfig.enabled == True)
+
+    result = db.execute(account_configs_query)
+    account_configs = result.scalars().all()
+
+    # Build response list
+    currency_responses = []
+
+    for account_config in account_configs:
+        # Get global currency for description and metadata
+        global_currency = db.get(CurrencyConfiguration, account_config.currency_symbol)
+
+        currency_responses.append(AccountCurrencyResponse(
+            id=account_config.id,
+            account_id=account_config.account_id,
+            symbol=account_config.currency_symbol,
+            enabled=account_config.enabled,
+            risk_percent=account_config.risk_percent,
+            max_position_size=account_config.max_position_size,
+            min_position_size=account_config.min_position_size,
+            strategy_type=account_config.strategy_type,
+            timeframe=account_config.timeframe,
+            fast_period=account_config.fast_period,
+            slow_period=account_config.slow_period,
+            sl_pips=account_config.sl_pips,
+            tp_pips=account_config.tp_pips,
+            cooldown_seconds=account_config.cooldown_seconds,
+            trade_on_signal_change=account_config.trade_on_signal_change,
+            allow_position_stacking=account_config.allow_position_stacking,
+            max_positions_same_direction=account_config.max_positions_same_direction,
+            max_total_positions=account_config.max_total_positions,
+            stacking_risk_multiplier=account_config.stacking_risk_multiplier,
+            description=global_currency.description if global_currency else account_config.currency_symbol,
+            created_at=account_config.created_at.isoformat(),
+            updated_at=account_config.updated_at.isoformat()
+        ))
+
+    return AccountCurrencyListResponse(
+        currencies=currency_responses,
+        total=len(currency_responses),
+        account_id=account_id,
+        account_name=account.account_name
+    )
+
+
+@router.put("/accounts/{account_id}/currencies/{symbol}", response_model=AccountCurrencyResponse)
+async def update_account_currency(
+    account_id: int,
+    symbol: str,
+    currency_data: AccountCurrencyCreate,
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Create or update currency configuration for an account.
+
+    If the account doesn't have a config for this currency, creates one.
+    Otherwise updates the existing configuration.
+    NULL fields will fall back to global defaults.
+    """
+    # Verify account exists
+    account = db.get(TradingAccount, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+    # Check if global currency config exists, create default if not
+    global_currency = db.execute(
+        select(CurrencyConfiguration).where(CurrencyConfiguration.symbol == symbol)
+    ).scalar_one_or_none()
+
+    if not global_currency:
+        # Create default global configuration automatically
+        logger.info(f"Creating default global config for {symbol}")
+        global_currency = CurrencyConfiguration(
+            symbol=symbol,
+            enabled=True,
+            risk_percent=currency_data.risk_percent or 1.0,
+            max_position_size=currency_data.max_position_size or 0.1,
+            min_position_size=currency_data.min_position_size or 0.01,
+            strategy_type=currency_data.strategy_type or "simple_ma",
+            timeframe=currency_data.timeframe or "M5",
+            fast_period=currency_data.fast_period or 10,
+            slow_period=currency_data.slow_period or 20,
+            sl_pips=currency_data.sl_pips or 50,
+            tp_pips=currency_data.tp_pips or 100,
+            cooldown_seconds=currency_data.cooldown_seconds or 300,
+            trade_on_signal_change=currency_data.trade_on_signal_change if currency_data.trade_on_signal_change is not None else True,
+            allow_position_stacking=currency_data.allow_position_stacking or False,
+            max_positions_same_direction=currency_data.max_positions_same_direction or 1,
+            max_total_positions=currency_data.max_total_positions or 5,
+            stacking_risk_multiplier=currency_data.stacking_risk_multiplier or 1.0,
+            description=f"{symbol} trading configuration"
+        )
+        db.add(global_currency)
+        db.flush()  # Ensure the global config is created before proceeding
+
+    # Check if account config exists
+    account_config = db.execute(
+        select(AccountCurrencyConfig).where(
+            AccountCurrencyConfig.account_id == account_id,
+            AccountCurrencyConfig.currency_symbol == symbol
+        )
+    ).scalar_one_or_none()
+
+    if account_config:
+        # Update existing config
+        update_data = currency_data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            if field != "symbol":  # Don't update symbol
+                setattr(account_config, field, value)
+    else:
+        # Create new config
+        account_config = AccountCurrencyConfig(
+            account_id=account_id,
+            currency_symbol=symbol,
+            enabled=currency_data.enabled,
+            risk_percent=currency_data.risk_percent,
+            max_position_size=currency_data.max_position_size,
+            min_position_size=currency_data.min_position_size,
+            strategy_type=currency_data.strategy_type,
+            timeframe=currency_data.timeframe,
+            fast_period=currency_data.fast_period,
+            slow_period=currency_data.slow_period,
+            sl_pips=currency_data.sl_pips,
+            tp_pips=currency_data.tp_pips,
+            cooldown_seconds=currency_data.cooldown_seconds,
+            trade_on_signal_change=currency_data.trade_on_signal_change,
+            allow_position_stacking=currency_data.allow_position_stacking,
+            max_positions_same_direction=currency_data.max_positions_same_direction,
+            max_total_positions=currency_data.max_total_positions,
+            stacking_risk_multiplier=currency_data.stacking_risk_multiplier
+        )
+        db.add(account_config)
+
+    db.commit()
+    db.refresh(account_config)
+
+    return AccountCurrencyResponse(
+        id=account_config.id,
+        account_id=account_config.account_id,
+        symbol=account_config.currency_symbol,
+        enabled=account_config.enabled,
+        risk_percent=account_config.risk_percent,
+        max_position_size=account_config.max_position_size,
+        min_position_size=account_config.min_position_size,
+        strategy_type=account_config.strategy_type,
+        timeframe=account_config.timeframe,
+        fast_period=account_config.fast_period,
+        slow_period=account_config.slow_period,
+        sl_pips=account_config.sl_pips,
+        tp_pips=account_config.tp_pips,
+        cooldown_seconds=account_config.cooldown_seconds,
+        trade_on_signal_change=account_config.trade_on_signal_change,
+        allow_position_stacking=account_config.allow_position_stacking,
+        max_positions_same_direction=account_config.max_positions_same_direction,
+        max_total_positions=account_config.max_total_positions,
+        stacking_risk_multiplier=account_config.stacking_risk_multiplier,
+        description=global_currency.description,
+        created_at=account_config.created_at.isoformat(),
+        updated_at=account_config.updated_at.isoformat()
+    )
+
+
+@router.delete("/accounts/{account_id}/currencies/{symbol}", status_code=204)
+async def delete_account_currency(
+    account_id: int,
+    symbol: str,
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Delete account-specific currency configuration.
+
+    Soft Delete Logic:
+    - If currency has trade history: Mark as deleted (soft delete) - keeps for historical reference
+    - If no trade history: Remove completely (hard delete)
+
+    This preserves data integrity while allowing clean removal of unused configurations.
+    """
+    # Verify account exists
+    account = db.get(TradingAccount, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+    # Check if account config exists
+    account_config = db.execute(
+        select(AccountCurrencyConfig).where(
+            AccountCurrencyConfig.account_id == account_id,
+            AccountCurrencyConfig.currency_symbol == symbol
+        )
+    ).scalar_one_or_none()
+
+    if not account_config:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No configuration found for currency {symbol} on account {account_id}"
+        )
+
+    # Check if currency has any trade history for this account
+    has_trades = db.execute(
+        select(Trade).where(
+            Trade.account_id == account_id,
+            Trade.symbol == symbol
+        ).limit(1)
+    ).scalar_one_or_none()
+
+    if has_trades:
+        # Soft delete: Mark as deleted but keep record for historical data
+        account_config.is_deleted = True
+        account_config.enabled = False  # Also disable to prevent accidental trading
+        db.commit()
+        logger.info(
+            f"Soft deleted currency {symbol} for account {account_id} (has trade history)",
+            account_id=account_id,
+            symbol=symbol,
+            action="soft_delete"
+        )
+    else:
+        # Hard delete: Remove completely as there's no trade history
+        db.delete(account_config)
+        db.commit()
+        logger.info(
+            f"Hard deleted currency {symbol} for account {account_id} (no trade history)",
+            account_id=account_id,
+            symbol=symbol,
+            action="hard_delete"
+        )
+
+    return None
+
+
+@router.get("/accounts/{account_id}/currencies/{symbol}/resolved", response_model=dict)
+async def get_resolved_account_currency(
+    account_id: int,
+    symbol: str,
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Get resolved currency configuration with global defaults merged.
+
+    Returns the final configuration that will be used for trading,
+    with account overrides taking precedence over global defaults.
+    """
+    # Verify account exists
+    account = db.get(TradingAccount, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+    # Get global currency
+    global_currency = db.execute(
+        select(CurrencyConfiguration).where(CurrencyConfiguration.symbol == symbol)
+    ).scalar_one_or_none()
+
+    if not global_currency:
+        raise HTTPException(status_code=404, detail=f"Currency {symbol} not found in global configuration")
+
+    # Get account config (if exists)
+    account_config = db.execute(
+        select(AccountCurrencyConfig).where(
+            AccountCurrencyConfig.account_id == account_id,
+            AccountCurrencyConfig.currency_symbol == symbol
+        )
+    ).scalar_one_or_none()
+
+    if account_config:
+        # Merge account overrides with global defaults
+        resolved = account_config.merge_with_global(global_currency)
+    else:
+        # Use global defaults
+        resolved = global_currency.to_dict()
+        resolved['account_id'] = account_id
+        resolved['is_override'] = False
+
+    return resolved

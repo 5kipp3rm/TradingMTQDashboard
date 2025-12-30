@@ -72,7 +72,20 @@
       "Bash(./venv/bin/pytest tests/services/trading_control/ -v --tb=short)",
       "Bash(timeout:*)",
       "Bash(./venv/bin/pytest:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(has already been declared\" which was preventing the accounts page from functioning.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Skill(jira-workflow:skills)",
+      "Skill(jira-workflow:skills:*)",
+      "Bash(python -m alembic revision:*)",
+      "Skill(git-standards:skills)",
+      "Skill(git-standards:skills:*)",
+      "Bash(echo \"The MT5 mock module is now fixed. When you restart your server and click the Connect button, you should see a clear error message instead of a crash:\n\nError message will be:\n''Connection failed: MT5 is not available on this platform \\(macOS/Linux\\). Install MetaTrader 5 on Windows to connect.''\n\nThis is the EXPECTED BEHAVIOR when developing on macOS without MT5.\")",
+      "Bash(for file in src/api/routes/accounts.py src/api/routes/positions.py src/api/routes/websocket.py src/services/position_service.py src/services/trading_bot_service.py)",
+      "Bash(do python3 -m py_compile \"$file\")",
+      "Bash(echo \"✗ $file FAILED\")",
+      "Bash(tail:*)",
+      "Bash(alembic current:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []

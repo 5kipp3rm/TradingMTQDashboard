@@ -16,10 +16,10 @@ from typing import Optional
 from alembic import command
 from alembic.config import Config
 
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 from src.exceptions import DatabaseError
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 def get_alembic_config(database_url: Optional[str] = None) -> Config:
@@ -32,7 +32,7 @@ def get_alembic_config(database_url: Optional[str] = None) -> Config:
     Returns:
         Alembic Config object
     """
-    with CorrelationContext():
+    with LogContext():
         # Get project root directory
         project_root = Path(__file__).parent.parent.parent
         alembic_ini = project_root / "alembic.ini"
@@ -73,7 +73,7 @@ def upgrade_database(database_url: Optional[str] = None, revision: str = "head")
     Raises:
         DatabaseError: If upgrade fails
     """
-    with CorrelationContext():
+    with LogContext():
         try:
             alembic_cfg = get_alembic_config(database_url)
 
@@ -105,7 +105,7 @@ def downgrade_database(database_url: Optional[str] = None, revision: str = "-1")
     Raises:
         DatabaseError: If downgrade fails
     """
-    with CorrelationContext():
+    with LogContext():
         try:
             alembic_cfg = get_alembic_config(database_url)
 
@@ -136,7 +136,7 @@ def get_current_revision(database_url: Optional[str] = None) -> Optional[str]:
     Returns:
         Current revision string or None if no migrations applied
     """
-    with CorrelationContext():
+    with LogContext():
         try:
             from alembic.script import ScriptDirectory
             from alembic.runtime.migration import MigrationContext
@@ -177,7 +177,7 @@ def create_new_migration(message: str, database_url: Optional[str] = None, autog
     Raises:
         DatabaseError: If migration creation fails
     """
-    with CorrelationContext():
+    with LogContext():
         try:
             alembic_cfg = get_alembic_config(database_url)
 
@@ -217,7 +217,7 @@ def initialize_database(database_url: Optional[str] = None) -> None:
     Raises:
         DatabaseError: If initialization fails
     """
-    with CorrelationContext():
+    with LogContext():
         try:
             logger.info("Initializing database")
 

@@ -20,10 +20,10 @@ from sqlalchemy.orm import Session
 from src.database.connection import get_db_dependency as get_db
 from src.services.position_service import position_service
 from src.api.websocket import connection_manager
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 router = APIRouter(prefix="/positions", tags=["positions"])
 
 
@@ -592,18 +592,18 @@ async def preview_position(
 
 @router.get("/open", response_model=List[PositionInfo])
 async def get_open_positions(
-    account_id: int,
+    account_id: Optional[int] = None,
     symbol: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
-    Get all open positions for an account.
+    Get all open positions for an account or all active accounts.
 
-    Returns list of all open positions for the specified account.
+    Returns list of all open positions for the specified account, or all active accounts if no account_id provided.
     Optionally filter by symbol.
 
     ## Query Parameters
-    - **account_id**: Trading account ID
+    - **account_id**: Trading account ID (optional - if not provided, returns positions from all active accounts)
     - **symbol**: Filter by symbol (optional)
 
     ## Returns

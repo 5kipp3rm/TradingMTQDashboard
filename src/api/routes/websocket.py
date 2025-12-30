@@ -10,9 +10,9 @@ import asyncio
 import json
 
 from src.api.websocket import connection_manager
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 router = APIRouter()
 
 

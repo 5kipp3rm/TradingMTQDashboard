@@ -12,7 +12,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from src.database import get_db_dependency, CurrencyConfiguration
+from src.database import get_db_dependency, CurrencyConfiguration, AvailableCurrency, CurrencyCategory
 from src.api.websocket import connection_manager
 
 
@@ -272,6 +272,35 @@ class CurrencyValidationResponse(BaseModel):
     symbol: str
 
 
+class AvailableCurrencyResponse(BaseModel):
+    """Response model for available currency pair"""
+
+    id: int
+    symbol: str
+    description: Optional[str]
+    category: str
+    base_currency: Optional[str]
+    quote_currency: Optional[str]
+    pip_value: float
+    decimal_places: int
+    min_lot_size: float
+    max_lot_size: float
+    typical_spread: Optional[float]
+    is_active: bool
+    trading_hours_start: Optional[str]
+    trading_hours_end: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class AvailableCurrenciesListResponse(BaseModel):
+    """Response model for list of available currency pairs"""
+
+    currencies: List[AvailableCurrencyResponse]
+    total: int
+
+
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
@@ -334,6 +363,62 @@ async def list_currencies(
         ],
         total=len(currencies),
         enabled_count=enabled_count
+    )
+
+
+@router.get("/available", response_model=AvailableCurrenciesListResponse)
+async def get_available_currencies(
+    category: Optional[str] = Query(None, description="Filter by category (major, cross, exotic, commodity, crypto, index)"),
+    active_only: bool = Query(True, description="Show only active currencies"),
+    db: Session = Depends(get_db_dependency)
+):
+    """
+    Get list of available currency pairs from master database.
+
+    Returns the master list of tradable currency pairs that can be added to accounts.
+    Optionally filter by category and active status.
+    """
+    query = select(AvailableCurrency)
+
+    if active_only:
+        query = query.where(AvailableCurrency.is_active == True)
+
+    if category:
+        try:
+            cat_enum = CurrencyCategory[category.upper()]
+            query = query.where(AvailableCurrency.category == cat_enum)
+        except KeyError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid category. Valid values: {', '.join([c.value for c in CurrencyCategory])}"
+            )
+
+    query = query.order_by(AvailableCurrency.category, AvailableCurrency.symbol)
+
+    result = db.execute(query)
+    currencies = result.scalars().all()
+
+    return AvailableCurrenciesListResponse(
+        currencies=[
+            AvailableCurrencyResponse(
+                id=c.id,
+                symbol=c.symbol,
+                description=c.description,
+                category=c.category.value,
+                base_currency=c.base_currency,
+                quote_currency=c.quote_currency,
+                pip_value=float(c.pip_value),
+                decimal_places=c.decimal_places,
+                min_lot_size=float(c.min_lot_size),
+                max_lot_size=float(c.max_lot_size),
+                typical_spread=float(c.typical_spread) if c.typical_spread else None,
+                is_active=c.is_active,
+                trading_hours_start=c.trading_hours_start,
+                trading_hours_end=c.trading_hours_end
+            )
+            for c in currencies
+        ],
+        total=len(currencies)
     )
 
 

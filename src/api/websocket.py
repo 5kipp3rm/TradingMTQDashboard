@@ -9,9 +9,9 @@ from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
 import json
 import asyncio
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class ConnectionManager:

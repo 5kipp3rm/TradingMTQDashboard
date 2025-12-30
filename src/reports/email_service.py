@@ -14,9 +14,9 @@ import smtplib
 import ssl
 from datetime import datetime
 
-from src.utils.structured_logger import StructuredLogger
+from src.utils.unified_logger import UnifiedLogger
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class EmailConfiguration:

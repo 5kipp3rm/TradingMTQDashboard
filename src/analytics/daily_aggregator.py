@@ -12,9 +12,9 @@ from decimal import Decimal
 from src.database.models import Trade, TradeStatus, DailyPerformance
 from src.database.repository import TradeRepository, DailyPerformanceRepository
 from src.database.connection import get_session
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class DailyAggregator:

@@ -24,13 +24,13 @@ from src.connectors.base import (
     TradeRequest, TradeResult, OrderType, Position
 )
 from src.database.models import TradingAccount
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 from src.exceptions import (
     ConnectionError, OrderExecutionError, InvalidSymbolError
 )
 
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class PositionValidationError(Exception):
@@ -699,15 +699,15 @@ class PositionExecutionService:
 
     async def get_open_positions(
         self,
-        account_id: int,
+        account_id: Optional[int],
         db: Session,
         symbol: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
-        Get all open positions for an account.
+        Get all open positions for an account or all active accounts.
 
         Args:
-            account_id: Trading account ID
+            account_id: Trading account ID (optional - if None, gets positions from all active accounts)
             db: Database session
             symbol: Filter by symbol (optional)
 
@@ -717,6 +717,45 @@ class PositionExecutionService:
         logger.info(f"Getting open positions - account_id={account_id}, symbol={symbol}")
 
         try:
+            # If no account_id specified, get positions from all active accounts
+            if account_id is None:
+                from sqlalchemy import select
+
+                # Get all active accounts
+                stmt = select(TradingAccount).where(TradingAccount.is_active == True)
+                result = db.execute(stmt)
+                active_accounts = result.scalars().all()
+
+                logger.info(f"Getting positions from {len(active_accounts)} active accounts")
+
+                # Collect positions from all active accounts
+                all_positions = []
+                for account in active_accounts:
+                    connector = session_manager.get_session(account.id)
+                    if connector:
+                        try:
+                            positions = connector.get_positions(symbol=symbol)
+                            for pos in positions:
+                                position_dict = {
+                                    "ticket": pos.ticket,
+                                    "symbol": pos.symbol,
+                                    "type": pos.type.value if isinstance(pos.type, OrderType) else str(pos.type),
+                                    "volume": pos.volume,
+                                    "price_open": pos.price_open,
+                                    "price_current": pos.price_current,
+                                    "sl": pos.sl,
+                                    "tp": pos.tp,
+                                    "profit": pos.profit
+                                }
+                                all_positions.append(position_dict)
+                        except Exception as e:
+                            logger.warning(f"Failed to get positions from account {account.id}: {str(e)}")
+                            continue
+
+                logger.info(f"Retrieved {len(all_positions)} open positions from all active accounts")
+                return all_positions
+
+            # Single account mode
             # Get account from database
             account = db.get(TradingAccount, account_id)
             if not account:

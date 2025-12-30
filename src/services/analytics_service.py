@@ -12,10 +12,10 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import Session
 
 from src.database.models import Trade, TradingAccount, DailyPerformance, TradeStatus
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class AggregatedAnalyticsService:

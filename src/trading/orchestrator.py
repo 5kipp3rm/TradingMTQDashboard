@@ -17,7 +17,7 @@ from src.exceptions import (
     TradingMTQError, InvalidSymbolError, OrderExecutionError,
     build_order_context
 )
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 from src.utils.error_handlers import handle_mt5_errors
 
 from src.connectors.base import BaseMetaTraderConnector
@@ -30,7 +30,7 @@ from .intelligent_position_manager import IntelligentPositionManager, PositionAc
 from src.database.repository import AccountSnapshotRepository
 from src.database.connection import get_session
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class MultiCurrencyOrchestrator:
@@ -103,7 +103,7 @@ class MultiCurrencyOrchestrator:
         Returns:
             Created CurrencyTrader instance or None if validation failed
         """
-        with CorrelationContext():
+        with LogContext():
             if config.symbol in self.traders:
                 logger.warning(
                     "Currency already added, skipping",
@@ -142,7 +142,7 @@ class MultiCurrencyOrchestrator:
         Args:
             ml_model: Trained ML model instance
         """
-        with CorrelationContext():
+        with LogContext():
             for symbol, trader in self.traders.items():
                 trader.enable_ml_enhancement(ml_model)
 
@@ -163,7 +163,7 @@ class MultiCurrencyOrchestrator:
             sentiment_analyzer: LLM sentiment analyzer instance
             market_analyst: Optional LLM market analyst
         """
-        with CorrelationContext():
+        with LogContext():
             for symbol, trader in self.traders.items():
                 trader.enable_sentiment_filter(sentiment_analyzer, market_analyst)
 
@@ -191,7 +191,7 @@ class MultiCurrencyOrchestrator:
             strategy: Strategy instance (will be shared or cloned)
             default_config: Default configuration parameters
         """
-        with CorrelationContext():
+        with LogContext():
             for symbol in symbols:
                 config = CurrencyTraderConfig(
                     symbol=symbol,
@@ -216,7 +216,7 @@ class MultiCurrencyOrchestrator:
         Returns:
             True if removed, False if not found
         """
-        with CorrelationContext():
+        with LogContext():
             if symbol in self.traders:
                 del self.traders[symbol]
                 logger.info("Currency removed from trading", symbol=symbol)
@@ -233,7 +233,7 @@ class MultiCurrencyOrchestrator:
         Returns:
             Number of open positions
         """
-        with CorrelationContext():
+        with LogContext():
             positions = self.connector.get_positions()
 
             # Filter to only show positions for currencies we're managing
@@ -264,7 +264,7 @@ class MultiCurrencyOrchestrator:
         Returns:
             True if can open new position
         """
-        with CorrelationContext():
+        with LogContext():
             open_count = self.get_open_positions_count()
 
             if self.use_intelligent_manager and self.intelligent_manager:
@@ -302,7 +302,7 @@ class MultiCurrencyOrchestrator:
         Returns:
             Dictionary with cycle results
         """
-        with CorrelationContext():
+        with LogContext():
             results = {
                 'timestamp': datetime.now(),
                 'currencies': {},
@@ -406,7 +406,7 @@ class MultiCurrencyOrchestrator:
         Returns:
             Dictionary with cycle results
         """
-        with CorrelationContext():
+        with LogContext():
             results = {
                 'timestamp': datetime.now(),
                 'currencies': {},
@@ -463,7 +463,7 @@ class MultiCurrencyOrchestrator:
             parallel: Use parallel execution
             max_cycles: Maximum cycles (None = infinite)
         """
-        with CorrelationContext():
+        with LogContext():
             logger.info("=" * 80)
             logger.info("  MULTI-CURRENCY TRADING ORCHESTRATOR")
             logger.info("=" * 80)
@@ -565,7 +565,7 @@ class MultiCurrencyOrchestrator:
 
     def print_final_statistics(self) -> None:
         """Print final statistics for managed currencies only"""
-        with CorrelationContext():
+        with LogContext():
             logger.info("=" * 80)
             logger.info("  FINAL STATISTICS")
             logger.info("=" * 80)

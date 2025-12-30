@@ -15,12 +15,12 @@ from sqlalchemy import select, desc
 from src.database import BotState, BotStatus, get_session
 from src.trading.orchestrator import MultiCurrencyOrchestrator
 from src.config_manager import ConfigurationManager
-from src.utils.logger import get_logger
+from src.utils.unified_logger import UnifiedLogger
 from src.services.session_manager import session_manager
 from src.database import TradingAccount
 
 
-logger = get_logger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class BotControlService:

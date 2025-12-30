@@ -16,9 +16,9 @@ from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 
 from src.analytics.daily_aggregator import DailyAggregator
 from src.database.connection import init_db, get_session
-from src.utils.structured_logger import StructuredLogger, CorrelationContext
+from src.utils.unified_logger import UnifiedLogger, LogContext
 
-logger = StructuredLogger(__name__)
+logger = UnifiedLogger.get_logger(__name__)
 
 
 class AnalyticsScheduler:
@@ -119,7 +119,7 @@ class AnalyticsScheduler:
         This job runs at the configured time each day to aggregate
         the previous day's trading performance.
         """
-        with CorrelationContext():
+        with LogContext():
             try:
                 # Aggregate yesterday's trades
                 yesterday = date.today() - timedelta(days=1)
@@ -168,7 +168,7 @@ class AnalyticsScheduler:
         if target_date is None:
             target_date = date.today() - timedelta(days=1)
 
-        with CorrelationContext():
+        with LogContext():
             logger.info(
                 "Manual aggregation triggered",
                 extra={"target_date": target_date.isoformat()}

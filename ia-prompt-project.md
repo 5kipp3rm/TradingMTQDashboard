@@ -11,7 +11,11 @@ I will paste files from this repo in chunks (start with entrypoints + bootstrap 
 Your goal is to build a reusable “Project Memory” summary so we can safely implement changes.
 
 Repo map (context, don’t assume behavior until you see code):
-- src/
+- src/                   (main source code root)
+  - main.py              (primary entrypoint)
+  - bot.py               (trading bot core orchestration)
+  - config_manager.py    (configuration management singleton)
+  - exceptions.py        (custom exception classes)
   - cli/                 (CLI entrypoints, commands, args validation)
   - api/                 (REST/Web API server, routes, request/response models)
   - config/              (settings loader, env/files precedence, defaults)
@@ -22,16 +26,25 @@ Repo map (context, don’t assume behavior until you see code):
   - indicators/          (TA indicators, feature builders)
   - backtest/            (historical simulation, fill models, metrics)
   - optimization/        (parameter sweeps, tuning, experimentation)
-  - ml/ + llm/           (models, training/inference, prompts/agents, pipelines)
-  - analytics/ + analysis/ (analysis utilities, dashboards/insights, reporting)
+  - ml/                  (ML models, training/inference, feature engineering)
+  - llm/                 (LLM integration, prompts/agents, sentiment analysis)
+  - analytics/           (analytics utilities, dashboards/insights)
+  - analysis/            (market/trade analysis tools)
   - notifications/       (alerts: email/telegram/webhooks/etc.)
   - reports/             (report generation, exports)
   - services/            (service layer / orchestration / business workflows)
   - utils/               (logging, helpers, shared tooling)
+  - workers/             (background workers, scheduled tasks)
 - alembic/               (migrations, schema evolution)
-- dashboard/             (static dashboard assets: css/js)
+- config/                (YAML config files: currencies, accounts, MT5, email)
+- dashboard/             (static dashboard assets: HTML/CSS/JS)
 - data/                  (raw/processed/models datasets)
+  - models/              (trained ML models, model artifacts)
+  - processed/           (processed trading data)
+  - raw/                 (raw market data)
 - deploy/                (windows/macos packaging, scripts)
+  - macos/               (macOS deployment scripts/packages)
+  - windows/             (Windows deployment scripts/packages)
 - docs/                  (design/architecture/phases/guides + API docs)
 - scripts/               (maintenance, tooling, run helpers)
 - tests/                 (unit/integration tests)
@@ -100,7 +113,29 @@ Analyze the code I paste from “tradingmtq” and produce a reusable Project Me
 Output in this order:
 1) What it is / does (5–8 bullets).
 2) Execution flow (Mermaid/ASCII): CLI/API/UI → config → DB/init → connectors → strategies → trading/execution → persistence → reports/notifications.
-3) Key components & responsibilities: src/{cli,api,config,database,connectors,trading,strategies,indicators,backtest,optimization,ml,llm,notifications,reports,services,utils} + alembic.
+3) Key components & responsibilities:
+   - src/main.py, src/bot.py (core entry/orchestration)
+   - src/cli/ (CLI commands)
+   - src/api/ (web API server)
+   - src/config/, config/ (configuration management)
+   - src/database/ (DB layer, repositories)
+   - src/connectors/ (broker/MT5 integrations)
+   - src/trading/ (order execution, position management)
+   - src/strategies/ (trading strategies)
+   - src/indicators/ (technical indicators)
+   - src/backtest/ (backtesting engine)
+   - src/optimization/ (parameter optimization)
+   - src/ml/, src/llm/ (AI/ML integrations)
+   - src/analytics/, src/analysis/ (analytics tools)
+   - src/notifications/ (alerting)
+   - src/reports/ (reporting)
+   - src/services/ (service orchestration)
+   - src/utils/ (utilities)
+   - src/workers/ (background workers)
+   - alembic/ (database migrations)
+   - dashboard/ (web UI)
+   - data/ (data storage: raw, processed, models)
+   - deploy/ (deployment packages)
 4) Entrypoints & runtime: how it starts, modes (live/paper/backtest), CLI args/env/config precedence.
 5) (D) Dependencies & delivery: packaging, runtime deps (DB/broker), deploy artifacts, CI/CD (if any), local dev workflow.
 6) Results pipeline: trades/positions/P&L, reports, alerts; backtest vs live differences.

@@ -1,4 +1,4 @@
 [submodule "dashboard"]
 	path = dashboard
 	url = https://github.com/5kipp3rm/TradingMTQDashboard
-	branch = trading-dashboard
+	branch = lovely-dashboard-refactor
