@@ -9,14 +9,17 @@ import { TradesTable } from "@/components/dashboard/TradesTable";
 import { DailyPerformanceTable } from "@/components/dashboard/DailyPerformanceTable";
 import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useAccounts } from "@/contexts/AccountsContext";
 import { useToast } from "@/hooks/use-toast";
+import { positionsApi } from "@/lib/api";
 import type { QuickTradeParams } from "@/types/trading";
 
 const Dashboard = () => {
   const [period, setPeriod] = useState(30);
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
+  const { selectedAccountId } = useAccounts();
   const { toast } = useToast();
-  
+
   const {
     summary,
     trades,
@@ -29,7 +32,7 @@ const Dashboard = () => {
     lastUpdate,
     connectionStatus,
     refresh,
-  } = useDashboardData(period);
+  } = useDashboardData(period, selectedAccountId);
 
   useEffect(() => {
     refresh();
@@ -62,28 +65,104 @@ const Dashboard = () => {
     });
   };
 
-  const handleClosePosition = (ticket: number) => {
-    toast({
-      title: "Position Closed",
-      description: `Position #${ticket} has been closed.`,
-    });
-    refresh();
+  const handleClosePosition = async (ticket: number) => {
+    try {
+      // Get first active account ID (you may want to pass this as a parameter)
+      const accountId = 1; // TODO: Get from selected account context
+
+      const response = await positionsApi.close(ticket, accountId);
+
+      if (response.error) {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to close position",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Position Closed",
+          description: `Position #${ticket} has been closed successfully.`,
+        });
+        refresh();
+      }
+    } catch (error) {
+      console.error("Failed to close position:", error);
+      toast({
+        title: "Error",
+        description: "Failed to close position",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleCloseAll = () => {
-    toast({
-      title: "All Positions Closed",
-      description: `${positions.length} positions have been closed.`,
-    });
-    refresh();
+  const handleCloseAll = async () => {
+    try {
+      // Get first active account ID
+      const accountId = 1; // TODO: Get from selected account context
+
+      const response = await positionsApi.closeAll({ account_id: accountId });
+
+      if (response.error) {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to close all positions",
+          variant: "destructive",
+        });
+      } else {
+        const result = response.data as any;
+        toast({
+          title: "All Positions Closed",
+          description: `Successfully closed ${result.closed_count || positions.length} positions.`,
+        });
+        refresh();
+      }
+    } catch (error) {
+      console.error("Failed to close all positions:", error);
+      toast({
+        title: "Error",
+        description: "Failed to close all positions",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleQuickTrade = (params: QuickTradeParams) => {
-    toast({
-      title: "Trade Executed",
-      description: `${params.type.toUpperCase()} ${params.volume} lots of ${params.symbol}`,
-    });
-    refresh();
+  const handleQuickTrade = async (params: QuickTradeParams) => {
+    try {
+      // Get first active account ID
+      const accountId = 1; // TODO: Get from selected account context
+
+      const response = await positionsApi.open({
+        account_id: accountId,
+        symbol: params.symbol,
+        order_type: params.type.toUpperCase(),
+        volume: params.volume,
+        stop_loss: params.sl,
+        take_profit: params.tp,
+        comment: params.comment,
+      });
+
+      if (response.error) {
+        toast({
+          title: "Trade Failed",
+          description: response.error || "Failed to execute trade",
+          variant: "destructive",
+        });
+      } else {
+        const result = response.data as any;
+        toast({
+          title: "Trade Executed",
+          description: `${params.type.toUpperCase()} ${params.volume} lots of ${params.symbol} - Ticket #${result.ticket}`,
+        });
+        refresh();
+      }
+    } catch (error) {
+      console.error("Failed to execute trade:", error);
+      toast({
+        title: "Error",
+        description: "Failed to execute trade",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

@@ -3,17 +3,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
 import { Bell, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { alertsApi } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
-const mockAlerts = [
-  { id: "1", symbol: "EURUSD", condition: "above", price: 1.0900, triggered: false, createdAt: "2024-12-15T10:00:00Z" },
-  { id: "2", symbol: "GBPUSD", condition: "below", price: 1.2600, triggered: true, createdAt: "2024-12-14T15:30:00Z", triggeredAt: "2024-12-16T09:15:00Z" },
-  { id: "3", symbol: "XAUUSD", condition: "above", price: 2100, triggered: false, createdAt: "2024-12-10T08:00:00Z" },
-];
+interface Alert {
+  id: string;
+  symbol: string;
+  condition: string;
+  price: number;
+  triggered: boolean;
+  createdAt: string;
+  triggeredAt?: string;
+}
 
 const Alerts = () => {
-  const [alerts] = useState(mockAlerts);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      setIsLoading(true);
+      const response = await alertsApi.getAll();
+      if (response.data) {
+        const formattedAlerts = (response.data as any).alerts?.map((a: any) => ({
+          id: a.id.toString(),
+          symbol: a.symbol,
+          condition: a.condition_type || "above",
+          price: a.target_price,
+          triggered: a.is_triggered,
+          createdAt: a.created_at,
+          triggeredAt: a.triggered_at,
+        })) || [];
+        setAlerts(formattedAlerts);
+      }
+      setIsLoading(false);
+    };
+    fetchAlerts();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

@@ -4,9 +4,11 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Header } from "@/components/dashboard/Header";
-import { useState } from "react";
+import { AddCurrencyModal } from "@/components/currencies/AddCurrencyModal";
+import { useState, useEffect } from "react";
 import { useAccounts } from "@/contexts/AccountsContext";
 import { useToast } from "@/hooks/use-toast";
+import { accountsApi } from "@/lib/api";
 import {
   Select,
   SelectContent,
@@ -19,7 +21,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, Settings2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ChevronDown, ChevronUp, Settings2, Plus, Trash2 } from "lucide-react";
 
 interface CurrencyRisk {
   risk_percent: number;
@@ -47,65 +59,6 @@ interface AccountCurrencies {
   [accountId: string]: CurrencyConfig[];
 }
 
-const defaultCurrencies: CurrencyConfig[] = [
-  {
-    symbol: "EURUSD",
-    description: "Euro / US Dollar",
-    enabled: true,
-    risk: { risk_percent: 1, max_positions: 3, stop_loss_pips: 50, take_profit_pips: 100 },
-    strategy: { strategy_type: "simple_ma", timeframe: "M5", fast_period: 10, slow_period: 20 },
-  },
-  {
-    symbol: "GBPUSD",
-    description: "British Pound / US Dollar",
-    enabled: true,
-    risk: { risk_percent: 1, max_positions: 3, stop_loss_pips: 60, take_profit_pips: 120 },
-    strategy: { strategy_type: "simple_ma", timeframe: "M15", fast_period: 8, slow_period: 21 },
-  },
-  {
-    symbol: "USDJPY",
-    description: "US Dollar / Japanese Yen",
-    enabled: true,
-    risk: { risk_percent: 1, max_positions: 3, stop_loss_pips: 40, take_profit_pips: 80 },
-    strategy: { strategy_type: "rsi_divergence", timeframe: "H1", fast_period: 14, slow_period: 28 },
-  },
-  {
-    symbol: "AUDUSD",
-    description: "Australian Dollar / US Dollar",
-    enabled: true,
-    risk: { risk_percent: 0.5, max_positions: 2, stop_loss_pips: 45, take_profit_pips: 90 },
-    strategy: { strategy_type: "breakout", timeframe: "M30", fast_period: 12, slow_period: 26 },
-  },
-  {
-    symbol: "USDCAD",
-    description: "US Dollar / Canadian Dollar",
-    enabled: false,
-    risk: { risk_percent: 1, max_positions: 3, stop_loss_pips: 50, take_profit_pips: 100 },
-    strategy: { strategy_type: "simple_ma", timeframe: "M5", fast_period: 10, slow_period: 20 },
-  },
-  {
-    symbol: "NZDUSD",
-    description: "New Zealand Dollar / US Dollar",
-    enabled: false,
-    risk: { risk_percent: 1, max_positions: 3, stop_loss_pips: 50, take_profit_pips: 100 },
-    strategy: { strategy_type: "simple_ma", timeframe: "M5", fast_period: 10, slow_period: 20 },
-  },
-  {
-    symbol: "USDCHF",
-    description: "US Dollar / Swiss Franc",
-    enabled: false,
-    risk: { risk_percent: 1, max_positions: 3, stop_loss_pips: 50, take_profit_pips: 100 },
-    strategy: { strategy_type: "simple_ma", timeframe: "M5", fast_period: 10, slow_period: 20 },
-  },
-  {
-    symbol: "XAUUSD",
-    description: "Gold / US Dollar",
-    enabled: true,
-    risk: { risk_percent: 2, max_positions: 2, stop_loss_pips: 100, take_profit_pips: 200 },
-    strategy: { strategy_type: "trend_following", timeframe: "H4", fast_period: 20, slow_period: 50 },
-  },
-];
-
 const strategyTypes = [
   { value: "simple_ma", label: "Simple MA Crossover" },
   { value: "rsi_divergence", label: "RSI Divergence" },
@@ -128,23 +81,132 @@ const timeframes = [
 const Currencies = () => {
   const { accounts, selectedAccountId } = useAccounts();
   const { toast } = useToast();
-  const [currenciesPerAccount, setCurrenciesPerAccount] = useState<AccountCurrencies>({
-    "1": [...defaultCurrencies],
-    "2": [...defaultCurrencies],
-    "3": [...defaultCurrencies],
-  });
+  const [currenciesPerAccount, setCurrenciesPerAccount] = useState<AccountCurrencies>({});
+  const [isLoading, setIsLoading] = useState(true);
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
+  const [addCurrencyOpen, setAddCurrencyOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [currencyToDelete, setCurrencyToDelete] = useState<{ symbol: string; description: string } | null>(null);
 
-  const currentAccountId = selectedAccountId === "all" ? "1" : selectedAccountId;
-  const currencies = currenciesPerAccount[currentAccountId] || defaultCurrencies;
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch currencies for the selected account
+        const accountIdToFetch = selectedAccountId === "all"
+          ? (accounts[0]?.id ? Number(accounts[0].id) : null)
+          : Number(selectedAccountId);
 
-  const toggleCurrency = (symbol: string) => {
+        if (!accountIdToFetch) {
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await accountsApi.getCurrencies(accountIdToFetch);
+        if (response.data) {
+          const apiResponse = response.data as any;
+          const apiCurrencies = apiResponse.currencies || [];
+
+          const formattedCurrencies: CurrencyConfig[] = apiCurrencies.map((c: any) => ({
+            symbol: c.symbol,
+            description: c.description || c.symbol,
+            enabled: c.enabled !== undefined ? c.enabled : false,
+            risk: {
+              risk_percent: c.risk_percent || 1.0,
+              max_positions: c.max_position_size || 3,
+              stop_loss_pips: c.sl_pips || 50,
+              take_profit_pips: c.tp_pips || 100,
+            },
+            strategy: {
+              strategy_type: c.strategy_type || "simple_ma",
+              timeframe: c.timeframe || "M5",
+              fast_period: c.fast_period || 10,
+              slow_period: c.slow_period || 20,
+            },
+          }));
+
+          setCurrenciesPerAccount((prev) => ({
+            ...prev,
+            [accountIdToFetch]: formattedCurrencies,
+          }));
+        } else {
+          toast({
+            title: "Error",
+            description: response.error || "Failed to fetch currencies",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch currencies:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch currencies from API",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (accounts.length > 0) {
+      fetchCurrencies();
+    }
+  }, [accounts, selectedAccountId, toast]);
+
+  const currentAccountId = selectedAccountId === "all" ? accounts[0]?.id || "1" : selectedAccountId;
+  const currencies = currenciesPerAccount[currentAccountId] || [];
+
+  const toggleCurrency = async (symbol: string) => {
+    const currency = currencies.find((c) => c.symbol === symbol);
+    if (!currency) return;
+
+    const newEnabled = !currency.enabled;
+    const accountId = Number(currentAccountId);
+
+    // Optimistic update
     setCurrenciesPerAccount((prev) => ({
       ...prev,
       [currentAccountId]: prev[currentAccountId].map((c) =>
-        c.symbol === symbol ? { ...c, enabled: !c.enabled } : c
+        c.symbol === symbol ? { ...c, enabled: newEnabled } : c
       ),
     }));
+
+    // Call per-account API to update enabled status
+    try {
+      const response = await accountsApi.updateCurrency(accountId, symbol, {
+        symbol,
+        enabled: newEnabled,
+      });
+
+      if (response.error) {
+        // Revert on error
+        setCurrenciesPerAccount((prev) => ({
+          ...prev,
+          [currentAccountId]: prev[currentAccountId].map((c) =>
+            c.symbol === symbol ? { ...c, enabled: !newEnabled } : c
+          ),
+        }));
+        toast({
+          title: "Error",
+          description: response.error || "Failed to update currency",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to toggle currency:", error);
+      // Revert on error
+      setCurrenciesPerAccount((prev) => ({
+        ...prev,
+        [currentAccountId]: prev[currentAccountId].map((c) =>
+          c.symbol === symbol ? { ...c, enabled: !newEnabled } : c
+        ),
+      }));
+      toast({
+        title: "Error",
+        description: "Failed to update currency status",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateCurrencyRisk = (symbol: string, key: keyof CurrencyRisk, value: number) => {
@@ -165,11 +227,187 @@ const Currencies = () => {
     }));
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Settings Saved",
-      description: "Currency settings have been saved successfully.",
-    });
+  const handleSave = async () => {
+    const currenciesToSave = currencies;
+    const accountId = Number(currentAccountId);
+
+    try {
+      // Save all currencies for this account
+      const savePromises = currenciesToSave.map((currency) =>
+        accountsApi.updateCurrency(accountId, currency.symbol, {
+          symbol: currency.symbol,
+          enabled: currency.enabled,
+          risk_percent: currency.risk.risk_percent,
+          max_position_size: currency.risk.max_positions,
+          min_position_size: 0.01,
+          strategy_type: currency.strategy.strategy_type,
+          timeframe: currency.strategy.timeframe,
+          fast_period: currency.strategy.fast_period,
+          slow_period: currency.strategy.slow_period,
+          sl_pips: currency.risk.stop_loss_pips,
+          tp_pips: currency.risk.take_profit_pips,
+        })
+      );
+
+      const results = await Promise.all(savePromises);
+      const errors = results.filter((r) => r.error);
+
+      if (errors.length > 0) {
+        toast({
+          title: "Partial Save",
+          description: `Saved ${results.length - errors.length} currencies, ${errors.length} failed`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Settings Saved",
+          description: "Currency settings have been saved successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to save currencies:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save currency settings",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddCurrency = async (currency: {
+    symbol: string;
+    enabled: boolean;
+    risk_percent: number;
+    max_position_size: number;
+    min_position_size: number;
+    strategy_type: string;
+    timeframe: string;
+    fast_period: number;
+    slow_period: number;
+    sl_pips: number;
+    tp_pips: number;
+  }) => {
+    const accountId = Number(currentAccountId);
+
+    try {
+      // Add currency to specific account (hybrid architecture - per-account config)
+      const accountResponse = await accountsApi.updateCurrency(accountId, currency.symbol, currency);
+
+      if (accountResponse.error) {
+        toast({
+          title: "Error",
+          description: accountResponse.error || "Failed to add currency to account",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Refresh currencies list
+      const response = await accountsApi.getCurrencies(accountId);
+      if (response.data) {
+        const apiResponse = response.data as any;
+        const apiCurrencies = apiResponse.currencies || [];
+
+        const formattedCurrencies: CurrencyConfig[] = apiCurrencies.map((c: any) => ({
+          symbol: c.symbol,
+          description: c.description || c.symbol,
+          enabled: c.enabled !== undefined ? c.enabled : false,
+          risk: {
+            risk_percent: c.risk_percent || 1.0,
+            max_positions: c.max_position_size || 3,
+            stop_loss_pips: c.sl_pips || 50,
+            take_profit_pips: c.tp_pips || 100,
+          },
+          strategy: {
+            strategy_type: c.strategy_type || "simple_ma",
+            timeframe: c.timeframe || "M5",
+            fast_period: c.fast_period || 10,
+            slow_period: c.slow_period || 20,
+          },
+        }));
+
+        setCurrenciesPerAccount((prev) => ({
+          ...prev,
+          [accountId]: formattedCurrencies,
+        }));
+      }
+
+      toast({
+        title: "Currency Added",
+        description: `${currency.symbol} has been added successfully to ${selectedAccount?.name || "account"}.`,
+      });
+    } catch (error) {
+      console.error("Failed to add currency:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add currency to account",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCurrency = async () => {
+    if (!currencyToDelete) return;
+
+    const accountId = Number(currentAccountId);
+
+    try {
+      const response = await accountsApi.deleteCurrency(accountId, currencyToDelete.symbol);
+
+      if (response.error) {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to delete currency",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Refresh currencies list
+      const updatedResponse = await accountsApi.getCurrencies(accountId);
+      if (updatedResponse.data) {
+        const apiResponse = updatedResponse.data as any;
+        const apiCurrencies = apiResponse.currencies || [];
+
+        const formattedCurrencies: CurrencyConfig[] = apiCurrencies.map((c: any) => ({
+          symbol: c.symbol,
+          description: c.description || c.symbol,
+          enabled: c.enabled !== undefined ? c.enabled : false,
+          risk: {
+            risk_percent: c.risk_percent || 1.0,
+            max_positions: c.max_position_size || 3,
+            stop_loss_pips: c.sl_pips || 50,
+            take_profit_pips: c.tp_pips || 100,
+          },
+          strategy: {
+            strategy_type: c.strategy_type || "simple_ma",
+            timeframe: c.timeframe || "M5",
+            fast_period: c.fast_period || 10,
+            slow_period: c.slow_period || 20,
+          },
+        }));
+
+        setCurrenciesPerAccount((prev) => ({
+          ...prev,
+          [accountId]: formattedCurrencies,
+        }));
+      }
+
+      toast({
+        title: "Currency Deleted",
+        description: `${currencyToDelete.symbol} has been removed from ${selectedAccount?.name || "account"}.`,
+      });
+    } catch (error) {
+      console.error("Failed to delete currency:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete currency",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setCurrencyToDelete(null);
+    }
   };
 
   const selectedAccount = accounts.find((acc) => acc.id === currentAccountId);
@@ -193,7 +431,13 @@ const Currencies = () => {
               </p>
             )}
           </div>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setAddCurrencyOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Currency
+            </Button>
+            <Button onClick={handleSave}>Save Changes</Button>
+          </div>
         </div>
 
         <Card className="card-glow">
@@ -229,6 +473,17 @@ const Currencies = () => {
                             {currency.strategy.timeframe} • Risk: {currency.risk.risk_percent}%
                           </p>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setCurrencyToDelete({ symbol: currency.symbol, description: currency.description });
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" size="sm">
                             <Settings2 className="h-4 w-4 mr-1" />
@@ -384,6 +639,36 @@ const Currencies = () => {
             </div>
           </CardContent>
         </Card>
+
+        <AddCurrencyModal
+          open={addCurrencyOpen}
+          onClose={() => setAddCurrencyOpen(false)}
+          onAdd={handleAddCurrency}
+        />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Currency Pair</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{currencyToDelete?.symbol}</strong>{" "}
+                ({currencyToDelete?.description}) from {selectedAccount?.name || "this account"}?
+                <br />
+                <br />
+                This action cannot be undone. All configuration settings for this currency pair will be removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteCurrency}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

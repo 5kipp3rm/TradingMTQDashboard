@@ -4,91 +4,147 @@ import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/dashboard/Header";
 import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
 import { AddAccountModal } from "@/components/accounts/AddAccountModal";
+import { EditAccountModal } from "@/components/accounts/EditAccountModal";
+import { ViewAccountModal } from "@/components/accounts/ViewAccountModal";
 import { Plus, Edit, Trash2, Check, Link, Eye } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { CurrencyPair } from "@/types/trading";
-
-const mockAccounts = [
-  { id: "1", name: "Main Trading", broker: "IC Markets", balance: 10500.50, equity: 10750.25, isActive: true },
-  { id: "2", name: "Scalping Account", broker: "Pepperstone", balance: 5200.00, equity: 5180.75, isActive: false },
-  { id: "3", name: "Swing Trading", broker: "OANDA", balance: 25000.00, equity: 25500.00, isActive: false },
-];
-
-const mockCurrencies: CurrencyPair[] = [
-  { symbol: "EURUSD", description: "Euro/US Dollar", bid: 1.08520, ask: 1.08535, spread: 1.5, enabled: true },
-  { symbol: "GBPUSD", description: "British Pound/US Dollar", bid: 1.26340, ask: 1.26360, spread: 2.0, enabled: true },
-  { symbol: "USDJPY", description: "US Dollar/Japanese Yen", bid: 149.850, ask: 149.865, spread: 1.5, enabled: true },
-];
+import { useAccounts } from "@/contexts/AccountsContext";
+import { accountsApi, accountConnectionsApi, currenciesApi } from "@/lib/api";
+import type { CurrencyPair, Account } from "@/types/trading";
 
 const Accounts = () => {
-  const [accounts, setAccounts] = useState(mockAccounts);
+  const { accounts, refreshAccounts, isLoading } = useAccounts();
+  const [currencies, setCurrencies] = useState<CurrencyPair[]>([]);
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
+  const [editAccountOpen, setEditAccountOpen] = useState(false);
+  const [viewAccountOpen, setViewAccountOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const { toast } = useToast();
 
-  const handleAddAccount = (account: { 
-    name: string; 
-    loginNumber: string; 
-    platform: string; 
-    server: string; 
-    password: string; 
-    broker: string; 
-    isDemo: boolean; 
-    isDefault: boolean; 
-  }) => {
-    const newAccount = {
-      id: Date.now().toString(),
-      name: account.name,
-      broker: account.broker || "Unknown",
-      platform: account.platform,
-      server: account.server,
-      isDemo: account.isDemo,
-      balance: 0,
-      equity: 0,
-      isActive: account.isDefault,
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      const response = await currenciesApi.getAll();
+      if (response.data) {
+        const formattedCurrencies = (response.data as any).currencies?.map((c: any) => ({
+          symbol: c.symbol,
+          description: c.description || c.symbol,
+          bid: c.bid || 0,
+          ask: c.ask || 0,
+          spread: c.spread || 0,
+          enabled: c.enabled,
+        })) || [];
+        setCurrencies(formattedCurrencies);
+      }
     };
-    
-    // If setting as default, make all others inactive
-    if (account.isDefault) {
-      setAccounts(prev => [...prev.map(acc => ({ ...acc, isActive: false })), newAccount]);
-    } else {
-      setAccounts([...accounts, newAccount]);
-    }
-    
-    toast({
-      title: "Account Added",
-      description: `${account.name} has been added successfully.`,
+    fetchCurrencies();
+  }, []);
+
+  const handleAddAccount = async (account: {
+    name: string;
+    loginNumber: string;
+    platform: string;
+    server: string;
+    password: string;
+    broker: string;
+    isDemo: boolean;
+    isDefault: boolean;
+  }) => {
+    const response = await accountsApi.create({
+      account_name: account.name,
+      account_number: parseInt(account.loginNumber, 10),
+      broker: account.broker,
+      server: account.server,
+      platform_type: account.platform,
+      login: parseInt(account.loginNumber, 10),
+      password: account.password,
+      is_demo: account.isDemo,
+      is_active: true,
+      is_default: account.isDefault,
+      currency: 'USD',
     });
+    
+    if (response.data) {
+      await refreshAccounts();
+      toast({
+        title: "Account Added",
+        description: `${account.name} has been added successfully.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: response.error || "Failed to add account",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleConnect = (id: string) => {
-    toast({
-      title: "Connecting...",
-      description: "Attempting to connect to the trading server.",
-    });
+  const handleConnect = async (id: string) => {
+    const response = await accountConnectionsApi.connect(parseInt(id, 10));
+    if (response.data) {
+      await refreshAccounts();
+      toast({
+        title: "Connected",
+        description: "Successfully connected to the trading server.",
+      });
+    } else {
+      toast({
+        title: "Connection Failed",
+        description: response.error || "Failed to connect to trading server",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleViewFull = (id: string) => {
-    toast({
-      title: "View Account",
-      description: "Opening full account details.",
-    });
+    const account = accounts.find((a) => a.id === id);
+    if (account) {
+      setSelectedAccount(account);
+      setViewAccountOpen(true);
+    }
   };
 
   const handleEdit = (id: string) => {
-    toast({
-      title: "Edit Account",
-      description: "Opening account editor.",
-    });
+    const account = accounts.find((a) => a.id === id);
+    if (account) {
+      setSelectedAccount(account);
+      setEditAccountOpen(true);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setAccounts(accounts.filter(acc => acc.id !== id));
-    toast({
-      title: "Account Deleted",
-      description: "The account has been removed.",
-    });
+  const handleSaveEdit = async (id: string, updates: any) => {
+    const response = await accountsApi.update(parseInt(id, 10), updates);
+    if (response.data) {
+      await refreshAccounts();
+      toast({
+        title: "Account Updated",
+        description: "Account has been updated successfully.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: response.error || "Failed to update account",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const response = await accountsApi.delete(parseInt(id, 10));
+    if (!response.error) {
+      await refreshAccounts();
+      toast({
+        title: "Account Deleted",
+        description: "The account has been removed.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: response.error || "Failed to delete account",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleQuickTrade = (params: { symbol: string; volume: number; type: "buy" | "sell" }) => {
@@ -135,17 +191,17 @@ const Accounts = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Balance</span>
-                    <span className="font-mono font-semibold">${account.balance.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Equity</span>
-                    <span className="font-mono font-semibold">${account.equity.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">P/L</span>
-                    <span className={`font-mono font-semibold ${account.equity >= account.balance ? "text-profit" : "text-loss"}`}>
-                      ${(account.equity - account.balance).toFixed(2)}
+                    <span className="font-mono font-semibold">
+                      ${account.initial_balance ? Number(account.initial_balance).toLocaleString() : '0.00'}
                     </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Currency</span>
+                    <span className="font-mono font-semibold">{account.currency || 'USD'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Broker</span>
+                    <span className="font-mono text-sm">{account.broker}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
@@ -193,7 +249,7 @@ const Accounts = () => {
         <QuickTradeModal
           open={quickTradeOpen}
           onClose={() => setQuickTradeOpen(false)}
-          currencies={mockCurrencies}
+          currencies={currencies}
           onTrade={handleQuickTrade}
         />
 
@@ -201,6 +257,25 @@ const Accounts = () => {
           open={addAccountOpen}
           onClose={() => setAddAccountOpen(false)}
           onAdd={handleAddAccount}
+        />
+
+        <EditAccountModal
+          open={editAccountOpen}
+          onClose={() => {
+            setEditAccountOpen(false);
+            setSelectedAccount(null);
+          }}
+          account={selectedAccount}
+          onSave={handleSaveEdit}
+        />
+
+        <ViewAccountModal
+          open={viewAccountOpen}
+          onClose={() => {
+            setViewAccountOpen(false);
+            setSelectedAccount(null);
+          }}
+          account={selectedAccount}
         />
       </div>
     </div>

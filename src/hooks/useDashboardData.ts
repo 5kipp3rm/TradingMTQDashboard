@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type {
   DashboardSummary,
   Trade,
@@ -7,108 +7,179 @@ import type {
   ChartDataPoint,
   CurrencyPair,
 } from "@/types/trading";
+import { analyticsApi, tradesApi, positionsApi, currenciesApi } from "@/lib/api";
 
-// Mock data generator
-const generateMockData = (period: number) => {
-  const now = new Date();
-  
-  const summary: DashboardSummary = {
-    totalTrades: Math.floor(Math.random() * 500) + 100,
-    netProfit: (Math.random() - 0.3) * 10000,
-    winRate: Math.random() * 30 + 50,
-    avgDailyProfit: (Math.random() - 0.3) * 500,
-  };
-
-  const trades: Trade[] = Array.from({ length: 50 }, (_, i) => ({
-    ticket: 1000000 + i,
-    symbol: ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"][Math.floor(Math.random() * 4)],
-    type: Math.random() > 0.5 ? "buy" : "sell",
-    entryTime: new Date(now.getTime() - Math.random() * period * 24 * 60 * 60 * 1000).toISOString(),
-    exitTime: Math.random() > 0.2 ? new Date(now.getTime() - Math.random() * period * 24 * 60 * 60 * 1000 * 0.5).toISOString() : undefined,
-    entryPrice: 1.0800 + Math.random() * 0.05,
-    exitPrice: 1.0800 + Math.random() * 0.05,
-    volume: Math.floor(Math.random() * 10) / 10 + 0.1,
-    profit: (Math.random() - 0.4) * 500,
-    pips: (Math.random() - 0.4) * 100,
-    status: Math.random() > 0.2 ? "closed" : "open",
-  }));
-
-  const positions: Position[] = Array.from({ length: Math.floor(Math.random() * 5) }, (_, i) => ({
-    ticket: 2000000 + i,
-    symbol: ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"][Math.floor(Math.random() * 4)],
-    type: Math.random() > 0.5 ? "buy" : "sell",
-    volume: Math.floor(Math.random() * 10) / 10 + 0.1,
-    openPrice: 1.0800 + Math.random() * 0.05,
-    currentPrice: 1.0800 + Math.random() * 0.05,
-    sl: Math.random() > 0.5 ? 1.0700 + Math.random() * 0.05 : null,
-    tp: Math.random() > 0.5 ? 1.0900 + Math.random() * 0.05 : null,
-    profit: (Math.random() - 0.4) * 200,
-    openTime: new Date(now.getTime() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
-  }));
-
-  const dailyPerformance: DailyPerformance[] = Array.from({ length: Math.min(period, 30) }, (_, i) => {
-    const winners = Math.floor(Math.random() * 10);
-    const losers = Math.floor(Math.random() * 5);
-    return {
-      date: new Date(now.getTime() - i * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      trades: winners + losers,
-      winners,
-      losers,
-      netProfit: (Math.random() - 0.3) * 1000,
-      winRate: winners / (winners + losers) * 100 || 0,
-      profitFactor: Math.random() * 2 + 0.5,
-    };
+export function useDashboardData(period: number, selectedAccountId?: string) {
+  const [summary, setSummary] = useState<DashboardSummary>({
+    totalTrades: 0,
+    netProfit: 0,
+    winRate: 0,
+    avgDailyProfit: 0,
   });
-
-  const profitData: ChartDataPoint[] = Array.from({ length: Math.min(period, 30) }, (_, i) => ({
-    date: new Date(now.getTime() - (Math.min(period, 30) - 1 - i) * 24 * 60 * 60 * 1000)
-      .toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    value: Math.random() * 5000 + i * 100,
-  }));
-
-  const winRateData: ChartDataPoint[] = Array.from({ length: Math.min(period, 30) }, (_, i) => ({
-    date: new Date(now.getTime() - (Math.min(period, 30) - 1 - i) * 24 * 60 * 60 * 1000)
-      .toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    value: Math.random() * 30 + 50,
-  }));
-
-  return { summary, trades, positions, dailyPerformance, profitData, winRateData };
-};
-
-const mockCurrencies: CurrencyPair[] = [
-  { symbol: "EURUSD", description: "Euro / US Dollar", bid: 1.0850, ask: 1.0852, spread: 2, enabled: true },
-  { symbol: "GBPUSD", description: "British Pound / US Dollar", bid: 1.2650, ask: 1.2653, spread: 3, enabled: true },
-  { symbol: "USDJPY", description: "US Dollar / Japanese Yen", bid: 149.50, ask: 149.53, spread: 3, enabled: true },
-  { symbol: "AUDUSD", description: "Australian Dollar / US Dollar", bid: 0.6520, ask: 0.6522, spread: 2, enabled: true },
-  { symbol: "USDCAD", description: "US Dollar / Canadian Dollar", bid: 1.3580, ask: 1.3583, spread: 3, enabled: true },
-  { symbol: "NZDUSD", description: "New Zealand Dollar / US Dollar", bid: 0.6120, ask: 0.6122, spread: 2, enabled: true },
-  { symbol: "USDCHF", description: "US Dollar / Swiss Franc", bid: 0.8750, ask: 0.8753, spread: 3, enabled: true },
-  { symbol: "XAUUSD", description: "Gold / US Dollar", bid: 2050.50, ask: 2051.00, spread: 50, enabled: true },
-];
-
-export function useDashboardData(period: number) {
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [dailyPerformance, setDailyPerformance] = useState<DailyPerformance[]>([]);
+  const [profitData, setProfitData] = useState<ChartDataPoint[]>([]);
+  const [winRateData, setWinRateData] = useState<ChartDataPoint[]>([]);
+  const [currencies, setCurrencies] = useState<CurrencyPair[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [data, setData] = useState(() => generateMockData(period));
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(new Date());
-  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connected");
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("disconnected");
 
-  const refresh = useCallback(() => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setConnectionStatus("connecting");
-    
-    // Simulate API call
-    setTimeout(() => {
-      setData(generateMockData(period));
+
+    try {
+      // Determine account_id parameter (undefined if "all", number if specific account)
+      const accountIdParam = selectedAccountId && selectedAccountId !== "all"
+        ? parseInt(selectedAccountId, 10)
+        : undefined;
+
+      // Fetch all data in parallel
+      const [overviewRes, dailyRes, tradesRes, positionsRes, currenciesRes] = await Promise.all([
+        analyticsApi.getOverview({ days: period, account_id: accountIdParam }),
+        analyticsApi.getDaily({ days: period, account_id: accountIdParam }),
+        tradesApi.getAll({ limit: 100, account_id: accountIdParam }),
+        positionsApi.getOpen(accountIdParam ? { account_id: accountIdParam } : undefined),
+        currenciesApi.getAll(),
+      ]);
+
+      // Handle analytics overview
+      if (overviewRes.data) {
+        const overviewData = overviewRes.data as any;
+        setSummary({
+          totalTrades: overviewData.total_trades || 0,
+          netProfit: overviewData.net_profit || 0,
+          winRate: overviewData.win_rate || 0,
+          avgDailyProfit: overviewData.avg_daily_profit || 0,
+        });
+      } else {
+        console.error("Analytics overview error:", overviewRes.error);
+      }
+
+      // Handle daily performance
+      if (dailyRes.data) {
+        const dailyResponse = dailyRes.data as any;
+        // Backend returns {records: [...]} not a plain array
+        const dailyData = dailyResponse.records || dailyResponse || [];
+        setDailyPerformance(
+          dailyData.map((d: any) => ({
+            date: d.date,
+            trades: d.total_trades || d.trades || 0,
+            winners: d.winning_trades || d.winners || 0,
+            losers: d.losing_trades || d.losers || 0,
+            netProfit: d.net_profit || 0,
+            winRate: d.win_rate || 0,
+            profitFactor: d.profit_factor || 0,
+          }))
+        );
+
+        // Generate chart data from daily performance
+        setProfitData(
+          dailyData.map((d: any) => ({
+            date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            value: d.net_profit || 0,
+          }))
+        );
+
+        setWinRateData(
+          dailyData.map((d: any) => ({
+            date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            value: d.win_rate || 0,
+          }))
+        );
+      } else {
+        console.error("Daily performance error:", dailyRes.error);
+      }
+
+      // Handle trades
+      if (tradesRes.data) {
+        const tradesData = (tradesRes.data as any).trades || [];
+        setTrades(
+          tradesData.map((t: any) => ({
+            ticket: t.ticket,
+            symbol: t.symbol,
+            type: t.type?.toLowerCase() as "buy" | "sell",
+            entryTime: t.open_time,
+            exitTime: t.close_time,
+            entryPrice: t.open_price,
+            exitPrice: t.close_price,
+            volume: t.volume,
+            profit: t.profit || 0,
+            pips: t.pips || 0,
+            status: (t.status?.toLowerCase() || (t.close_time ? "closed" : "open")) as "open" | "closed" | "pending",
+          }))
+        );
+      } else {
+        console.error("Trades error:", tradesRes.error);
+      }
+
+      // Handle positions
+      if (positionsRes.data) {
+        // API returns List[PositionInfo] directly, not wrapped in an object
+        const positionsData = Array.isArray(positionsRes.data) ? positionsRes.data : [];
+        setPositions(
+          positionsData.map((p: any) => ({
+            ticket: p.ticket,
+            symbol: p.symbol,
+            type: p.type?.toLowerCase() as "buy" | "sell",
+            volume: p.volume,
+            openPrice: p.price_open,
+            currentPrice: p.price_current || p.price_open,
+            sl: p.sl || null,
+            tp: p.tp || null,
+            profit: p.profit || 0,
+            openTime: p.open_time,
+          }))
+        );
+      } else {
+        console.error("Positions error:", positionsRes.error);
+      }
+
+      // Handle currencies
+      if (currenciesRes.data) {
+        const currenciesData = (currenciesRes.data as any).currencies || [];
+        setCurrencies(
+          currenciesData.map((c: any) => ({
+            symbol: c.symbol,
+            description: c.description || c.symbol,
+            bid: c.bid || 0,
+            ask: c.ask || 0,
+            spread: c.spread || 0,
+            enabled: c.enabled !== undefined ? c.enabled : true,
+          }))
+        );
+      } else {
+        console.error("Currencies error:", currenciesRes.error);
+      }
+
       setLastUpdate(new Date());
       setConnectionStatus("connected");
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+      setConnectionStatus("disconnected");
+    } finally {
       setIsLoading(false);
-    }, 500);
-  }, [period]);
+    }
+  }, [period, selectedAccountId]);
 
-  const currencies = mockCurrencies;
+  const refresh = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Fetch data on mount and when period changes
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   return {
-    ...data,
+    summary,
+    trades,
+    positions,
+    dailyPerformance,
+    profitData,
+    winRateData,
     currencies,
     isLoading,
     lastUpdate,

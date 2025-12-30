@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { accountsApi } from "@/lib/api";
 
 export interface Account {
   id: string;
@@ -16,19 +17,37 @@ interface AccountsContextType {
   addAccount: (account: Account) => void;
   updateAccount: (id: string, account: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
+  refreshAccounts: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const AccountsContext = createContext<AccountsContextType | undefined>(undefined);
 
-const mockAccounts: Account[] = [
-  { id: "1", name: "Main Trading", broker: "IC Markets", balance: 10500.50, equity: 10750.25, isActive: true },
-  { id: "2", name: "Scalping Account", broker: "Pepperstone", balance: 5200.00, equity: 5180.75, isActive: true },
-  { id: "3", name: "Swing Trading", broker: "OANDA", balance: 25000.00, equity: 25500.00, isActive: false },
-];
-
 export function AccountsProvider({ children }: { children: ReactNode }) {
-  const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refreshAccounts = async () => {
+    setIsLoading(true);
+    const response = await accountsApi.getAll();
+    if (response.data) {
+      const formattedAccounts = (response.data as any).accounts?.map((acc: any) => ({
+        id: acc.id.toString(),
+        name: acc.account_name || `Account ${acc.account_number}`,
+        broker: acc.broker || "Unknown",
+        balance: acc.balance,
+        equity: acc.equity,
+        isActive: acc.is_active,
+      })) || [];
+      setAccounts(formattedAccounts);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    refreshAccounts();
+  }, []);
 
   const addAccount = (account: Account) => {
     setAccounts((prev) => [...prev, account]);
@@ -53,6 +72,8 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         addAccount,
         updateAccount,
         deleteAccount,
+        refreshAccounts,
+        isLoading,
       }}
     >
       {children}

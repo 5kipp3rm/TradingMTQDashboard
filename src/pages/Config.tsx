@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Header } from "@/components/dashboard/Header";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccounts } from "@/contexts/AccountsContext";
 import {
   Select,
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { accountsApi } from "@/lib/api";
 
 interface RiskSettings {
   risk_percent: number;
@@ -40,11 +41,9 @@ const defaultRiskSettings: RiskSettings = {
 const Config = () => {
   const { accounts, selectedAccountId } = useAccounts();
   const { toast } = useToast();
-  const [settingsPerAccount, setSettingsPerAccount] = useState<AccountSettings>({
-    "1": { ...defaultRiskSettings },
-    "2": { ...defaultRiskSettings, risk_percent: 2, max_positions: 3 },
-    "3": { ...defaultRiskSettings, risk_percent: 0.5, max_positions: 10 },
-  });
+  const [settingsPerAccount, setSettingsPerAccount] = useState<AccountSettings>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [generalConfig, setGeneralConfig] = useState({
     apiUrl: "http://localhost:8000",
@@ -57,6 +56,72 @@ const Config = () => {
   const currentAccountId = selectedAccountId === "all" ? "1" : selectedAccountId;
   const currentSettings = settingsPerAccount[currentAccountId] || defaultRiskSettings;
 
+  // Load account configuration from API
+  useEffect(() => {
+    const loadAccountConfig = async () => {
+      if (!currentAccountId || currentAccountId === "all") return;
+
+      setIsLoading(true);
+      try {
+        const response = await accountsApi.getConfig(parseInt(currentAccountId, 10));
+
+        if (response.data) {
+          const config = response.data as any;
+
+          // Extract risk settings from the trading_config
+          if (config.trading_config?.risk) {
+            const riskConfig = config.trading_config.risk;
+            setSettingsPerAccount((prev) => ({
+              ...prev,
+              [currentAccountId]: {
+                risk_percent: riskConfig.risk_percent || defaultRiskSettings.risk_percent,
+                max_positions: riskConfig.max_positions || defaultRiskSettings.max_positions,
+                max_concurrent_trades: riskConfig.max_concurrent_trades || defaultRiskSettings.max_concurrent_trades,
+                portfolio_risk_percent: riskConfig.portfolio_risk_percent || defaultRiskSettings.portfolio_risk_percent,
+                stop_loss_pips: riskConfig.stop_loss_pips || defaultRiskSettings.stop_loss_pips,
+                take_profit_pips: riskConfig.take_profit_pips || defaultRiskSettings.take_profit_pips,
+              },
+            }));
+          } else {
+            // No risk config found, use defaults
+            setSettingsPerAccount((prev) => ({
+              ...prev,
+              [currentAccountId]: { ...defaultRiskSettings },
+            }));
+          }
+        } else if (response.error) {
+          console.error("Failed to load account config:", response.error);
+          toast({
+            title: "Error",
+            description: `Failed to load configuration: ${response.error}`,
+            variant: "destructive",
+          });
+          // Use defaults on error
+          setSettingsPerAccount((prev) => ({
+            ...prev,
+            [currentAccountId]: { ...defaultRiskSettings },
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading account config:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load account configuration",
+          variant: "destructive",
+        });
+        // Use defaults on error
+        setSettingsPerAccount((prev) => ({
+          ...prev,
+          [currentAccountId]: { ...defaultRiskSettings },
+        }));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAccountConfig();
+  }, [currentAccountId, toast]);
+
   const updateRiskSetting = (key: keyof RiskSettings, value: number) => {
     setSettingsPerAccount((prev) => ({
       ...prev,
@@ -67,11 +132,55 @@ const Config = () => {
     }));
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Settings Saved",
-      description: "Your settings have been saved successfully.",
-    });
+  const handleSave = async () => {
+    if (!currentAccountId || currentAccountId === "all") {
+      toast({
+        title: "Error",
+        description: "Please select a specific account to save settings",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Prepare the configuration update payload
+      const configUpdate = {
+        trading_config: {
+          risk: {
+            risk_percent: currentSettings.risk_percent,
+            max_positions: currentSettings.max_positions,
+            max_concurrent_trades: currentSettings.max_concurrent_trades,
+            portfolio_risk_percent: currentSettings.portfolio_risk_percent,
+            stop_loss_pips: currentSettings.stop_loss_pips,
+            take_profit_pips: currentSettings.take_profit_pips,
+          },
+        },
+      };
+
+      const response = await accountsApi.updateConfig(
+        parseInt(currentAccountId, 10),
+        configUpdate
+      );
+
+      if (response.data) {
+        toast({
+          title: "Settings Saved",
+          description: "Your risk management settings have been saved successfully.",
+        });
+      } else if (response.error) {
+        throw new Error(response.error);
+      }
+    } catch (error) {
+      console.error("Error saving account config:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save settings",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const selectedAccount = accounts.find((acc) => acc.id === currentAccountId);
@@ -91,11 +200,13 @@ const Config = () => {
             <h2 className="text-2xl font-bold">Settings</h2>
             {selectedAccount && (
               <p className="text-sm text-muted-foreground">
-                Configuring: {selectedAccount.name}
+                Configuring: {selectedAccount.account_name || selectedAccount.name}
               </p>
             )}
           </div>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={handleSave} disabled={isSaving || isLoading}>
+            {isSaving ? "Saving..." : "Save Changes"}
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -104,6 +215,7 @@ const Config = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span>⚠️</span> Risk Management
+                {isLoading && <span className="text-sm text-muted-foreground">(Loading...)</span>}
               </CardTitle>
             </CardHeader>
             <CardContent>

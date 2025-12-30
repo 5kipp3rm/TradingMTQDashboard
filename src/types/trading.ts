@@ -49,15 +49,30 @@ export interface ChartDataPoint {
 
 export interface Account {
   id: string;
-  name: string;
+  account_number: number;
+  account_name: string;
   broker: string;
-  balance: number;
-  equity: number;
-  margin: number;
-  freeMargin: number;
-  leverage: number;
+  server: string;
+  platform_type: string;
+  login: number;
+  is_active: boolean;
+  is_default: boolean;
+  is_demo: boolean;
   currency: string;
-  isActive: boolean;
+  initial_balance?: number;
+  description?: string;
+  created_at: string;
+  updated_at?: string;
+  last_connected?: string;
+
+  // Legacy/compatibility properties (computed from above)
+  name?: string;  // alias for account_name
+  balance?: number;  // can be initial_balance or real-time balance
+  equity?: number;  // real-time value
+  margin?: number;  // real-time value
+  freeMargin?: number;  // real-time value
+  leverage?: number;  // real-time value
+  isActive?: boolean;  // alias for is_active
 }
 
 export interface CurrencyPair {
