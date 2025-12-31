@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, Users, Coins, Settings, LineChart, Bell, FileText, RefreshCw, Zap, Wallet } from "lucide-react";
+import { BarChart3, Users, Coins, Settings, LineChart, Bell, FileText, RefreshCw, Zap, Wallet, ScrollText } from "lucide-react";
 import { useAccounts } from "@/contexts/AccountsContext";
 
 interface HeaderProps {
@@ -24,6 +24,7 @@ const navItems = [
   { path: "/charts", label: "Charts", icon: LineChart },
   { path: "/alerts", label: "Alerts", icon: Bell },
   { path: "/reports", label: "Reports", icon: FileText },
+  { path: "/logs", label: "Logs", icon: ScrollText },
 ];
 
 export function Header({ 
