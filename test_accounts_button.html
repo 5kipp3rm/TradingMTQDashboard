@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Account Button</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .btn { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Test Add Account Button</h1>
+    <button id="addAccountBtn" class="btn">Add Account</button>
+    <div id="status"></div>
+    
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <h2>Add New Account</h2>
+            <button onclick="closeModal()">Close</button>
+        </div>
+    </div>
+    
+    <script>
+        console.log('Script loaded');
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded');
+            const btn = document.getElementById('addAccountBtn');
+            console.log('Button element:', btn);
+            
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    console.log('Button clicked!');
+                    document.getElementById('status').textContent = 'Button clicked!';
+                    document.getElementById('accountModal').classList.add('active');
+                });
+            } else {
+                console.error('Button not found!');
+            }
+        });
+        
+        function closeModal() {
+            document.getElementById('accountModal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

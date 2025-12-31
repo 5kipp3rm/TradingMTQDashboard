@@ -86,7 +86,9 @@
       "Bash(tail:*)",
       "Bash(alembic current:*)",
       "Bash(bash:*)",
-      "Bash(curl -s \"http://localhost:8000/api/logs/types\")"
+      "Bash(curl -s \"http://localhost:8000/api/logs/types\")",
+      "Bash(git remote set-url:*)",
+      "Bash(git remote get-url:*)"
     ],
     "deny": [],
     "ask": []
