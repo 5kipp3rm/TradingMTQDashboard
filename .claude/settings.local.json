@@ -85,7 +85,8 @@
       "Bash(echo \"✗ $file FAILED\")",
       "Bash(tail:*)",
       "Bash(alembic current:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(curl -s \"http://localhost:8000/api/logs/types\")"
     ],
     "deny": [],
     "ask": []

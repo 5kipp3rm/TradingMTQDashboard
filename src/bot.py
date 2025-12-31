@@ -167,13 +167,22 @@ class TradingBot:
         if signal.symbol in self.positions:
             logger.info(f"Already have position for {signal.symbol}, skipping")
             return
-        
-        # Check max positions
-        if len(self.positions) >= self.max_positions:
-            logger.info(f"Max positions ({self.max_positions}) reached, skipping")
-            print(f"           ⚠ Max positions reached")
+
+        # Check max positions (query MT5 for ALL positions, not just bot-tracked)
+        total_positions = self.controller.get_total_open_positions_count()
+        if total_positions >= self.max_positions:
+            logger.warning(
+                f"Max positions ({self.max_positions}) reached. "
+                f"Total account positions: {total_positions} (including manual trades)",
+                event_type='position_limit_reached',
+                total_positions=total_positions,
+                max_positions=self.max_positions,
+                bot_tracked=len(self.positions)
+            )
+            print(f"           ⚠ Max positions reached: {total_positions}/{self.max_positions}")
+            print(f"           (Bot tracking {len(self.positions)}, total account has {total_positions})")
             return
-        
+
         # Execute trade
         result = self.controller.execute_trade(
             symbol=signal.symbol,
@@ -199,13 +208,22 @@ class TradingBot:
         if signal.symbol in self.positions:
             logger.info(f"Already have position for {signal.symbol}, skipping")
             return
-        
-        # Check max positions
-        if len(self.positions) >= self.max_positions:
-            logger.info(f"Max positions ({self.max_positions}) reached, skipping")
-            print(f"           ⚠ Max positions reached")
+
+        # Check max positions (query MT5 for ALL positions, not just bot-tracked)
+        total_positions = self.controller.get_total_open_positions_count()
+        if total_positions >= self.max_positions:
+            logger.warning(
+                f"Max positions ({self.max_positions}) reached. "
+                f"Total account positions: {total_positions} (including manual trades)",
+                event_type='position_limit_reached',
+                total_positions=total_positions,
+                max_positions=self.max_positions,
+                bot_tracked=len(self.positions)
+            )
+            print(f"           ⚠ Max positions reached: {total_positions}/{self.max_positions}")
+            print(f"           (Bot tracking {len(self.positions)}, total account has {total_positions})")
             return
-        
+
         # Execute trade
         result = self.controller.execute_trade(
             symbol=signal.symbol,

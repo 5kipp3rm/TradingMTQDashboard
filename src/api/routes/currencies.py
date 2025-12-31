@@ -14,7 +14,9 @@ from datetime import datetime
 
 from src.database import get_db_dependency, CurrencyConfiguration, AvailableCurrency, CurrencyCategory
 from src.api.websocket import connection_manager
+from src.utils.unified_logger import UnifiedLogger
 
+logger = UnifiedLogger.get_logger(__name__)
 
 router = APIRouter()
 
@@ -523,9 +525,24 @@ async def create_currency(
     if not is_valid:
         raise HTTPException(status_code=400, detail={"errors": errors})
 
+    logger.info(
+        f"Creating new global currency configuration: {config_data.symbol}",
+        event_type="global_currency_created",
+        symbol=config_data.symbol,
+        enabled=config_data.enabled,
+        strategy_type=config_data.strategy_type
+    )
+
     db.add(new_config)
     db.commit()
     db.refresh(new_config)
+
+    logger.info(
+        f"Successfully created currency {config_data.symbol} with ID {new_config.id}",
+        event_type="global_currency_created_success",
+        symbol=config_data.symbol,
+        config_id=new_config.id
+    )
 
     # Broadcast WebSocket event
     await connection_manager.broadcast_currency_event(

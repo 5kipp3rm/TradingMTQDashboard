@@ -242,6 +242,17 @@ async def create_account(
             update(TradingAccount).values(is_default=False)
         )
 
+    logger.info(
+        f"Creating new trading account: {account_data.account_name} (#{account_data.account_number})",
+        event_type="account_created",
+        account_name=account_data.account_name,
+        account_number=account_data.account_number,
+        broker=account_data.broker,
+        server=account_data.server,
+        is_demo=account_data.is_demo,
+        is_default=is_default
+    )
+
     # Create new account
     new_account = TradingAccount(
         account_number=account_data.account_number,
@@ -262,6 +273,14 @@ async def create_account(
     db.add(new_account)
     db.commit()
     db.refresh(new_account)
+
+    logger.info(
+        f"Successfully created account: {new_account.account_name} with ID {new_account.id}",
+        event_type="account_created_success",
+        account_id=new_account.id,
+        account_name=new_account.account_name,
+        account_number=new_account.account_number
+    )
 
     return AccountResponse(
         id=new_account.id,
@@ -303,6 +322,14 @@ async def update_account(
     # Update only provided fields
     update_data = account_data.model_dump(exclude_unset=True)
 
+    logger.info(
+        f"Updating account: {account.account_name} (#{account.account_number})",
+        event_type="account_updated",
+        account_id=account_id,
+        account_name=account.account_name,
+        updated_fields=list(update_data.keys())
+    )
+
     for field, value in update_data.items():
         if field == "password" and value:
             # TODO: Implement encryption
@@ -314,6 +341,13 @@ async def update_account(
 
     db.commit()
     db.refresh(account)
+
+    logger.info(
+        f"Successfully updated account: {account.account_name}",
+        event_type="account_updated_success",
+        account_id=account_id,
+        account_name=account.account_name
+    )
 
     return AccountResponse(
         id=account.id,
@@ -351,6 +385,19 @@ async def delete_account(
     if not account:
         raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
 
+    account_name = account.name
+    account_number = account.account_number
+    was_default = account.is_default
+
+    logger.info(
+        f"Deleting trading account: {account_name} (#{account_number})",
+        event_type="account_deleted",
+        account_id=account_id,
+        account_name=account_name,
+        account_number=account_number,
+        was_default=was_default
+    )
+
     # If deleting default account, set another account as default
     if account.is_default:
         other_account = db.execute(
@@ -362,9 +409,21 @@ async def delete_account(
 
         if other_account:
             other_account.is_default = True
+            logger.info(
+                f"Set account {other_account.name} as new default account",
+                event_type="default_account_changed",
+                new_default_account_id=other_account.id,
+                previous_default_account_id=account_id
+            )
 
     db.delete(account)
     db.commit()
+
+    logger.info(
+        f"Successfully deleted account: {account_name} (#{account_number})",
+        event_type="account_deleted_success",
+        account_id=account_id
+    )
 
     return None
 
@@ -1103,11 +1162,25 @@ async def update_account_currency(
     if account_config:
         # Update existing config
         update_data = currency_data.model_dump(exclude_unset=True)
+        logger.info(
+            f"Updating currency {symbol} config for account {account_id}",
+            event_type="currency_config_updated",
+            account_id=account_id,
+            symbol=symbol,
+            updated_fields=list(update_data.keys())
+        )
         for field, value in update_data.items():
             if field != "symbol":  # Don't update symbol
                 setattr(account_config, field, value)
     else:
         # Create new config
+        logger.info(
+            f"Creating new currency {symbol} config for account {account_id}",
+            event_type="currency_config_created",
+            account_id=account_id,
+            symbol=symbol,
+            enabled=currency_data.enabled
+        )
         account_config = AccountCurrencyConfig(
             account_id=account_id,
             currency_symbol=symbol,
@@ -1132,6 +1205,14 @@ async def update_account_currency(
 
     db.commit()
     db.refresh(account_config)
+
+    logger.info(
+        f"Successfully saved currency {symbol} config for account {account_id}",
+        event_type="currency_config_saved",
+        account_id=account_id,
+        symbol=symbol,
+        config_id=account_config.id
+    )
 
     return AccountCurrencyResponse(
         id=account_config.id,
@@ -1208,6 +1289,7 @@ async def delete_account_currency(
         db.commit()
         logger.info(
             f"Soft deleted currency {symbol} for account {account_id} (has trade history)",
+            event_type="currency_config_soft_deleted",
             account_id=account_id,
             symbol=symbol,
             action="soft_delete"
@@ -1218,6 +1300,7 @@ async def delete_account_currency(
         db.commit()
         logger.info(
             f"Hard deleted currency {symbol} for account {account_id} (no trade history)",
+            event_type="currency_config_hard_deleted",
             account_id=account_id,
             symbol=symbol,
             action="hard_delete"

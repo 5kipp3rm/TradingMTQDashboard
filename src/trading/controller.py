@@ -197,19 +197,83 @@ class TradingController:
     def get_open_positions(self, symbol: Optional[str] = None) -> List[Position]:
         """
         Get all open positions
-        
+
         Args:
             symbol: Filter by symbol (optional)
-            
+
         Returns:
             List of positions
         """
         if not self.connector.is_connected():
             logger.warning(f"[{self.instance_id}] Not connected")
             return []
-        
+
         return self.connector.get_positions(symbol)
-    
+
+    def get_total_open_positions_count(self) -> int:
+        """
+        Get total count of ALL open positions (including manual trades)
+
+        This queries MT5 directly for all positions, not just bot-tracked ones.
+        Critical for accurate position limit enforcement.
+
+        Returns:
+            Total number of open positions across entire account
+        """
+        positions = self.get_open_positions()
+        return len(positions)
+
+    def get_account_exposure(self) -> Dict[str, Any]:
+        """
+        Calculate account-wide exposure metrics
+
+        Returns:
+            Dictionary containing:
+            - total_positions: Total count of open positions
+            - total_volume: Sum of all position volumes (in lots)
+            - total_value: Estimated total position value (in account currency)
+            - symbols: Dict of exposure per symbol
+        """
+        positions = self.get_open_positions()
+
+        if not positions:
+            return {
+                'total_positions': 0,
+                'total_volume': 0.0,
+                'total_value': 0.0,
+                'symbols': {}
+            }
+
+        total_volume = sum(p.volume for p in positions)
+        symbols_exposure = {}
+
+        for pos in positions:
+            if pos.symbol not in symbols_exposure:
+                symbols_exposure[pos.symbol] = {
+                    'count': 0,
+                    'volume': 0.0,
+                    'profit': 0.0
+                }
+
+            symbols_exposure[pos.symbol]['count'] += 1
+            symbols_exposure[pos.symbol]['volume'] += pos.volume
+            symbols_exposure[pos.symbol]['profit'] += pos.profit
+
+        # Calculate approximate total value (simplified)
+        # Note: Accurate calculation requires symbol contract sizes
+        account = self.connector.get_account_info()
+        total_value = 0.0
+        if account:
+            # Rough estimate: assume average 100,000 contract size
+            total_value = total_volume * 100000
+
+        return {
+            'total_positions': len(positions),
+            'total_volume': total_volume,
+            'total_value': total_value,
+            'symbols': symbols_exposure
+        }
+
     def get_position_pnl(self, ticket: int) -> Optional[float]:
         """
         Get position P&L
