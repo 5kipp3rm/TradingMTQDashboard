@@ -68,13 +68,17 @@ def get_database_url(env: str = "development") -> str:
 
 
 @handle_mt5_errors(retry_count=3, retry_delay=1.0)
-def init_db(database_url: Optional[str] = None, echo: bool = False) -> Engine:
+def init_db(database_url: Optional[str] = None, echo: bool = False, seed: Optional[bool] = None) -> Engine:
     """
     Initialize database connection
 
     Args:
         database_url: Database connection URL (optional, uses env if not provided)
         echo: Whether to echo SQL statements
+        seed: Whether to populate database with default data
+              - None (default): Auto-seed if tables are empty
+              - True: Force seeding (will skip existing records)
+              - False: Never seed
 
     Returns:
         SQLAlchemy Engine instance
@@ -123,6 +127,44 @@ def init_db(database_url: Optional[str] = None, echo: bool = False) -> Engine:
 
             # Create session factory
             _SessionFactory = sessionmaker(bind=_engine, expire_on_commit=False)
+
+            # Auto-seed default data if tables are empty (unless explicitly disabled)
+            if seed or seed is None:  # seed=None means auto-detect
+                from .currency_models import CurrencyConfiguration
+                from .models import AvailableCurrency
+
+                session = _SessionFactory()
+                try:
+                    # Check if currency tables are empty
+                    config_count = session.query(CurrencyConfiguration).count()
+                    available_count = session.query(AvailableCurrency).count()
+
+                    needs_seeding = config_count == 0 or available_count == 0
+
+                    if needs_seeding or seed is True:
+                        logger.info("Seeding database with default data...")
+                        from .seed_data import seed_all
+                        results = seed_all(session)
+
+                        if results['currency_configurations'] > 0 or results['available_currencies'] > 0:
+                            logger.info(
+                                "Database seeding completed",
+                                currency_configs=results['currency_configurations'],
+                                available_currencies=results['available_currencies']
+                            )
+                            # Only print if new data was added
+                            if results['currency_configurations'] > 0:
+                                print(f"✅ Seeded {results['currency_configurations']} currency configurations")
+                            if results['available_currencies'] > 0:
+                                print(f"✅ Seeded {results['available_currencies']} available currencies")
+                    else:
+                        logger.debug(
+                            "Currency data already exists, skipping seeding",
+                            config_count=config_count,
+                            available_count=available_count
+                        )
+                finally:
+                    session.close()
 
             logger.info("Database initialized successfully", pool_size=5)
             return _engine

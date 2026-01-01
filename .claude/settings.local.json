@@ -88,7 +88,8 @@
       "Bash(bash:*)",
       "Bash(curl -s \"http://localhost:8000/api/logs/types\")",
       "Bash(git remote set-url:*)",
-      "Bash(git remote get-url:*)"
+      "Bash(git remote get-url:*)",
+      "Bash(./reorganize_docs.sh:*)"
     ],
     "deny": [],
     "ask": []
