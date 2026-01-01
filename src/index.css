@@ -1,0 +1,208 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Trading Dark Theme - Applied by default */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 215 20% 40%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217 33% 25%;
+    --muted-foreground: 215 20% 65%;
+    
+    --accent: 217 33% 25%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --success: 160 84% 39%;
+    --success-foreground: 210 40% 98%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+    
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 217 91% 60%;
+    
+    --radius: 0.75rem;
+    
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 217 33% 25%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 25%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 215 20% 40%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217 33% 25%;
+    --muted-foreground: 215 20% 65%;
+    
+    --accent: 217 33% 25%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --success: 160 84% 39%;
+    --success-foreground: 210 40% 98%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+    
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .text-profit {
+    @apply text-emerald-500;
+  }
+  
+  .text-loss {
+    @apply text-red-500;
+  }
+  
+  .bg-profit {
+    @apply bg-emerald-500/10;
+  }
+  
+  .bg-loss {
+    @apply bg-red-500/10;
+  }
+  
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+  
+  .status-dot-connected {
+    @apply bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)];
+  }
+  
+  .status-dot-disconnected {
+    @apply bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)];
+  }
+  
+  .status-dot-connecting {
+    @apply bg-yellow-500 shadow-[0_0_8px_rgba(245,158,11,0.6)] animate-pulse;
+  }
+  
+  .card-glow {
+    @apply shadow-lg shadow-primary/5;
+  }
+  
+  .trading-table {
+    @apply w-full text-sm;
+  }
+  
+  .trading-table th {
+    @apply px-4 py-3 text-left font-semibold text-muted-foreground uppercase tracking-wider text-xs;
+  }
+  
+  .trading-table td {
+    @apply px-4 py-3 border-t border-border;
+  }
+  
+  .trading-table tbody tr:hover {
+    @apply bg-muted/30;
+  }
+  
+  .metric-value {
+    @apply text-3xl font-bold font-mono tabular-nums;
+  }
+  
+  .badge-buy {
+    @apply bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs font-semibold uppercase;
+  }
+  
+  .badge-sell {
+    @apply bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-semibold uppercase;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
