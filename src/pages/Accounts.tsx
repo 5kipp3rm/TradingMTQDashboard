@@ -46,6 +46,7 @@ const Accounts = () => {
     loginNumber: string;
     platform: string;
     server: string;
+    serverCustom?: string;
     password: string;
     broker: string;
     isDemo: boolean;
@@ -56,6 +57,7 @@ const Accounts = () => {
       account_number: parseInt(account.loginNumber, 10),
       broker: account.broker,
       server: account.server,
+      server_custom: account.serverCustom,
       platform_type: account.platform,
       login: parseInt(account.loginNumber, 10),
       password: account.password,

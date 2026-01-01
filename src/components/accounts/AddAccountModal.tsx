@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ interface AddAccountModalProps {
     loginNumber: string;
     platform: string;
     server: string;
+    serverCustom?: string;
     password: string;
     broker: string;
     isDemo: boolean;
@@ -33,23 +34,68 @@ interface AddAccountModalProps {
   }) => void;
 }
 
+interface ServerOption {
+  value: string;
+  label: string;
+}
+
 const platforms = ["MT4", "MT5"];
-const serverTypes = ["Demo", "Live"];
 
 export function AddAccountModal({ open, onClose, onAdd }: AddAccountModalProps) {
   const [name, setName] = useState("");
   const [loginNumber, setLoginNumber] = useState("");
   const [platform, setPlatform] = useState("");
   const [server, setServer] = useState("");
+  const [serverCustom, setServerCustom] = useState("");
   const [password, setPassword] = useState("");
   const [broker, setBroker] = useState("");
   const [isDemo, setIsDemo] = useState(false);
   const [isDefault, setIsDefault] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [serverOptions, setServerOptions] = useState<ServerOption[]>([]);
+  const [loadingServers, setLoadingServers] = useState(false);
+
+  // Fetch server options when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchServerOptions();
+    }
+  }, [open]);
+
+  const fetchServerOptions = async () => {
+    setLoadingServers(true);
+    try {
+      const response = await fetch("/api/servers/options");
+      if (response.ok) {
+        const data = await response.json();
+        setServerOptions(data.servers || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch server options:", error);
+      // Fallback to basic options
+      setServerOptions([
+        { value: "Demo", label: "Demo Server" },
+        { value: "Live-01", label: "Live Server 01" },
+        { value: "Custom", label: "Custom Server (enter manually)" }
+      ]);
+    } finally {
+      setLoadingServers(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd({ name, loginNumber, platform, server, password, broker, isDemo, isDefault });
+    onAdd({
+      name,
+      loginNumber,
+      platform,
+      server,
+      serverCustom: server === "Custom" ? serverCustom : undefined,
+      password,
+      broker,
+      isDemo,
+      isDefault
+    });
     resetForm();
     onClose();
   };
@@ -59,6 +105,7 @@ export function AddAccountModal({ open, onClose, onAdd }: AddAccountModalProps) 
     setLoginNumber("");
     setPlatform("");
     setServer("");
+    setServerCustom("");
     setPassword("");
     setBroker("");
     setIsDemo(false);
@@ -66,7 +113,8 @@ export function AddAccountModal({ open, onClose, onAdd }: AddAccountModalProps) 
     setShowPassword(false);
   };
 
-  const isValid = name && loginNumber && platform && server && password;
+  const isValid = name && loginNumber && platform && server && password &&
+    (server !== "Custom" || serverCustom.trim() !== "");
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -122,14 +170,14 @@ export function AddAccountModal({ open, onClose, onAdd }: AddAccountModalProps) 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="server">Server</Label>
-              <Select value={server} onValueChange={setServer}>
+              <Select value={server} onValueChange={setServer} disabled={loadingServers}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select server" />
+                  <SelectValue placeholder={loadingServers ? "Loading..." : "Select server"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {serverTypes.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
+                  {serverOptions.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -162,6 +210,22 @@ export function AddAccountModal({ open, onClose, onAdd }: AddAccountModalProps) 
               </div>
             </div>
           </div>
+
+          {/* Custom Server Input - Shows only when "Custom" is selected */}
+          {server === "Custom" && (
+            <div>
+              <Label htmlFor="serverCustom">Custom Server Name</Label>
+              <Input
+                id="serverCustom"
+                placeholder="e.g., MyBroker-Real-01"
+                value={serverCustom}
+                onChange={(e) => setServerCustom(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Find in MT5: Tools → Options → Server
+              </p>
+            </div>
+          )}
 
           {/* Broker - Full Row */}
           <div>
