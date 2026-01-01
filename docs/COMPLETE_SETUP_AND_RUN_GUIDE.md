@@ -250,7 +250,7 @@ npm run dev
 
 ```bash
 # The database will be created automatically on first run
-python -c "from src.database.base import init_db; init_db()"
+python -c "from src.database import init_db; init_db()"
 ```
 
 #### 4.2 Initialize PostgreSQL (Production)
