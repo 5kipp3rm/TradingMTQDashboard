@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useAccounts } from "@/contexts/AccountsContext";
 import { useToast } from "@/hooks/use-toast";
 import { accountsApi } from "@/lib/api";
+import { currenciesV2Api } from "@/lib/api-v2";
 import {
   Select,
   SelectContent,
@@ -59,28 +60,44 @@ interface AccountCurrencies {
   [accountId: string]: CurrencyConfig[];
 }
 
-const strategyTypes = [
-  { value: "simple_ma", label: "Simple MA Crossover" },
-  { value: "rsi_divergence", label: "RSI Divergence" },
-  { value: "breakout", label: "Breakout Strategy" },
-  { value: "trend_following", label: "Trend Following" },
-  { value: "scalping", label: "Scalping" },
-  { value: "mean_reversion", label: "Mean Reversion" },
-];
-
-const timeframes = [
-  { value: "M1", label: "1 Minute" },
-  { value: "M5", label: "5 Minutes" },
-  { value: "M15", label: "15 Minutes" },
-  { value: "M30", label: "30 Minutes" },
-  { value: "H1", label: "1 Hour" },
-  { value: "H4", label: "4 Hours" },
-  { value: "D1", label: "Daily" },
-];
-
-const Currencies = () => {
-  const { accounts, selectedAccountId } = useAccounts();
+export default function Currencies() {
+  const { accounts, selectedAccountId, selectAccount } = useAccounts();
   const { toast } = useToast();
+
+  // Strategy types will be loaded from API
+  const [strategyTypes, setStrategyTypes] = useState<Array<{ value: string; label: string }>>([
+    { value: "SimpleMA", label: "Simple MA Crossover" }, // Fallback default
+  ]);
+
+  // Load available strategies on mount
+  useEffect(() => {
+    const loadStrategies = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/strategies/available');
+        if (response.ok) {
+          const data = await response.json();
+          setStrategyTypes(data.strategies.map((s: any) => ({
+            value: s.value, // Keep original PascalCase format
+            label: s.label
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to load strategies:', error);
+      }
+    };
+    loadStrategies();
+  }, []);
+
+  const timeframes = [
+    { value: "M1", label: "1 Minute" },
+    { value: "M5", label: "5 Minutes" },
+    { value: "M15", label: "15 Minutes" },
+    { value: "M30", label: "30 Minutes" },
+    { value: "H1", label: "1 Hour" },
+    { value: "H4", label: "4 Hours" },
+    { value: "D1", label: "Daily" },
+  ];
+
   const [currenciesPerAccount, setCurrenciesPerAccount] = useState<AccountCurrencies>({});
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
@@ -102,10 +119,9 @@ const Currencies = () => {
           return;
         }
 
-        const response = await accountsApi.getCurrencies(accountIdToFetch);
+        const response = await currenciesV2Api.getAll(accountIdToFetch);
         if (response.data) {
-          const apiResponse = response.data as any;
-          const apiCurrencies = apiResponse.currencies || [];
+          const apiCurrencies = response.data || [];
 
           const formattedCurrencies: CurrencyConfig[] = apiCurrencies.map((c: any) => ({
             symbol: c.symbol,
@@ -118,7 +134,7 @@ const Currencies = () => {
               take_profit_pips: c.tp_pips || 100,
             },
             strategy: {
-              strategy_type: c.strategy_type || "simple_ma",
+              strategy_type: c.strategy_type || "SimpleMA",
               timeframe: c.timeframe || "M5",
               fast_period: c.fast_period || 10,
               slow_period: c.slow_period || 20,
@@ -173,9 +189,16 @@ const Currencies = () => {
 
     // Call per-account API to update enabled status
     try {
-      const response = await accountsApi.updateCurrency(accountId, symbol, {
+      const response = await currenciesV2Api.update(accountId, symbol, {
         symbol,
         enabled: newEnabled,
+        strategy: {
+          strategy_type: 'SimpleMA',
+          params: {}
+        },
+        risk_percent: 1.0,
+        sl_pips: 50,
+        tp_pips: 100,
       });
 
       if (response.error) {
@@ -234,16 +257,21 @@ const Currencies = () => {
     try {
       // Save all currencies for this account
       const savePromises = currenciesToSave.map((currency) =>
-        accountsApi.updateCurrency(accountId, currency.symbol, {
+        currenciesV2Api.update(accountId, currency.symbol, {
           symbol: currency.symbol,
           enabled: currency.enabled,
           risk_percent: currency.risk.risk_percent,
           max_position_size: currency.risk.max_positions,
           min_position_size: 0.01,
-          strategy_type: currency.strategy.strategy_type,
+          strategy: {
+            strategy_type: currency.strategy.strategy_type,
+            params: {
+              timeframe: currency.strategy.timeframe,
+              fast_period: currency.strategy.fast_period,
+              slow_period: currency.strategy.slow_period,
+            }
+          },
           timeframe: currency.strategy.timeframe,
-          fast_period: currency.strategy.fast_period,
-          slow_period: currency.strategy.slow_period,
           sl_pips: currency.risk.stop_loss_pips,
           tp_pips: currency.risk.take_profit_pips,
         })
@@ -291,7 +319,22 @@ const Currencies = () => {
 
     try {
       // Add currency to specific account (hybrid architecture - per-account config)
-      const accountResponse = await accountsApi.updateCurrency(accountId, currency.symbol, currency);
+      const accountResponse = await currenciesV2Api.add(accountId, {
+        symbol: currency.symbol,
+        enabled: currency.enabled,
+        risk_percent: currency.risk_percent,
+        strategy: {
+          strategy_type: currency.strategy_type,
+          params: {}
+        },
+        sl_pips: currency.sl_pips,
+        tp_pips: currency.tp_pips,
+        timeframe: currency.timeframe,
+        max_position_size: currency.max_position_size,
+        min_position_size: currency.min_position_size,
+        max_positions: currency.max_positions,
+        allow_stacking: currency.allow_stacking,
+      });
 
       if (accountResponse.error) {
         toast({
@@ -303,10 +346,9 @@ const Currencies = () => {
       }
 
       // Refresh currencies list
-      const response = await accountsApi.getCurrencies(accountId);
+      const response = await currenciesV2Api.getAll(accountId);
       if (response.data) {
-        const apiResponse = response.data as any;
-        const apiCurrencies = apiResponse.currencies || [];
+        const apiCurrencies = response.data || [];
 
         const formattedCurrencies: CurrencyConfig[] = apiCurrencies.map((c: any) => ({
           symbol: c.symbol,
@@ -319,7 +361,7 @@ const Currencies = () => {
             take_profit_pips: c.tp_pips || 100,
           },
           strategy: {
-            strategy_type: c.strategy_type || "simple_ma",
+            strategy_type: c.strategy_type || "SimpleMA",
             timeframe: c.timeframe || "M5",
             fast_period: c.fast_period || 10,
             slow_period: c.slow_period || 20,
@@ -352,7 +394,7 @@ const Currencies = () => {
     const accountId = Number(currentAccountId);
 
     try {
-      const response = await accountsApi.deleteCurrency(accountId, currencyToDelete.symbol);
+      const response = await currenciesV2Api.remove(accountId, currencyToDelete.symbol);
 
       if (response.error) {
         toast({
@@ -364,10 +406,9 @@ const Currencies = () => {
       }
 
       // Refresh currencies list
-      const updatedResponse = await accountsApi.getCurrencies(accountId);
+      const updatedResponse = await currenciesV2Api.getAll(accountId);
       if (updatedResponse.data) {
-        const apiResponse = updatedResponse.data as any;
-        const apiCurrencies = apiResponse.currencies || [];
+        const apiCurrencies = updatedResponse.data || [];
 
         const formattedCurrencies: CurrencyConfig[] = apiCurrencies.map((c: any) => ({
           symbol: c.symbol,
@@ -380,7 +421,7 @@ const Currencies = () => {
             take_profit_pips: c.tp_pips || 100,
           },
           strategy: {
-            strategy_type: c.strategy_type || "simple_ma",
+            strategy_type: c.strategy_type || "SimpleMA",
             timeframe: c.timeframe || "M5",
             fast_period: c.fast_period || 10,
             slow_period: c.slow_period || 20,
@@ -672,6 +713,4 @@ const Currencies = () => {
       </div>
     </div>
   );
-};
-
-export default Currencies;
+}

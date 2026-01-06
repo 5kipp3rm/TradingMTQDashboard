@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, Users, Coins, Settings, LineChart, Bell, FileText, RefreshCw, Zap, Wallet, ScrollText } from "lucide-react";
+import { BarChart3, Users, Coins, Settings, LineChart, Bell, FileText, RefreshCw, Zap, Wallet, ScrollText, Brain } from "lucide-react";
 import { useAccounts } from "@/contexts/AccountsContext";
 
 interface HeaderProps {
@@ -19,7 +19,8 @@ interface HeaderProps {
 
 const navItems = [
   { path: "/accounts", label: "Accounts", icon: Users },
-  { path: "/currencies", label: "Strategies", icon: Coins },
+  { path: "/currencies", label: "Currencies", icon: Coins },
+  { path: "/strategies", label: "Strategies", icon: Brain },
   { path: "/config", label: "Settings", icon: Settings },
   { path: "/charts", label: "Charts", icon: LineChart },
   { path: "/alerts", label: "Alerts", icon: Bell },

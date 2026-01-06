@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -124,6 +125,9 @@ export function AddAccountModal({ open, onClose, onAdd }: AddAccountModalProps) 
             <Plus className="h-5 w-5" />
             Add Trading Account
           </DialogTitle>
+          <DialogDescription>
+            Connect a new MT5 trading account to the platform
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,4 +1,6 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { cn } from "@/lib/utils";
 import type { DailyPerformance } from "@/types/trading";
 
@@ -8,6 +10,20 @@ interface DailyPerformanceTableProps {
 }
 
 export function DailyPerformanceTable({ data, isLoading }: DailyPerformanceTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalPages = Math.ceil(data.length / pageSize);
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return data.slice(startIndex, startIndex + pageSize);
+  }, [data, currentPage, pageSize]);
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
   return (
     <Card className="card-glow">
       <CardHeader>
@@ -41,7 +57,7 @@ export function DailyPerformanceTable({ data, isLoading }: DailyPerformanceTable
                   </td>
                 </tr>
               ) : (
-                data.map((day) => (
+                paginatedData.map((day) => (
                   <tr key={day.date}>
                     <td className="font-semibold">{new Date(day.date).toLocaleDateString()}</td>
                     <td className="font-mono">{day.trades}</td>
@@ -58,6 +74,16 @@ export function DailyPerformanceTable({ data, isLoading }: DailyPerformanceTable
             </tbody>
           </table>
         </div>
+        {!isLoading && data.length > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={data.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        )}
       </CardContent>
     </Card>
   );

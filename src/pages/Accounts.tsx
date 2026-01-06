@@ -6,8 +6,9 @@ import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
 import { AddAccountModal } from "@/components/accounts/AddAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ViewAccountModal } from "@/components/accounts/ViewAccountModal";
-import { Plus, Edit, Trash2, Check, Link, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Check, Link, Eye, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAccounts } from "@/contexts/AccountsContext";
 import { accountsApi, accountConnectionsApi, currenciesApi } from "@/lib/api";
@@ -15,6 +16,7 @@ import type { CurrencyPair, Account } from "@/types/trading";
 
 const Accounts = () => {
   const { accounts, refreshAccounts, isLoading } = useAccounts();
+  const navigate = useNavigate();
   const [currencies, setCurrencies] = useState<CurrencyPair[]>([]);
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
@@ -99,6 +101,10 @@ const Accounts = () => {
     }
   };
 
+  const handleViewDetail = (id: string) => {
+    navigate(`/accounts/${id}`);
+  };
+
   const handleViewFull = (id: string) => {
     const account = accounts.find((a) => a.id === id);
     if (account) {
@@ -179,7 +185,13 @@ const Accounts = () => {
             <Card key={account.id} className={`card-glow ${account.isActive ? "ring-2 ring-primary" : ""}`}>
               <CardHeader className="flex flex-row items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg">{account.name}</CardTitle>
+                  <CardTitle 
+                    className="text-lg cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleViewDetail(account.id)}
+                    title="Click to view account details"
+                  >
+                    {account.name}
+                  </CardTitle>
                   <p className="text-sm text-muted-foreground">{account.broker}</p>
                 </div>
                 {account.isActive && (
@@ -208,34 +220,42 @@ const Accounts = () => {
                 </div>
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
                   <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleConnect(account.id)}
                       title="Connect"
                     >
                       <Link className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleEdit(account.id)}
                       title="Edit"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleViewFull(account.id)}
                       title="View Full"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewDetail(account.id)}
+                      title="View Detail Page"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-destructive hover:text-destructive"
                     onClick={() => handleDelete(account.id)}
                     title="Delete"

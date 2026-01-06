@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -40,19 +41,6 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
     }
   }, [open, currencies, symbol]);
 
-  const handleTrade = (type: "buy" | "sell") => {
-    onTrade({
-      symbol,
-      volume: parseFloat(volume),
-      type,
-      sl: sl ? parseFloat(sl) : undefined,
-      tp: tp ? parseFloat(tp) : undefined,
-      comment: comment || undefined,
-    });
-    onClose();
-    resetForm();
-  };
-
   const resetForm = () => {
     setVolume("0.10");
     setSl("");
@@ -76,6 +64,70 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
     return pips * parseFloat(volume) * 10;
   };
 
+  const setSlFromPips = (pips: number, type: "buy" | "sell") => {
+    if (!selectedPair) return;
+    const price = type === "buy" ? selectedPair.bid : selectedPair.ask;
+    const slPrice = type === "buy" 
+      ? price - (pips / 10000) // For BUY, SL is below price
+      : price + (pips / 10000); // For SELL, SL is above price
+    setSl(slPrice.toFixed(5));
+  };
+
+  const setTpFromPips = (pips: number, type: "buy" | "sell") => {
+    if (!selectedPair) return;
+    const price = type === "buy" ? selectedPair.ask : selectedPair.bid;
+    const tpPrice = type === "buy"
+      ? price + (pips / 10000) // For BUY, TP is above price
+      : price - (pips / 10000); // For SELL, TP is below price
+    setTp(tpPrice.toFixed(5));
+  };
+
+  const validateSlTp = (type: "buy" | "sell"): string | null => {
+    if (!selectedPair) return null;
+    const currentPrice = type === "buy" ? selectedPair.bid : selectedPair.ask;
+    
+    if (sl) {
+      const slPrice = parseFloat(sl);
+      if (type === "buy" && slPrice >= currentPrice) {
+        return `SL ${slPrice} must be BELOW current price ${currentPrice.toFixed(5)} for BUY`;
+      }
+      if (type === "sell" && slPrice <= currentPrice) {
+        return `SL ${slPrice} must be ABOVE current price ${currentPrice.toFixed(5)} for SELL`;
+      }
+    }
+    
+    if (tp) {
+      const tpPrice = parseFloat(tp);
+      if (type === "buy" && tpPrice <= currentPrice) {
+        return `TP ${tpPrice} must be ABOVE current price ${currentPrice.toFixed(5)} for BUY`;
+      }
+      if (type === "sell" && tpPrice >= currentPrice) {
+        return `TP ${tpPrice} must be BELOW current price ${currentPrice.toFixed(5)} for SELL`;
+      }
+    }
+    
+    return null;
+  };
+
+  const handleTrade = (type: "buy" | "sell") => {
+    const error = validateSlTp(type);
+    if (error) {
+      alert(error);
+      return;
+    }
+    
+    onTrade({
+      symbol,
+      volume: parseFloat(volume),
+      type,
+      sl: sl ? parseFloat(sl) : undefined,
+      tp: tp ? parseFloat(tp) : undefined,
+      comment: comment || undefined,
+    });
+    onClose();
+    resetForm();
+  };
+
   const risk = calculateRisk();
   const reward = calculateReward();
   const rrRatio = risk > 0 ? (reward / risk).toFixed(2) : "-";
@@ -87,6 +139,9 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
           <DialogTitle className="flex items-center gap-2">
             <span>⚡</span> Quick Trade
           </DialogTitle>
+          <DialogDescription>
+            Execute a manual trade with custom parameters
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -142,6 +197,26 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
                 value={sl}
                 onChange={(e) => setSl(e.target.value)}
               />
+              <div className="flex gap-1 mt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-6 px-2"
+                  onClick={() => setSlFromPips(20, "buy")}
+                >
+                  -20 pips
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-6 px-2"
+                  onClick={() => setSlFromPips(50, "buy")}
+                >
+                  -50 pips
+                </Button>
+              </div>
             </div>
             <div>
               <Label htmlFor="tp">Take Profit (TP)</Label>
@@ -153,6 +228,26 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
                 value={tp}
                 onChange={(e) => setTp(e.target.value)}
               />
+              <div className="flex gap-1 mt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-6 px-2"
+                  onClick={() => setTpFromPips(50, "buy")}
+                >
+                  +50 pips
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-6 px-2"
+                  onClick={() => setTpFromPips(100, "buy")}
+                >
+                  +100 pips
+                </Button>
+              </div>
             </div>
           </div>
 

@@ -38,24 +38,18 @@ interface AddCurrencyModalProps {
   }) => void;
 }
 
-const strategyTypes = [
-  { value: "simple_ma", label: "Simple MA Crossover" },
-  { value: "rsi_divergence", label: "RSI Divergence" },
-  { value: "breakout", label: "Breakout Strategy" },
-  { value: "trend_following", label: "Trend Following" },
-  { value: "scalping", label: "Scalping" },
-  { value: "mean_reversion", label: "Mean Reversion" },
-];
+// These will be loaded dynamically from the API
+interface StrategyType {
+  value: string;
+  label: string;
+  description?: string;
+}
 
-const timeframes = [
-  { value: "M1", label: "1 Minute" },
-  { value: "M5", label: "5 Minutes" },
-  { value: "M15", label: "15 Minutes" },
-  { value: "M30", label: "30 Minutes" },
-  { value: "H1", label: "1 Hour" },
-  { value: "H4", label: "4 Hours" },
-  { value: "D1", label: "Daily" },
-];
+interface Timeframe {
+  value: string;
+  label: string;
+  minutes?: number;
+}
 
 interface AvailableCurrency {
   id: number;
@@ -88,7 +82,7 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
   const [riskPercent, setRiskPercent] = useState(1.0);
   const [maxPositionSize, setMaxPositionSize] = useState(0.1);
   const [minPositionSize, setMinPositionSize] = useState(0.01);
-  const [strategyType, setStrategyType] = useState("simple_ma");
+  const [strategyType, setStrategyType] = useState("SimpleMA");
   const [timeframe, setTimeframe] = useState("M5");
   const [fastPeriod, setFastPeriod] = useState(10);
   const [slowPeriod, setSlowPeriod] = useState(20);
@@ -98,6 +92,46 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [availableCurrencies, setAvailableCurrencies] = useState<AvailableCurrency[]>([]);
   const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(false);
+
+  // Dynamic data from API
+  const [strategyTypes, setStrategyTypes] = useState<StrategyType[]>([]);
+  const [timeframes, setTimeframes] = useState<Timeframe[]>([]);
+  const [isLoadingStrategies, setIsLoadingStrategies] = useState(false);
+
+  // Load strategies and timeframes on mount
+  useEffect(() => {
+    const loadMetadata = async () => {
+      setIsLoadingStrategies(true);
+      try {
+        // Load strategies
+        const strategiesResponse = await fetch('http://localhost:8000/api/strategies/available');
+        if (strategiesResponse.ok) {
+          const strategiesData = await strategiesResponse.json();
+          setStrategyTypes(strategiesData.strategies.map((s: any) => ({
+            value: s.value,
+            label: s.label,
+            description: s.description
+          })));
+        }
+
+        // Load timeframes
+        const timeframesResponse = await fetch('http://localhost:8000/api/strategies/timeframes');
+        if (timeframesResponse.ok) {
+          const timeframesData = await timeframesResponse.json();
+          setTimeframes(timeframesData.timeframes);
+        }
+      } catch (error) {
+        console.error("Failed to load strategies/timeframes:", error);
+        // Fallback to defaults if API fails
+        setStrategyTypes([{ value: "SimpleMA", label: "Simple MA Crossover" }]);
+        setTimeframes([{ value: "M5", label: "5 Minutes" }]);
+      } finally {
+        setIsLoadingStrategies(false);
+      }
+    };
+
+    loadMetadata();
+  }, []); // Load once on mount
 
   // Load available currencies from API when modal opens or category changes
   useEffect(() => {
@@ -156,7 +190,7 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
     setRiskPercent(1.0);
     setMaxPositionSize(0.1);
     setMinPositionSize(0.01);
-    setStrategyType("simple_ma");
+    setStrategyType("SimpleMA");
     setTimeframe("M5");
     setFastPeriod(10);
     setSlowPeriod(20);

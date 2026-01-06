@@ -23,6 +23,9 @@ export interface Position {
   tp: number | null;
   profit: number;
   openTime: string;
+  closeTime?: string;
+  account_id?: number;
+  account_name?: string;
 }
 
 export interface DailyPerformance {

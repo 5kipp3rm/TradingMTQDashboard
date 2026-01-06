@@ -5,6 +5,7 @@ import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { ProfitChart } from "@/components/dashboard/ProfitChart";
 import { WinRateChart } from "@/components/dashboard/WinRateChart";
 import { PositionsTable } from "@/components/dashboard/PositionsTable";
+import { ClosedPositionsTable } from "@/components/dashboard/ClosedPositionsTable";
 import { TradesTable } from "@/components/dashboard/TradesTable";
 import { DailyPerformanceTable } from "@/components/dashboard/DailyPerformanceTable";
 import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
@@ -12,18 +13,22 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAccounts } from "@/contexts/AccountsContext";
 import { useToast } from "@/hooks/use-toast";
 import { positionsApi } from "@/lib/api";
-import type { QuickTradeParams } from "@/types/trading";
+import type { QuickTradeParams, Position } from "@/types/trading";
 
 const Dashboard = () => {
   const [period, setPeriod] = useState(30);
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
+  const [closedPositions, setClosedPositions] = useState<Position[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(5); // seconds
+  const [livePositions, setLivePositions] = useState<Position[] | null>(null); // For auto-refresh updates
   const { selectedAccountId } = useAccounts();
   const { toast } = useToast();
 
   const {
     summary,
     trades,
-    positions,
+    positions: hookPositions,
     dailyPerformance,
     profitData,
     winRateData,
@@ -34,9 +39,99 @@ const Dashboard = () => {
     refresh,
   } = useDashboardData(period, selectedAccountId);
 
+  // Use live positions if available, otherwise use hook positions
+  const positions = livePositions || hookPositions;
+
+  // Reset live positions when hook positions update
+  useEffect(() => {
+    setLivePositions(null);
+  }, [hookPositions]);
+
   useEffect(() => {
     refresh();
   }, [period]);
+
+  // Auto-refresh positions
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const intervalId = setInterval(() => {
+      // Only refresh positions, not full dashboard
+      refreshPositions();
+    }, refreshInterval * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [autoRefresh, refreshInterval, selectedAccountId]);
+
+  const refreshPositions = async () => {
+    try {
+      const accountIdParam = selectedAccountId && selectedAccountId !== "all"
+        ? parseInt(selectedAccountId, 10)
+        : undefined;
+      
+      const positionsRes = await positionsApi.getOpen(accountIdParam ? { account_id: accountIdParam } : undefined);
+      
+      if (positionsRes.data) {
+        const positionsData = Array.isArray(positionsRes.data) ? positionsRes.data : [];
+        const newPositions = positionsData.map((p: any) => ({
+          ticket: p.ticket,
+          symbol: p.symbol,
+          type: p.type?.toLowerCase() as "buy" | "sell",
+          volume: p.volume,
+          openPrice: p.price_open,
+          currentPrice: p.price_current || p.price_open,
+          sl: p.sl || null,
+          tp: p.tp || null,
+          profit: p.profit || 0,
+          openTime: p.open_time,
+          account_id: p.account_id,
+          account_name: p.account_name,
+        }));
+        
+        // Update positions state directly without full page refresh
+        setLivePositions(newPositions);
+      }
+    } catch (error) {
+      console.error("Failed to refresh positions:", error);
+    }
+  };
+
+  // Fetch closed positions
+  const fetchClosedPositions = async () => {
+    try {
+      const response = await positionsApi.getClosed({
+        account_id: selectedAccountId && selectedAccountId !== "all" 
+          ? parseInt(selectedAccountId, 10) 
+          : undefined,
+        limit: 50
+      });
+
+      if (response.data) {
+        const closedData = Array.isArray(response.data) ? response.data : [];
+        setClosedPositions(
+          closedData.map((p: any) => ({
+            ticket: p.ticket,
+            symbol: p.symbol,
+            type: p.type?.toLowerCase() as "buy" | "sell",
+            volume: p.volume,
+            openPrice: p.price_open,
+            currentPrice: p.price_current || p.price_open,
+            sl: p.sl || null,
+            tp: p.tp || null,
+            profit: p.profit || 0,
+            openTime: p.time_open,
+            closeTime: p.time_close,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch closed positions:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchClosedPositions();
+  }, [selectedAccountId]);
 
   const handleExportCSV = () => {
     const headers = ["Ticket", "Symbol", "Type", "Entry Time", "Exit Time", "Profit", "Pips", "Status"];
@@ -65,12 +160,29 @@ const Dashboard = () => {
     });
   };
 
-  const handleClosePosition = async (ticket: number) => {
+  const handleClosePosition = async (ticket: number, account_id?: number) => {
     try {
-      // Get first active account ID (you may want to pass this as a parameter)
-      const accountId = 1; // TODO: Get from selected account context
+      // Find position to get its account_id if not provided
+      if (!account_id) {
+        const position = positions.find(p => p.ticket === ticket);
+        account_id = position?.account_id;
+      }
 
-      const response = await positionsApi.close(ticket, accountId);
+      // If still no account_id, try selectedAccountId
+      if (!account_id) {
+        if (selectedAccountId && selectedAccountId !== "all") {
+          account_id = parseInt(selectedAccountId, 10);
+        } else {
+          toast({
+            title: "Error",
+            description: "Cannot determine account for this position",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      const response = await positionsApi.close(ticket, account_id);
 
       if (response.error) {
         toast({
@@ -84,6 +196,7 @@ const Dashboard = () => {
           description: `Position #${ticket} has been closed successfully.`,
         });
         refresh();
+        fetchClosedPositions(); // Update closed positions table
       }
     } catch (error) {
       console.error("Failed to close position:", error);
@@ -187,9 +300,16 @@ const Dashboard = () => {
         <PositionsTable
           positions={positions}
           isLoading={isLoading}
+          autoRefresh={autoRefresh}
           onRefresh={refresh}
           onClosePosition={handleClosePosition}
           onCloseAll={handleCloseAll}
+        />
+        
+        <ClosedPositionsTable
+          positions={closedPositions}
+          isLoading={isLoading}
+          onRefresh={fetchClosedPositions}
         />
         
         <TradesTable
