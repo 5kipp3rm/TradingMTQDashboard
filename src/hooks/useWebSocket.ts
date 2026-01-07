@@ -19,6 +19,7 @@ interface UseWebSocketOptions {
 
 export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
   const {
+    enabled = true,  // Default to true, but can be disabled
     onPositionUpdate,
     onPositionClosed,
     onTradeExecuted,
@@ -135,9 +136,12 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
   }, []);
 
   useEffect(() => {
-    connect();
+    // Only connect if enabled
+    if (enabled) {
+      connect();
+    }
     return () => disconnect();
-  }, [connect, disconnect]);
+  }, [enabled, connect, disconnect]);
 
   return {
     send,
