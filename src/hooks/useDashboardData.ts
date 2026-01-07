@@ -77,7 +77,7 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
   const wsUrl = `ws://localhost:8000/ws/dashboard${selectedAccountId && selectedAccountId !== "all" ? `?account_id=${selectedAccountId}` : ""}`;
   
   useWebSocket(wsUrl, {
-    enabled: false, // Disabled - backend doesn't have WebSocket endpoint yet
+    enabled: true, // Enabled for real-time updates
     onPositionUpdate: (updatedPosition: any) => {
       // Update position in state
       setPositions(prev => 

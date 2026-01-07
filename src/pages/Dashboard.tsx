@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/dashboard/Header";
 import { StatusBar } from "@/components/dashboard/StatusBar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { ProfitChart } from "@/components/dashboard/ProfitChart";
 import { WinRateChart } from "@/components/dashboard/WinRateChart";
@@ -19,6 +29,8 @@ const Dashboard = () => {
   const [period, setPeriod] = useState(30);
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
   const [closedPositions, setClosedPositions] = useState<Position[]>([]);
+  const [closeAllConfirmOpen, setCloseAllConfirmOpen] = useState(false);
+  const [closePositionConfirm, setClosePositionConfirm] = useState<{ open: boolean; ticket: number | null; accountId: number | null }>({ open: false, ticket: null, accountId: null });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5); // seconds
   const [livePositions, setLivePositions] = useState<Position[] | null>(null); // For auto-refresh updates
@@ -208,10 +220,14 @@ const Dashboard = () => {
     }
   };
 
+  const confirmCloseAll = () => {
+    setCloseAllConfirmOpen(true);
+  };
+
   const handleCloseAll = async () => {
     try {
-      // Get first active account ID
-      const accountId = 1; // TODO: Get from selected account context
+      // Use selected account from context
+      const accountId = selectedAccountId === "all" ? undefined : parseInt(selectedAccountId);
 
       const response = await positionsApi.closeAll({ account_id: accountId });
 
@@ -241,8 +257,8 @@ const Dashboard = () => {
 
   const handleQuickTrade = async (params: QuickTradeParams) => {
     try {
-      // Get first active account ID
-      const accountId = 1; // TODO: Get from selected account context
+      // Use selected account from context
+      const accountId = selectedAccountId === "all" ? 1 : parseInt(selectedAccountId);
 
       const response = await positionsApi.open({
         account_id: accountId,
@@ -302,8 +318,8 @@ const Dashboard = () => {
           isLoading={isLoading}
           autoRefresh={autoRefresh}
           onRefresh={refresh}
-          onClosePosition={handleClosePosition}
-          onCloseAll={handleCloseAll}
+          onClosePosition={(ticket, accountId) => setClosePositionConfirm({ open: true, ticket, accountId: accountId || null })}
+          onCloseAll={confirmCloseAll}
         />
         
         <ClosedPositionsTable
@@ -329,6 +345,46 @@ const Dashboard = () => {
           currencies={currencies}
           onTrade={handleQuickTrade}
         />
+
+        {/* Confirmation Dialogs */}
+        <AlertDialog open={closeAllConfirmOpen} onOpenChange={setCloseAllConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Close All Positions?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will close all {positions.length} open positions{selectedAccountId !== "all" ? ` for the selected account` : ` across all accounts`}. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { handleCloseAll(); setCloseAllConfirmOpen(false); }}>
+                Close All Positions
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={closePositionConfirm.open} onOpenChange={(open) => setClosePositionConfirm({ open, ticket: null, accountId: null })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Close Position?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will close position #{closePositionConfirm.ticket}. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (closePositionConfirm.ticket) {
+                  handleClosePosition(closePositionConfirm.ticket, closePositionConfirm.accountId || undefined);
+                }
+                setClosePositionConfirm({ open: false, ticket: null, accountId: null });
+              }}>
+                Close Position
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

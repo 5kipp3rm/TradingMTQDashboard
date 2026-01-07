@@ -36,7 +36,7 @@ import {
   ArrowLeft,
   RefreshCw,
 } from 'lucide-react';
-import { accountsV2Api, currenciesV2Api, AccountStatus, CurrencyConfig } from '@/lib/api-v2';
+import { accountsV2Api, currenciesV2Api, aiConfigV2Api, AccountStatus, CurrencyConfig } from '@/lib/api-v2';
 import { accountsApi } from '@/lib/api';
 import { CurrenciesCard } from '@/components/accounts/CurrenciesCard';
 import { AIConfigCard } from '@/components/accounts/AIConfigCard';
@@ -630,11 +630,19 @@ export const AccountDetail = () => {
               </Button>
               <Button onClick={async () => {
                 try {
-                  // TODO: Call API to update config
-                  // await accountsV2Api.updateConfig(accountId, configForm);
+                  // Call API to update AI config
+                  await aiConfigV2Api.update(parseInt(accountId), {
+                    ml_enabled: configForm.ml_enabled,
+                    ml_model: configForm.ml_model,
+                    ml_confidence_threshold: configForm.ml_confidence_threshold,
+                    llm_enabled: configForm.llm_enabled,
+                    llm_provider: configForm.llm_provider,
+                    llm_model: configForm.llm_model,
+                    llm_prompt_template: configForm.llm_prompt_template,
+                  });
                   toast({
                     title: 'Configuration Updated',
-                    description: 'Trading configuration has been updated successfully',
+                    description: 'AI configuration has been updated successfully',
                   });
                   setEditConfigOpen(false);
                   loadAccountStatus();
@@ -642,7 +650,7 @@ export const AccountDetail = () => {
                   toast({
                     variant: 'destructive',
                     title: 'Error',
-                    description: 'Failed to update configuration',
+                    description: 'Failed to update AI configuration',
                   });
                 }
               }}>

@@ -6,6 +6,7 @@ import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
 import { AddAccountModal } from "@/components/accounts/AddAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ViewAccountModal } from "@/components/accounts/ViewAccountModal";
+import { BulkOperations } from "@/components/accounts/BulkOperations";
 import { Plus, Edit, Trash2, Check, Link, Eye, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -180,7 +181,9 @@ const Accounts = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <BulkOperations selectedCount={accounts.length} onSuccess={refreshAccounts} />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
           {accounts.map((account) => (
             <Card key={account.id} className={`card-glow ${account.isActive ? "ring-2 ring-primary" : ""}`}>
               <CardHeader className="flex flex-row items-start justify-between">
