@@ -8,7 +8,6 @@ import { AddCurrencyModal } from "@/components/currencies/AddCurrencyModal";
 import { useState, useEffect } from "react";
 import { useAccounts } from "@/contexts/AccountsContext";
 import { useToast } from "@/hooks/use-toast";
-import { accountsApi } from "@/lib/api";
 import { currenciesV2Api } from "@/lib/api-v2";
 import {
   Select,
@@ -73,11 +72,11 @@ export default function Currencies() {
   useEffect(() => {
     const loadStrategies = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/strategies/available');
+        const response = await fetch('http://localhost:8000/api/v2/strategies/available');
         if (response.ok) {
           const data = await response.json();
           setStrategyTypes(data.strategies.map((s: any) => ({
-            value: s.value, // Keep original PascalCase format
+            value: s.value,
             label: s.label
           })));
         }

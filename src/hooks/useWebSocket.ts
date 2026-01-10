@@ -15,6 +15,7 @@ interface UseWebSocketOptions {
   onConnectionChange?: (status: 'connected' | 'disconnected' | 'connecting') => void;
   autoReconnect?: boolean;
   reconnectInterval?: number;
+  pingInterval?: number;
 }
 
 export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
@@ -26,10 +27,12 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
     onConnectionChange,
     autoReconnect = true,
     reconnectInterval = 5000,
+    pingInterval = 30000, // Send ping every 30 seconds
   } = options;
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const pingIntervalRef = useRef<NodeJS.Timeout>();
   const isConnectingRef = useRef(false);
 
   const connect = useCallback(() => {
@@ -54,6 +57,16 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = undefined;
         }
+        
+        // Setup ping interval for keepalive
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+        }
+        pingIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+          }
+        }, pingInterval);
       };
 
       ws.onmessage = (event) => {
@@ -113,12 +126,17 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
       isConnectingRef.current = false;
       onConnectionChange?.('disconnected');
     }
-  }, [url, onPositionUpdate, onPositionClosed, onTradeExecuted, onConnectionChange, autoReconnect, reconnectInterval]);
+  }, [url, onPositionUpdate, onPositionClosed, onTradeExecuted, onConnectionChange, autoReconnect, reconnectInterval, pingInterval]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = undefined;
+    }
+    
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = undefined;
     }
     
     if (wsRef.current) {

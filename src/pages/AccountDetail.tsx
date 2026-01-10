@@ -37,7 +37,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { accountsV2Api, currenciesV2Api, aiConfigV2Api, AccountStatus, CurrencyConfig } from '@/lib/api-v2';
-import { accountsApi } from '@/lib/api';
 import { CurrenciesCard } from '@/components/accounts/CurrenciesCard';
 import { AIConfigCard } from '@/components/accounts/AIConfigCard';
 import { ViewAccountModal } from '@/components/accounts/ViewAccountModal';
@@ -72,7 +71,7 @@ export const AccountDetail = () => {
 
   const loadAccountDetails = useCallback(async () => {
     try {
-      const response = await accountsApi.getById(accountId);
+      const response = await accountsV2Api.getById(accountId);
       if (response.data) {
         let accountData = response.data as Account;
         

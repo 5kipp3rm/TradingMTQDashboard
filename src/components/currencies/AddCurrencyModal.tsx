@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Loader2 } from "lucide-react";
-import { currenciesApi } from "@/lib/api";
 
 interface AddCurrencyModalProps {
   open: boolean;
@@ -104,7 +103,7 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
       setIsLoadingStrategies(true);
       try {
         // Load strategies
-        const strategiesResponse = await fetch('http://localhost:8000/api/strategies/available');
+        const strategiesResponse = await fetch('http://localhost:8000/api/v2/strategies/available');
         if (strategiesResponse.ok) {
           const strategiesData = await strategiesResponse.json();
           setStrategyTypes(strategiesData.strategies.map((s: any) => ({
@@ -115,7 +114,7 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
         }
 
         // Load timeframes
-        const timeframesResponse = await fetch('http://localhost:8000/api/strategies/timeframes');
+        const timeframesResponse = await fetch('http://localhost:8000/api/v2/strategies/timeframes');
         if (timeframesResponse.ok) {
           const timeframesData = await timeframesResponse.json();
           setTimeframes(timeframesData.timeframes);
@@ -143,15 +142,16 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
   const loadAvailableCurrencies = async (category: string) => {
     setIsLoadingCurrencies(true);
     try {
-      const params: { active_only: boolean; category?: string } = { active_only: true };
-      // Only add category filter if it's not "all"
-      if (category && category !== "all") {
-        params.category = category;
-      }
-      const response = await currenciesApi.getAvailable(params);
-      if (response.data) {
-        setAvailableCurrencies(response.data.currencies);
-      }
+      // TODO: Migrate to v2 API - need endpoint for available currency symbols
+      // For now, use hardcoded common forex pairs
+      const commonPairs = [
+        { id: 1, symbol: "EURUSD", description: "Euro vs US Dollar", category: "major", base_currency: "EUR", quote_currency: "USD", pip_value: 0.0001, decimal_places: 5, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 1.5, is_active: true },
+        { id: 2, symbol: "GBPUSD", description: "British Pound vs US Dollar", category: "major", base_currency: "GBP", quote_currency: "USD", pip_value: 0.0001, decimal_places: 5, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 2.0, is_active: true },
+        { id: 3, symbol: "USDJPY", description: "US Dollar vs Japanese Yen", category: "major", base_currency: "USD", quote_currency: "JPY", pip_value: 0.01, decimal_places: 3, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 1.8, is_active: true },
+        { id: 4, symbol: "AUDUSD", description: "Australian Dollar vs US Dollar", category: "major", base_currency: "AUD", quote_currency: "USD", pip_value: 0.0001, decimal_places: 5, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 2.2, is_active: true },
+      ];
+      const filtered = category === "all" ? commonPairs : commonPairs.filter(p => p.category === category);
+      setAvailableCurrencies(filtered);
     } catch (error) {
       console.error("Failed to load available currencies:", error);
     } finally {

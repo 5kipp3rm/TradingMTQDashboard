@@ -170,6 +170,10 @@ export interface LLMEnableRequest {
 // ============================================================================
 
 export const accountsV2Api = {
+  // Account CRUD
+  getById: (accountId: number): Promise<ApiResponse<any>> =>
+    apiClient.get(V2_PATHS.accounts.byId(accountId)),
+
   // Connection management
   connect: (accountId: number): Promise<ApiResponse<OperationResponse>> =>
     apiClient.post(V2_PATHS.accounts.connect(accountId)),

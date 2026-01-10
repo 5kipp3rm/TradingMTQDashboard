@@ -21,24 +21,16 @@ interface StrategyParams {
   [key: string]: number;
 }
 
-const STRATEGY_TYPES = [
-  { value: "SimpleMA", label: "Simple Moving Average", params: ["fast_period", "slow_period"] },
-  { value: "RSI", label: "RSI Strategy", params: ["period", "overbought", "oversold"] },
-  { value: "MACD", label: "MACD Strategy", params: ["fast_period", "slow_period", "signal_period"] },
-  { value: "BBands", label: "Bollinger Bands", params: ["period", "std_dev"] },
-  { value: "Stochastic", label: "Stochastic Oscillator", params: ["k_period", "d_period", "overbought", "oversold"] },
-];
+interface StrategyType {
+  value: string;
+  label: string;
+  params: string[];
+}
 
-const TIMEFRAMES = [
-  { value: "M1", label: "1 Minute" },
-  { value: "M5", label: "5 Minutes" },
-  { value: "M15", label: "15 Minutes" },
-  { value: "M30", label: "30 Minutes" },
-  { value: "H1", label: "1 Hour" },
-  { value: "H4", label: "4 Hours" },
-  { value: "D1", label: "1 Day" },
-  { value: "W1", label: "1 Week" },
-];
+interface TimeframeOption {
+  value: string;
+  label: string;
+}
 
 export const CurrencyConfigModal = ({
   open,
@@ -48,6 +40,14 @@ export const CurrencyConfigModal = ({
   onSuccess,
 }: CurrencyConfigModalProps) => {
   const { toast } = useToast();
+  
+  // Load strategies and timeframes from API
+  const [strategyTypes, setStrategyTypes] = useState<StrategyType[]>([
+    { value: "SimpleMA", label: "Simple Moving Average", params: ["fast_period", "slow_period"] },
+  ]);
+  const [timeframes, setTimeframes] = useState<TimeframeOption[]>([
+    { value: "H1", label: "1 Hour" },
+  ]);
   const isEdit = !!currency;
 
   // Form state
@@ -64,6 +64,35 @@ export const CurrencyConfigModal = ({
   const [maxPositions, setMaxPositions] = useState("5");
   const [allowStacking, setAllowStacking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load strategies and timeframes from API on mount
+  useEffect(() => {
+    const loadMetadata = async () => {
+      try {
+        // Load strategies
+        const strategiesResponse = await fetch('http://localhost:8000/api/v2/strategies/available');
+        if (strategiesResponse.ok) {
+          const strategiesData = await strategiesResponse.json();
+          const loadedStrategies = strategiesData.strategies.map((s: any) => ({
+            value: s.value,
+            label: s.label,
+            params: s.params || []
+          }));
+          setStrategyTypes(loadedStrategies);
+        }
+
+        // Load timeframes
+        const timeframesResponse = await fetch('http://localhost:8000/api/v2/strategies/timeframes');
+        if (timeframesResponse.ok) {
+          const timeframesData = await timeframesResponse.json();
+          setTimeframes(timeframesData.timeframes);
+        }
+      } catch (error) {
+        console.error('Failed to load metadata:', error);
+      }
+    };
+    loadMetadata();
+  }, []);
 
   // Initialize form when currency prop changes
   useEffect(() => {
@@ -99,7 +128,7 @@ export const CurrencyConfigModal = ({
 
   // Initialize default strategy params when strategy type changes
   useEffect(() => {
-    const strategy = STRATEGY_TYPES.find((s) => s.value === strategyType);
+    const strategy = strategyTypes.find((s) => s.value === strategyType);
     if (strategy && !isEdit) {
       const defaultParams: StrategyParams = {};
 
@@ -126,7 +155,7 @@ export const CurrencyConfigModal = ({
 
       setStrategyParams(defaultParams);
     }
-  }, [strategyType, isEdit]);
+  }, [strategyType, isEdit, strategyTypes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +245,7 @@ export const CurrencyConfigModal = ({
     });
   };
 
-  const currentStrategy = STRATEGY_TYPES.find((s) => s.value === strategyType);
+  const currentStrategy = strategyTypes.find((s) => s.value === strategyType);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -263,7 +292,7 @@ export const CurrencyConfigModal = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {STRATEGY_TYPES.map((strategy) => (
+                  {strategyTypes.map((strategy) => (
                     <SelectItem key={strategy.value} value={strategy.value}>
                       {strategy.label}
                     </SelectItem>
@@ -319,7 +348,7 @@ export const CurrencyConfigModal = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIMEFRAMES.map((tf) => (
+                    {timeframes.map((tf) => (
                       <SelectItem key={tf.value} value={tf.value}>
                         {tf.label}
                       </SelectItem>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { accountsApi } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 
 export interface Account {
   id: string;
@@ -30,17 +30,25 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
   const refreshAccounts = async () => {
     setIsLoading(true);
-    const response = await accountsApi.getAll();
-    if (response.data) {
-      const formattedAccounts = (response.data as any).accounts?.map((acc: any) => ({
-        id: acc.id.toString(),
-        name: acc.account_name || `Account ${acc.account_number}`,
-        broker: acc.broker || "Unknown",
-        balance: acc.balance,
-        equity: acc.equity,
-        isActive: acc.is_active,
-      })) || [];
-      setAccounts(formattedAccounts);
+    try {
+      // Use v2 accounts list endpoint
+      const response = await apiClient.get("/v2/accounts");
+      if (response.data) {
+        const data = response.data as any;
+        const accounts = data.accounts || [];
+        const formattedAccounts = accounts.map((acc: any) => ({
+          id: acc.id.toString(),
+          name: acc.account_name || `Account ${acc.account_number}`,
+          broker: acc.broker || "Unknown",
+          balance: acc.initial_balance ? parseFloat(acc.initial_balance) : undefined,
+          equity: undefined, // Not available in list endpoint
+          isActive: acc.is_active,
+        }));
+        setAccounts(formattedAccounts);
+      }
+    } catch (error) {
+      console.error("Failed to fetch accounts:", error);
+      setAccounts([]);
     }
     setIsLoading(false);
   };

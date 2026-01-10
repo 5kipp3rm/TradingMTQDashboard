@@ -7,7 +7,8 @@ import type {
   ChartDataPoint,
   CurrencyPair,
 } from "@/types/trading";
-import { analyticsApi, tradesApi, positionsApi, currenciesApi } from "@/lib/api";
+import { analyticsApi, tradesApi, positionsApi } from "@/lib/api";
+import { currenciesV2Api } from "@/lib/api-v2";
 import {
   calculateSummary,
   calculateCumulativeProfit,
@@ -73,11 +74,11 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
     setDailyPerformance(calculateDailyPerformance(filteredPositions));
   }, [period]);
 
-  // WebSocket connection for real-time updates (DISABLED until backend supports it)
-  const wsUrl = `ws://localhost:8000/ws/dashboard${selectedAccountId && selectedAccountId !== "all" ? `?account_id=${selectedAccountId}` : ""}`;
+  // WebSocket connection for real-time updates
+  const wsUrl = `ws://localhost:8000/api/ws/dashboard${selectedAccountId && selectedAccountId !== "all" ? `?account_id=${selectedAccountId}` : ""}`;
   
   useWebSocket(wsUrl, {
-    enabled: true, // Enabled for real-time updates
+    enabled: false, // Temporarily disabled - causing console spam
     onPositionUpdate: (updatedPosition: any) => {
       // Update position in state
       setPositions(prev => 
@@ -142,13 +143,21 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
       console.log("Closed positions (from cache or API):", closedPositions.length);
 
       // Fetch all other data in parallel
-      const [overviewRes, dailyRes, tradesRes, positionsRes, currenciesRes] = await Promise.all([
+      // Only fetch currencies if we have a valid account_id
+      const fetchPromises = [
         analyticsApi.getOverview({ days: period, account_id: accountIdParam }),
         analyticsApi.getDaily({ days: period, account_id: accountIdParam }),
         tradesApi.getAll({ limit: 100, account_id: accountIdParam }),
         positionsApi.getOpen(accountIdParam ? { account_id: accountIdParam } : undefined),
-        currenciesApi.getAll(),
-      ]);
+      ];
+      
+      // Only fetch currencies if we have a specific account
+      if (accountIdParam) {
+        fetchPromises.push(currenciesV2Api.getAll(accountIdParam));
+      }
+      
+      const results = await Promise.all(fetchPromises);
+      const [overviewRes, dailyRes, tradesRes, positionsRes, currenciesRes] = results;
 
       // Get closed positions data for calculations
       const closedPositionsData = closedPositions;
@@ -324,21 +333,25 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
         console.error("Positions error:", positionsRes.error);
       }
 
-      // Handle currencies
-      if (currenciesRes.data) {
-        const currenciesData = (currenciesRes.data as any).currencies || [];
+      // Handle currencies - v2 API returns array directly
+      if (currenciesRes && currenciesRes.data) {
+        const currenciesData = Array.isArray(currenciesRes.data) ? currenciesRes.data : [];
         setCurrencies(
           currenciesData.map((c: any) => ({
             symbol: c.symbol,
-            description: c.description || c.symbol,
-            bid: c.bid || 0,
-            ask: c.ask || 0,
-            spread: c.spread || 0,
+            description: c.symbol, // v2 doesn't have description
+            bid: 0, // v2 doesn't have pricing info
+            ask: 0,
+            spread: 0,
             enabled: c.enabled !== undefined ? c.enabled : true,
           }))
         );
       } else {
-        console.error("Currencies error:", currenciesRes.error);
+        // No account or failed to fetch currencies
+        if (currenciesRes?.error) {
+          console.error("Currencies error:", currenciesRes.error);
+        }
+        setCurrencies([]);
       }
 
       setLastUpdate(new Date());

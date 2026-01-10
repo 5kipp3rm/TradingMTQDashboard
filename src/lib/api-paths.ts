@@ -258,6 +258,9 @@ const V2_ACCOUNTS_BASE = `${API_V2}/accounts`;
 export const V2_PATHS = {
   // Account Management V2
   accounts: {
+    /** GET /v2/accounts/{id} */
+    byId: (accountId: number) => `${V2_ACCOUNTS_BASE}/${accountId}`,
+    
     // Connection management
     /** POST /v2/accounts/{id}/connect */
     connect: (accountId: number) => `${V2_ACCOUNTS_BASE}/${accountId}/connect`,

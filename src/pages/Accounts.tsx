@@ -12,37 +12,19 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAccounts } from "@/contexts/AccountsContext";
-import { accountsApi, accountConnectionsApi, currenciesApi } from "@/lib/api";
-import type { CurrencyPair, Account } from "@/types/trading";
+import { apiClient } from "@/lib/api";
+import { accountsV2Api } from "@/lib/api-v2";
+import type { Account } from "@/types/trading";
 
 const Accounts = () => {
   const { accounts, refreshAccounts, isLoading } = useAccounts();
   const navigate = useNavigate();
-  const [currencies, setCurrencies] = useState<CurrencyPair[]>([]);
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [editAccountOpen, setEditAccountOpen] = useState(false);
   const [viewAccountOpen, setViewAccountOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      const response = await currenciesApi.getAll();
-      if (response.data) {
-        const formattedCurrencies = (response.data as any).currencies?.map((c: any) => ({
-          symbol: c.symbol,
-          description: c.description || c.symbol,
-          bid: c.bid || 0,
-          ask: c.ask || 0,
-          spread: c.spread || 0,
-          enabled: c.enabled,
-        })) || [];
-        setCurrencies(formattedCurrencies);
-      }
-    };
-    fetchCurrencies();
-  }, []);
 
   const handleAddAccount = async (account: {
     name: string;
@@ -55,12 +37,11 @@ const Accounts = () => {
     isDemo: boolean;
     isDefault: boolean;
   }) => {
-    const response = await accountsApi.create({
+    const response = await apiClient.post('/v2/accounts', {
       account_name: account.name,
       account_number: parseInt(account.loginNumber, 10),
       broker: account.broker,
       server: account.server,
-      server_custom: account.serverCustom,
       platform_type: account.platform,
       login: parseInt(account.loginNumber, 10),
       password: account.password,
@@ -86,8 +67,8 @@ const Accounts = () => {
   };
 
   const handleConnect = async (id: string) => {
-    const response = await accountConnectionsApi.connect(parseInt(id, 10));
-    if (response.data) {
+    const response = await accountsV2Api.connect(parseInt(id, 10));
+    if (response.data?.success) {
       await refreshAccounts();
       toast({
         title: "Connected",
@@ -123,7 +104,7 @@ const Accounts = () => {
   };
 
   const handleSaveEdit = async (id: string, updates: any) => {
-    const response = await accountsApi.update(parseInt(id, 10), updates);
+    const response = await apiClient.put(`/v2/accounts/${id}`, updates);
     if (response.data) {
       await refreshAccounts();
       toast({
@@ -140,8 +121,8 @@ const Accounts = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const response = await accountsApi.delete(parseInt(id, 10));
-    if (!response.error) {
+    const response = await apiClient.delete(`/v2/accounts/${id}`);
+    if (response.data) {
       await refreshAccounts();
       toast({
         title: "Account Deleted",
@@ -274,7 +255,7 @@ const Accounts = () => {
         <QuickTradeModal
           open={quickTradeOpen}
           onClose={() => setQuickTradeOpen(false)}
-          currencies={currencies}
+          currencies={[]}
           onTrade={handleQuickTrade}
         />
 
