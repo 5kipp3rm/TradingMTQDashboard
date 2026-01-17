@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Header } from "@/components/dashboard/Header";
 import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
 import { AddAccountModal } from "@/components/accounts/AddAccountModal";
@@ -137,6 +138,23 @@ const Accounts = () => {
     }
   };
 
+  const handleToggleAutoConnect = async (id: string, currentValue: boolean) => {
+    const response = await accountsV2Api.toggleAutoConnect(parseInt(id, 10), !currentValue);
+    if (response.data?.success) {
+      await refreshAccounts();
+      toast({
+        title: "Auto-Connect Updated",
+        description: `Auto-connect is now ${!currentValue ? "enabled" : "disabled"}.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: response.error || "Failed to update auto-connect setting",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleQuickTrade = (params: { symbol: string; volume: number; type: "buy" | "sell" }) => {
     toast({
       title: "Trade Executed",
@@ -200,6 +218,14 @@ const Accounts = () => {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Broker</span>
                     <span className="font-mono text-sm">{account.broker}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                    <span className="text-sm text-muted-foreground">Auto-Connect</span>
+                    <Switch
+                      checked={account.auto_connect}
+                      onCheckedChange={() => handleToggleAutoConnect(account.id, account.auto_connect)}
+                      title={account.auto_connect ? "Disable auto-connect" : "Enable auto-connect"}
+                    />
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">

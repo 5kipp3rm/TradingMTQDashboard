@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import type { CurrencyPair, QuickTradeParams } from "@/types/trading";
+import { useAccounts } from "@/contexts/AccountsContext";
+import { positionsApi } from "@/lib/api";
 
 interface QuickTradeModalProps {
   open: boolean;
@@ -32,6 +34,9 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
   const [sl, setSl] = useState("");
   const [tp, setTp] = useState("");
   const [comment, setComment] = useState("");
+  const [currentPrice, setCurrentPrice] = useState(0);
+  const [loadingPrice, setLoadingPrice] = useState(false);
+  const { selectedAccountId } = useAccounts();
 
   const selectedPair = currencies.find((c) => c.symbol === symbol);
 
@@ -41,6 +46,40 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
     }
   }, [open, currencies, symbol]);
 
+  // Fetch current price when symbol changes
+  useEffect(() => {
+    if (!open || !symbol || !selectedAccountId) {
+      setCurrentPrice(0);
+      return;
+    }
+
+    const fetchCurrentPrice = async () => {
+      setLoadingPrice(true);
+      try {
+        const accountId = selectedAccountId === "all" ? undefined : parseInt(selectedAccountId, 10);
+        if (!accountId) return;
+
+        // Use preview endpoint to get current price
+        const response = await positionsApi.preview({
+          account_id: accountId,
+          symbol: symbol,
+          order_type: "BUY",
+          volume: 0.01, // Dummy volume just to get prices
+        });
+
+        if (response.data) {
+          setCurrentPrice(response.data.entry_price);
+        }
+      } catch (error) {
+        console.error("Failed to fetch current price:", error);
+      } finally {
+        setLoadingPrice(false);
+      }
+    };
+
+    fetchCurrentPrice();
+  }, [open, symbol, selectedAccountId]);
+
   const resetForm = () => {
     setVolume("0.10");
     setSl("");
@@ -49,42 +88,39 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
   };
 
   const calculateRisk = () => {
-    if (!selectedPair || !sl) return 0;
-    const price = selectedPair.bid;
+    if (!selectedPair || !sl || currentPrice === 0) return 0;
     const slPrice = parseFloat(sl);
-    const pips = Math.abs(price - slPrice) * 10000;
+    const point = selectedPair.point || 0.0001;
+    const pips = Math.abs(currentPrice - slPrice) / point;
     return pips * parseFloat(volume) * 10;
   };
 
   const calculateReward = () => {
-    if (!selectedPair || !tp) return 0;
-    const price = selectedPair.ask;
+    if (!selectedPair || !tp || currentPrice === 0) return 0;
     const tpPrice = parseFloat(tp);
-    const pips = Math.abs(tpPrice - price) * 10000;
+    const point = selectedPair.point || 0.0001;
+    const pips = Math.abs(tpPrice - currentPrice) / point;
     return pips * parseFloat(volume) * 10;
   };
 
   const setSlFromPips = (pips: number, type: "buy" | "sell") => {
-    if (!selectedPair) return;
-    const price = type === "buy" ? selectedPair.bid : selectedPair.ask;
+    if (!selectedPair || currentPrice === 0) return;
     const slPrice = type === "buy" 
-      ? price - (pips / 10000) // For BUY, SL is below price
-      : price + (pips / 10000); // For SELL, SL is above price
+      ? currentPrice - (pips * (selectedPair.point || 0.0001)) // For BUY, SL is below price
+      : currentPrice + (pips * (selectedPair.point || 0.0001)); // For SELL, SL is above price
     setSl(slPrice.toFixed(5));
   };
 
   const setTpFromPips = (pips: number, type: "buy" | "sell") => {
-    if (!selectedPair) return;
-    const price = type === "buy" ? selectedPair.ask : selectedPair.bid;
+    if (!selectedPair || currentPrice === 0) return;
     const tpPrice = type === "buy"
-      ? price + (pips / 10000) // For BUY, TP is above price
-      : price - (pips / 10000); // For SELL, TP is below price
+      ? currentPrice + (pips * (selectedPair.point || 0.0001)) // For BUY, TP is above price
+      : currentPrice - (pips * (selectedPair.point || 0.0001)); // For SELL, TP is below price
     setTp(tpPrice.toFixed(5));
   };
 
   const validateSlTp = (type: "buy" | "sell"): string | null => {
-    if (!selectedPair) return null;
-    const currentPrice = type === "buy" ? selectedPair.bid : selectedPair.ask;
+    if (!selectedPair || currentPrice === 0) return null;
     
     if (sl) {
       const slPrice = parseFloat(sl);
@@ -177,10 +213,9 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
               <Label>Current Price</Label>
               <div className="flex gap-2 mt-2 text-sm">
                 <span className="text-muted-foreground">
-                  Bid: <strong className="text-foreground font-mono">{selectedPair?.bid.toFixed(5) || "-"}</strong>
-                </span>
-                <span className="text-muted-foreground">
-                  Ask: <strong className="text-foreground font-mono">{selectedPair?.ask.toFixed(5) || "-"}</strong>
+                  Price: <strong className="text-foreground font-mono">
+                    {loadingPrice ? "Loading..." : currentPrice > 0 ? currentPrice.toFixed(5) : "-"}
+                  </strong>
                 </span>
               </div>
             </div>

@@ -229,6 +229,16 @@ const Dashboard = () => {
       // Use selected account from context
       const accountId = selectedAccountId === "all" ? undefined : parseInt(selectedAccountId);
 
+      if (!accountId) {
+        toast({
+          title: "Error",
+          description: "Please select a specific account to close all positions",
+          variant: "destructive",
+        });
+        setCloseAllConfirmOpen(false);
+        return;
+      }
+
       const response = await positionsApi.closeAll({ account_id: accountId });
 
       if (response.error) {

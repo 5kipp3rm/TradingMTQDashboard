@@ -47,13 +47,14 @@ export default function Strategies() {
 
   // Fetch strategies
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['strategies', selectedAccountId],
+    queryKey: ['strategies', Number(selectedAccountId)],
     queryFn: () => strategiesApi.list(Number(selectedAccountId)),
     enabled: selectedAccountId !== 'all' && selectedAccountId !== null,
     refetchInterval: 5000, // Refresh every 5 seconds
+    staleTime: 1000, // Data is stale after 1 second
   });
 
-  const strategies = response?.data?.strategies || [];
+  const strategies = response?.strategies || response?.data?.strategies || [];
 
   // Filter strategies
   const filteredStrategies = strategies.filter((strategy) => {

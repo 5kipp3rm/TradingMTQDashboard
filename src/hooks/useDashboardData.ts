@@ -344,6 +344,7 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
             ask: 0,
             spread: 0,
             enabled: c.enabled !== undefined ? c.enabled : true,
+            point: c.point || 0.0001,  // Default to EURUSD point if not provided
           }))
         );
       } else {

@@ -61,6 +61,7 @@ export interface Account {
   is_active: boolean;
   is_default: boolean;
   is_demo: boolean;
+  auto_connect: boolean;
   currency: string;
   initial_balance?: number;
   description?: string;
@@ -85,6 +86,7 @@ export interface CurrencyPair {
   ask: number;
   spread: number;
   enabled: boolean;
+  point?: number;  // Symbol point value (e.g., 0.0001 for EURUSD, 0.01 for XAUUSD)
 }
 
 export interface Alert {

@@ -222,6 +222,10 @@ export const accountsV2Api = {
 
   getTrading: (): Promise<ApiResponse<{ count: number; accounts: TradingAccount[] }>> =>
     apiClient.get(V2_PATHS.accounts.trading),
+
+  // Auto-connect control
+  toggleAutoConnect: (accountId: number, enabled: boolean): Promise<ApiResponse<OperationResponse>> =>
+    apiClient.put(V2_PATHS.accounts.byId(accountId), { auto_connect: enabled }),
 };
 
 // ============================================================================
