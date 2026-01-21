@@ -35,7 +35,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       const response = await apiClient.get("/v2/accounts");
       if (response.data) {
         const data = response.data as any;
-        const accounts = data.accounts || [];
+        const accounts = data.items || [];
         const formattedAccounts = accounts.map((acc: any) => ({
           id: acc.id.toString(),
           name: acc.account_name || `Account ${acc.account_number}`,
@@ -46,6 +46,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         }));
         setAccounts(formattedAccounts);
       }
+      console.info("Response to fetch accounts:", response);
     } catch (error) {
       console.error("Failed to fetch accounts:", error);
       setAccounts([]);
