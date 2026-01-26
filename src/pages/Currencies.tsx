@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useAccounts } from "@/contexts/AccountsContext";
 import { useToast } from "@/hooks/use-toast";
 import { currenciesV2Api } from "@/lib/api-v2";
+import { strategiesApi } from "@/lib/api";
 import {
   Select,
   SelectContent,
@@ -59,43 +60,57 @@ interface AccountCurrencies {
   [accountId: string]: CurrencyConfig[];
 }
 
+interface StrategyType {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+interface Timeframe {
+  value: string;
+  label: string;
+  minutes?: number;
+}
+
 export default function Currencies() {
   const { accounts, selectedAccountId, selectAccount } = useAccounts();
   const { toast } = useToast();
 
-  // Strategy types will be loaded from API
+  // Strategy types and timeframes will be loaded from API
   const [strategyTypes, setStrategyTypes] = useState<Array<{ value: string; label: string }>>([
     { value: "SimpleMA", label: "Simple MA Crossover" }, // Fallback default
   ]);
+  const [timeframes, setTimeframes] = useState<Array<{ value: string; label: string }>>([
+    { value: "M5", label: "5 Minutes" }, // Fallback default
+  ]);
 
-  // Load available strategies on mount
+  // Load available strategies and timeframes on mount
   useEffect(() => {
-    const loadStrategies = async () => {
+    const loadMetadata = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/v2/strategies/available');
-        if (response.ok) {
-          const data = await response.json();
-          setStrategyTypes(data.strategies.map((s: any) => ({
+        // Load strategies
+        const strategiesResult = await strategiesApi.getAvailable();
+        if (strategiesResult.data) {
+          setStrategyTypes(strategiesResult.data.strategies.map((s: StrategyType) => ({
             value: s.value,
             label: s.label
           })));
         }
+
+        // Load timeframes
+        const timeframesResult = await strategiesApi.getTimeframes();
+        if (timeframesResult.data) {
+          setTimeframes(timeframesResult.data.timeframes.map((tf: Timeframe) => ({
+            value: tf.value,
+            label: tf.label
+          })));
+        }
       } catch (error) {
-        console.error('Failed to load strategies:', error);
+        console.error('Failed to load strategies/timeframes:', error);
       }
     };
-    loadStrategies();
+    loadMetadata();
   }, []);
-
-  const timeframes = [
-    { value: "M1", label: "1 Minute" },
-    { value: "M5", label: "5 Minutes" },
-    { value: "M15", label: "15 Minutes" },
-    { value: "M30", label: "30 Minutes" },
-    { value: "H1", label: "1 Hour" },
-    { value: "H4", label: "4 Hours" },
-    { value: "D1", label: "Daily" },
-  ];
 
   const [currenciesPerAccount, setCurrenciesPerAccount] = useState<AccountCurrencies>({});
   const [isLoading, setIsLoading] = useState(true);

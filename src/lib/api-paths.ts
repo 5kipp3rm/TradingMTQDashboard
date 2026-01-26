@@ -146,6 +146,8 @@ export const V1_PATHS = {
     enableCurrency: (symbol: string) => `/config/currencies/${symbol}/enable`,
     /** POST /config/currencies/{symbol}/disable */
     disableCurrency: (symbol: string) => `/config/currencies/${symbol}/disable`,
+    /** GET /config/categories */
+    categories: '/config/categories',
     /** GET /config/preferences */
     preferences: '/config/preferences',
     /** PUT /config/preferences */
@@ -196,14 +198,22 @@ export const V1_PATHS = {
 
   // Reports
   reports: {
-    /** GET /reports */
-    list: '/reports',
-    /** POST /reports */
-    create: '/reports',
-    /** POST /reports/generate */
+    /** GET /reports/configurations - List all report configurations */
+    configurations: '/reports/configurations',
+    /** GET /reports/configurations/{id} */
+    configurationById: (id: number) => `/reports/configurations/${id}`,
+    /** POST /reports/configurations/{id}/activate */
+    activate: (id: number) => `/reports/configurations/${id}/activate`,
+    /** POST /reports/configurations/{id}/deactivate */
+    deactivate: (id: number) => `/reports/configurations/${id}/deactivate`,
+    /** POST /reports/generate - Generate ad-hoc report */
     generate: '/reports/generate',
-    /** GET /reports/history */
+    /** GET /reports/history - Get report generation history */
     history: '/reports/history',
+    /** GET /reports/history/{id} */
+    historyById: (id: number) => `/reports/history/${id}`,
+    /** GET /reports/history/{id}/download - Download report file */
+    download: (id: number) => `/reports/history/${id}/download`,
   },
 
   // Health
@@ -356,22 +366,28 @@ export const V2_PATHS = {
     update: (accountId: number, symbol: string) => `${V2_ACCOUNTS_BASE}/${accountId}/strategies/${symbol}`,
     /** DELETE /v2/accounts/{accountId}/strategies/{symbol} */
     delete: (accountId: number, symbol: string) => `${V2_ACCOUNTS_BASE}/${accountId}/strategies/${symbol}`,
-    
+
     // Strategy control
     /** POST /v2/accounts/{accountId}/strategies/{symbol}/enable */
     enable: (accountId: number, symbol: string) => `${V2_ACCOUNTS_BASE}/${accountId}/strategies/${symbol}/enable`,
     /** POST /v2/accounts/{accountId}/strategies/{symbol}/disable */
     disable: (accountId: number, symbol: string) => `${V2_ACCOUNTS_BASE}/${accountId}/strategies/${symbol}/disable`,
-    
+
     // Strategy status & performance
     /** GET /v2/accounts/{accountId}/strategies/{symbol}/status */
     status: (accountId: number, symbol: string) => `${V2_ACCOUNTS_BASE}/${accountId}/strategies/${symbol}/status`,
     /** GET /v2/accounts/{accountId}/strategies/{symbol}/performance */
     performance: (accountId: number, symbol: string) => `${V2_ACCOUNTS_BASE}/${accountId}/strategies/${symbol}/performance`,
-    
+
     // Bulk operations
     /** POST /v2/accounts/{accountId}/strategies/bulk-ai-update */
     bulkAiUpdate: (accountId: number) => `${V2_ACCOUNTS_BASE}/${accountId}/strategies/bulk-ai-update`,
+
+    // Metadata (global, not per-account)
+    /** GET /v2/strategies/available - Get list of available strategy types */
+    available: `${API_V2}/strategies/available`,
+    /** GET /v2/strategies/timeframes - Get list of available timeframes */
+    timeframes: `${API_V2}/strategies/timeframes`,
   },
 };
 

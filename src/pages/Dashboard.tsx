@@ -147,6 +147,7 @@ const Dashboard = () => {
 
   const handleExportCSV = () => {
     const headers = ["Ticket", "Symbol", "Type", "Entry Time", "Exit Time", "Profit", "Pips", "Status"];
+    console.log("Exporting trades:", trades);
     const rows = trades.map((t) => [
       t.ticket,
       t.symbol,

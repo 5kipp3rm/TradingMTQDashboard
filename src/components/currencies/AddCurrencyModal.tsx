@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Loader2 } from "lucide-react";
+import { strategiesApi, configApi } from "@/lib/api";
 
 interface AddCurrencyModalProps {
   open: boolean;
@@ -51,29 +52,24 @@ interface Timeframe {
 }
 
 interface AvailableCurrency {
-  id: number;
   symbol: string;
   description: string;
   category: string;
-  base_currency: string;
-  quote_currency: string;
-  pip_value: number;
-  decimal_places: number;
-  min_lot_size: number;
-  max_lot_size: number;
-  typical_spread: number | null;
-  is_active: boolean;
+  digits: number;
+  point: number;
+  contract_size: number;
+  min_lot: number;
+  max_lot: number;
+  lot_step: number;
+  spread_typical: number;
+  enabled: boolean;
+  custom: boolean;
 }
 
-const currencyCategories = [
-  { value: "all", label: "All Categories" },
-  { value: "major", label: "Major Pairs" },
-  { value: "cross", label: "Cross Pairs" },
-  { value: "exotic", label: "Exotic Pairs" },
-  { value: "commodity", label: "Commodities" },
-  { value: "crypto", label: "Cryptocurrencies" },
-  { value: "index", label: "Indices" },
-];
+interface CategoryOption {
+  value: string;
+  label: string;
+}
 
 export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps) {
   const [symbol, setSymbol] = useState("");
@@ -96,31 +92,47 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
   const [strategyTypes, setStrategyTypes] = useState<StrategyType[]>([]);
   const [timeframes, setTimeframes] = useState<Timeframe[]>([]);
   const [isLoadingStrategies, setIsLoadingStrategies] = useState(false);
+  const [categories, setCategories] = useState<CategoryOption[]>([
+    { value: "all", label: "All Categories" }
+  ]);
 
-  // Load strategies and timeframes on mount
+  // Load strategies, timeframes, and categories on mount
   useEffect(() => {
     const loadMetadata = async () => {
       setIsLoadingStrategies(true);
       try {
-        // Load strategies
-        const strategiesResponse = await fetch('http://localhost:8000/api/v2/strategies/available');
-        if (strategiesResponse.ok) {
-          const strategiesData = await strategiesResponse.json();
-          setStrategyTypes(strategiesData.strategies.map((s: any) => ({
+        // Load strategies using API client
+        const strategiesResult = await strategiesApi.getAvailable();
+        if (strategiesResult.data) {
+          setStrategyTypes(strategiesResult.data.strategies.map((s: any) => ({
             value: s.value,
             label: s.label,
             description: s.description
           })));
         }
 
-        // Load timeframes
-        const timeframesResponse = await fetch('http://localhost:8000/api/v2/strategies/timeframes');
-        if (timeframesResponse.ok) {
-          const timeframesData = await timeframesResponse.json();
-          setTimeframes(timeframesData.timeframes);
+        // Load timeframes using API client
+        const timeframesResult = await strategiesApi.getTimeframes();
+        if (timeframesResult.data) {
+          setTimeframes(timeframesResult.data.timeframes);
+        }
+
+        // Load categories using API client
+        const categoriesResult = await configApi.getCategories();
+        if (categoriesResult.data) {
+          // Transform category strings to CategoryOption format with proper labels
+          const categoryStrings = categoriesResult.data as string[];
+          const categoryOptions: CategoryOption[] = [
+            { value: "all", label: "All Categories" },
+            ...categoryStrings.map((cat: string) => ({
+              value: cat,
+              label: cat.charAt(0).toUpperCase() + cat.slice(1) + (cat === "major" || cat === "cross" || cat === "exotic" ? " Pairs" : cat === "commodity" ? "ies" : cat === "index" ? " Indices" : "")
+            }))
+          ];
+          setCategories(categoryOptions);
         }
       } catch (error) {
-        console.error("Failed to load strategies/timeframes:", error);
+        console.error("Failed to load strategies/timeframes/categories:", error);
         // Fallback to defaults if API fails
         setStrategyTypes([{ value: "SimpleMA", label: "Simple MA Crossover" }]);
         setTimeframes([{ value: "M5", label: "5 Minutes" }]);
@@ -142,18 +154,22 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
   const loadAvailableCurrencies = async (category: string) => {
     setIsLoadingCurrencies(true);
     try {
-      // TODO: Migrate to v2 API - need endpoint for available currency symbols
-      // For now, use hardcoded common forex pairs
-      const commonPairs = [
-        { id: 1, symbol: "EURUSD", description: "Euro vs US Dollar", category: "major", base_currency: "EUR", quote_currency: "USD", pip_value: 0.0001, decimal_places: 5, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 1.5, is_active: true },
-        { id: 2, symbol: "GBPUSD", description: "British Pound vs US Dollar", category: "major", base_currency: "GBP", quote_currency: "USD", pip_value: 0.0001, decimal_places: 5, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 2.0, is_active: true },
-        { id: 3, symbol: "USDJPY", description: "US Dollar vs Japanese Yen", category: "major", base_currency: "USD", quote_currency: "JPY", pip_value: 0.01, decimal_places: 3, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 1.8, is_active: true },
-        { id: 4, symbol: "AUDUSD", description: "Australian Dollar vs US Dollar", category: "major", base_currency: "AUD", quote_currency: "USD", pip_value: 0.0001, decimal_places: 5, min_lot_size: 0.01, max_lot_size: 100, typical_spread: 2.2, is_active: true },
-      ];
-      const filtered = category === "all" ? commonPairs : commonPairs.filter(p => p.category === category);
-      setAvailableCurrencies(filtered);
+      // Load from API instead of hardcoded data
+      const result = await configApi.getCurrencies({
+        category: category === "all" ? undefined : category,
+        enabled_only: true
+      });
+
+      if (result.data) {
+        setAvailableCurrencies(result.data);
+      } else if (result.error) {
+        console.error("Failed to load available currencies:", result.error);
+        // Fallback to empty array on error
+        setAvailableCurrencies([]);
+      }
     } catch (error) {
       console.error("Failed to load available currencies:", error);
+      setAvailableCurrencies([]);
     } finally {
       setIsLoadingCurrencies(false);
     }
@@ -222,7 +238,7 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
-                {currencyCategories.map((cat) => (
+                {categories.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>
@@ -255,7 +271,7 @@ export function AddCurrencyModal({ open, onClose, onAdd }: AddCurrencyModalProps
                   </div>
                 ) : (
                   availableCurrencies.map((currency) => (
-                    <SelectItem key={currency.id} value={currency.symbol}>
+                    <SelectItem key={currency.symbol} value={currency.symbol}>
                       <div className="flex flex-col">
                         <span className="font-medium">{currency.symbol}</span>
                         {currency.description && (

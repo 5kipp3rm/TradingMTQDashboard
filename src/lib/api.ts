@@ -1,7 +1,7 @@
 // API Configuration for TradingMTQ Backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-import { V1_PATHS, buildQueryString, withQuery } from './api-paths';
+import { V1_PATHS, V2_PATHS, buildQueryString, withQuery } from './api-paths';
 
 export interface ApiResponse<T> {
   data?: T;
@@ -257,8 +257,8 @@ export const currenciesApi = {
 
 // Config API
 export const configApi = {
-  getCurrencies: () => 
-    apiClient.get(V1_PATHS.config.currencies),
+  getCurrencies: (params?: { category?: string; enabled_only?: boolean }) =>
+    apiClient.get(withQuery(V1_PATHS.config.currencies, params)),
   
   createCurrency: (currency: any) => 
     apiClient.post(V1_PATHS.config.createCurrency, currency),
@@ -266,10 +266,13 @@ export const configApi = {
   enableCurrency: (symbol: string) => 
     apiClient.post(V1_PATHS.config.enableCurrency(symbol)),
   
-  disableCurrency: (symbol: string) => 
+  disableCurrency: (symbol: string) =>
     apiClient.post(V1_PATHS.config.disableCurrency(symbol)),
-  
-  getPreferences: () => 
+
+  getCategories: () =>
+    apiClient.get(V1_PATHS.config.categories),
+
+  getPreferences: () =>
     apiClient.get(V1_PATHS.config.preferences),
   
   updatePreferences: (prefs: any) => 
@@ -335,17 +338,64 @@ export const chartsApi = {
 
 // Reports API
 export const reportsApi = {
-  getAll: () => 
-    apiClient.get(V1_PATHS.reports.list),
-  
-  create: (report: any) => 
-    apiClient.post(V1_PATHS.reports.create, report),
-  
-  generate: (params: { start_date: string; end_date: string; include_trades?: boolean; include_charts?: boolean }) =>
-    apiClient.post(V1_PATHS.reports.generate, params),
-  
-  getHistory: () => 
-    apiClient.get(V1_PATHS.reports.history),
+  // Configuration management
+  getConfigurations: (params?: { active_only?: boolean }) =>
+    apiClient.get(withQuery(V1_PATHS.reports.configurations, params)),
+
+  getConfiguration: (id: number) =>
+    apiClient.get(V1_PATHS.reports.configurationById(id)),
+
+  createConfiguration: (config: {
+    name: string;
+    description?: string;
+    frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
+    day_of_week?: number;
+    day_of_month?: number;
+    time_of_day?: string;
+    report_format?: 'pdf' | 'csv' | 'excel';
+    include_trades?: boolean;
+    include_charts?: boolean;
+    days_lookback?: number;
+    account_id?: number;
+    recipients: string[];
+    cc_recipients?: string[];
+    email_subject?: string;
+    email_body?: string;
+    is_active?: boolean;
+  }) => apiClient.post(V1_PATHS.reports.configurations, config),
+
+  updateConfiguration: (id: number, config: any) =>
+    apiClient.put(V1_PATHS.reports.configurationById(id), config),
+
+  deleteConfiguration: (id: number) =>
+    apiClient.delete(V1_PATHS.reports.configurationById(id)),
+
+  activateConfiguration: (id: number) =>
+    apiClient.post(V1_PATHS.reports.activate(id)),
+
+  deactivateConfiguration: (id: number) =>
+    apiClient.post(V1_PATHS.reports.deactivate(id)),
+
+  // Report generation
+  generate: (params: {
+    start_date: string;
+    end_date: string;
+    account_id?: number;
+    include_trades?: boolean;
+    include_charts?: boolean;
+    email_recipients?: string[];
+  }) => apiClient.post(V1_PATHS.reports.generate, params),
+
+  // History
+  getHistory: (params?: { config_id?: number; success_only?: boolean; limit?: number }) =>
+    apiClient.get(withQuery(V1_PATHS.reports.history, params)),
+
+  getHistoryDetail: (id: number) =>
+    apiClient.get(V1_PATHS.reports.historyById(id)),
+
+  // Download - returns download URL
+  getDownloadUrl: (id: number) =>
+    `${API_BASE_URL}${V1_PATHS.reports.download(id)}`,
 };
 
 // Health API
@@ -398,6 +448,15 @@ export const workersApi = {
   validate: (account_id: number) => 
     apiClient.get(V1_PATHS.workers.validate(account_id)),
   
-  validateAll: () => 
+  validateAll: () =>
     apiClient.get(V1_PATHS.workers.validateAll),
+};
+
+// Strategies API (V2)
+export const strategiesApi = {
+  getAvailable: () =>
+    apiClient.get(V2_PATHS.strategies.available),
+
+  getTimeframes: () =>
+    apiClient.get(V2_PATHS.strategies.timeframes),
 };

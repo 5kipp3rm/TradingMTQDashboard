@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { accountsApi } from "@/lib/api";
 
 interface RiskSettings {
   risk_percent: number;
@@ -62,13 +63,29 @@ const Config = () => {
 
       setIsLoading(true);
       try {
-        // TODO: Implement proper config endpoint in v2 API
-        // For now, use default settings for all accounts
-        console.log('Using default risk settings for account', currentAccountId);
-        setSettingsPerAccount((prev) => ({
-          ...prev,
-          [currentAccountId]: { ...defaultRiskSettings },
-        }));
+        const response = await accountsApi.getConfig(Number(currentAccountId));
+        const data = response.data as { trading_config?: { risk?: RiskSettings } } | null;
+
+        if (data?.trading_config?.risk) {
+          const risk = data.trading_config.risk;
+          setSettingsPerAccount((prev) => ({
+            ...prev,
+            [currentAccountId]: {
+              risk_percent: risk.risk_percent ?? defaultRiskSettings.risk_percent,
+              max_positions: risk.max_positions ?? defaultRiskSettings.max_positions,
+              max_concurrent_trades: risk.max_concurrent_trades ?? defaultRiskSettings.max_concurrent_trades,
+              portfolio_risk_percent: risk.portfolio_risk_percent ?? defaultRiskSettings.portfolio_risk_percent,
+              stop_loss_pips: risk.stop_loss_pips ?? defaultRiskSettings.stop_loss_pips,
+              take_profit_pips: risk.take_profit_pips ?? defaultRiskSettings.take_profit_pips,
+            },
+          }));
+        } else {
+          // No config yet, use defaults
+          setSettingsPerAccount((prev) => ({
+            ...prev,
+            [currentAccountId]: { ...defaultRiskSettings },
+          }));
+        }
       } catch (error) {
         console.error("Error loading account config:", error);
         // Use defaults on error
@@ -82,7 +99,7 @@ const Config = () => {
     };
 
     loadAccountConfig();
-  }, [currentAccountId, toast]);
+  }, [currentAccountId]);
 
   const updateRiskSetting = (key: keyof RiskSettings, value: number) => {
     setSettingsPerAccount((prev) => ({
@@ -120,13 +137,15 @@ const Config = () => {
         },
       };
 
-      // TODO: Implement v2 config endpoint
-      // For now, just save to local state
-      console.log('Config update (not persisted):', configUpdate);
-      
+      const response = await accountsApi.updateConfig(Number(currentAccountId), configUpdate);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
       toast({
-        title: "Settings Saved (Local Only)",
-        description: "Settings are saved locally but not persisted to server yet. V2 config endpoint needed.",
+        title: "Settings Saved",
+        description: "Risk management settings have been saved successfully.",
       });
     } catch (error) {
       console.error("Error saving account config:", error);

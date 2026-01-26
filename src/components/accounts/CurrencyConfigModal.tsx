@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { currenciesV2Api } from "@/lib/api-v2";
+import { strategiesApi } from "@/lib/api";
 import type { CurrencyConfig, StrategyConfigRequest } from "@/lib/api-v2";
 
 interface CurrencyConfigModalProps {
@@ -69,11 +70,10 @@ export const CurrencyConfigModal = ({
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        // Load strategies
-        const strategiesResponse = await fetch('http://localhost:8000/api/v2/strategies/available');
-        if (strategiesResponse.ok) {
-          const strategiesData = await strategiesResponse.json();
-          const loadedStrategies = strategiesData.strategies.map((s: any) => ({
+        // Load strategies using API client
+        const strategiesResult = await strategiesApi.getAvailable();
+        if (strategiesResult.data) {
+          const loadedStrategies = strategiesResult.data.strategies.map((s: any) => ({
             value: s.value,
             label: s.label,
             params: s.params || []
@@ -81,11 +81,10 @@ export const CurrencyConfigModal = ({
           setStrategyTypes(loadedStrategies);
         }
 
-        // Load timeframes
-        const timeframesResponse = await fetch('http://localhost:8000/api/v2/strategies/timeframes');
-        if (timeframesResponse.ok) {
-          const timeframesData = await timeframesResponse.json();
-          setTimeframes(timeframesData.timeframes);
+        // Load timeframes using API client
+        const timeframesResult = await strategiesApi.getTimeframes();
+        if (timeframesResult.data) {
+          setTimeframes(timeframesResult.data.timeframes);
         }
       } catch (error) {
         console.error('Failed to load metadata:', error);
