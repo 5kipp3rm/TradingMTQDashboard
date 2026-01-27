@@ -87,20 +87,52 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
     setComment("");
   };
 
+  /**
+   * Calculate P&L in USD
+   * Formula: Pips × Pip Value × Lot Size
+   * 
+   * Pip value depends on symbol:
+   * - EURUSD (4 decimals): 1 pip = $10 per lot
+   * - XAUUSD (2 decimals): 1 pip = $1 per lot
+   * - USDJPY (2 decimals): 1 pip = $10 per lot (different calculation)
+   */
+  const calculateProfitLoss = (targetPrice: number, isLoss: boolean): number => {
+    if (!selectedPair || !targetPrice || currentPrice === 0) return 0;
+    
+    const point = selectedPair.point || 0.0001;
+    const volume_lots = parseFloat(volume);
+    
+    // Calculate pips difference
+    const pips = Math.abs(targetPrice - currentPrice) / point;
+    
+    // Get pip value based on symbol
+    // For forex pairs (EURUSD, GBPUSD, etc): pip value = 10 * lot_size
+    // For metals (XAUUSD): pip value = 1 * lot_size  
+    // For JPY pairs (USDJPY): pip value = 10 * lot_size
+    let pip_value = 10; // Default for most forex pairs
+    
+    if (selectedPair.symbol?.includes('XAU')) {
+      pip_value = 1; // Gold: 1 pip = $1 per lot
+    } else if (selectedPair.symbol?.includes('JPY')) {
+      pip_value = 10; // JPY pairs: 1 pip = $10 per lot
+    }
+    
+    const profitLoss = pips * pip_value * volume_lots;
+    
+    // Return as loss (negative) or profit (positive)
+    return isLoss ? -profitLoss : profitLoss;
+  };
+
   const calculateRisk = () => {
     if (!selectedPair || !sl || currentPrice === 0) return 0;
     const slPrice = parseFloat(sl);
-    const point = selectedPair.point || 0.0001;
-    const pips = Math.abs(currentPrice - slPrice) / point;
-    return pips * parseFloat(volume) * 10;
+    return Math.abs(calculateProfitLoss(slPrice, true));
   };
 
   const calculateReward = () => {
     if (!selectedPair || !tp || currentPrice === 0) return 0;
     const tpPrice = parseFloat(tp);
-    const point = selectedPair.point || 0.0001;
-    const pips = Math.abs(tpPrice - currentPrice) / point;
-    return pips * parseFloat(volume) * 10;
+    return calculateProfitLoss(tpPrice, false);
   };
 
   const setSlFromPips = (pips: number, type: "buy" | "sell") => {
@@ -286,20 +318,60 @@ export function QuickTradeModal({ open, onClose, currencies, onTrade }: QuickTra
             </div>
           </div>
 
-          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
             <h4 className="font-semibold flex items-center gap-2">
-              <span>📊</span> Profit Calculator
+              <span>📊</span> Trade Analysis
             </h4>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            
+            {/* Entry Info */}
+            <div className="grid grid-cols-2 gap-2 text-sm border-b pb-3">
+              <span className="text-muted-foreground">Entry Price:</span>
+              <span className="font-mono text-right">{currentPrice > 0 ? currentPrice.toFixed(5) : "-"}</span>
+              <span className="text-muted-foreground">Position Size:</span>
+              <span className="font-mono text-right">{volume} lots</span>
               <span className="text-muted-foreground">Position Value:</span>
               <span className="font-mono text-right">${(parseFloat(volume) * 100000).toLocaleString()}</span>
-              <span className="text-muted-foreground">Risk (if SL hit):</span>
-              <span className="font-mono text-right text-loss">${risk.toFixed(2)}</span>
-              <span className="text-muted-foreground">Reward (if TP hit):</span>
-              <span className="font-mono text-right text-profit">${reward.toFixed(2)}</span>
-              <span className="text-muted-foreground">Risk/Reward Ratio:</span>
-              <span className="font-mono text-right">{rrRatio}</span>
             </div>
+            
+            {/* Stop Loss Exit */}
+            {sl && (
+              <div className="grid grid-cols-2 gap-2 text-sm border-b pb-3">
+                <span className="text-muted-foreground font-semibold flex items-center gap-1">
+                  <span>🛑</span> Stop Loss Exit:
+                </span>
+                <span></span>
+                <span className="text-muted-foreground ml-4">SL Price:</span>
+                <span className="font-mono text-right">{parseFloat(sl).toFixed(5)}</span>
+                <span className="text-muted-foreground ml-4">Max Loss:</span>
+                <span className={`font-mono text-right font-semibold ${calculateRisk() > 0 ? 'text-red-600' : ''}`}>
+                  -${calculateRisk().toFixed(2)}
+                </span>
+              </div>
+            )}
+            
+            {/* Take Profit Exit */}
+            {tp && (
+              <div className="grid grid-cols-2 gap-2 text-sm border-b pb-3">
+                <span className="text-muted-foreground font-semibold flex items-center gap-1">
+                  <span>🎯</span> Take Profit Exit:
+                </span>
+                <span></span>
+                <span className="text-muted-foreground ml-4">TP Price:</span>
+                <span className="font-mono text-right">{parseFloat(tp).toFixed(5)}</span>
+                <span className="text-muted-foreground ml-4">Potential Profit:</span>
+                <span className={`font-mono text-right font-semibold ${calculateReward() > 0 ? 'text-green-600' : ''}`}>
+                  +${calculateReward().toFixed(2)}
+                </span>
+              </div>
+            )}
+            
+            {/* Risk/Reward Summary */}
+            {sl && tp && (
+              <div className="grid grid-cols-2 gap-2 text-sm pt-3">
+                <span className="text-muted-foreground font-semibold">Risk/Reward Ratio:</span>
+                <span className="font-mono text-right font-semibold">1:{(calculateReward() / calculateRisk()).toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           <div>
