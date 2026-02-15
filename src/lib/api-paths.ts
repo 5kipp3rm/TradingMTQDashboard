@@ -196,6 +196,14 @@ export const V1_PATHS = {
     riskReward: '/charts/risk-reward',
   },
 
+  // Technical Indicators
+  indicators: {
+    /** GET /indicators/ichimoku/{accountId}/{symbol} */
+    ichimoku: (accountId: string, symbol: string) => `/indicators/ichimoku/${accountId}/${symbol}`,
+    /** GET /indicators/ichimoku/{accountId}/{symbol}/signal */
+    ichimokuSignal: (accountId: string, symbol: string) => `/indicators/ichimoku/${accountId}/${symbol}/signal`,
+  },
+
   // Reports
   reports: {
     /** GET /reports/configurations - List all report configurations */
