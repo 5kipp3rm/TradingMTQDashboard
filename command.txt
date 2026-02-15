@@ -1,0 +1,13 @@
+python -m pytest tests/domain/ -v --tb=short 2>&1 | head -80
+
+alembic current
+alembic history
+
+find /z/DevelopsHome/TradingMTQ/src -name "*.pyc" -delete && find /z/DevelopsHome/TradingMTQ/src -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; echo "Cache cleared"
+
+sqlite3 trading_mt5.db ".schema account_currency_configs" 2>&1 || echo "Table might not exist or DB not found"
+python -c "from sqlalchemy import create_engine, inspect; engine = create_engine('sqlite:///trading_mt5.db'); inspector = inspect(engine); columns = inspector.get_columns('account_currency_configs'); print('\n'.join([f\"{c['name']}: {c['type']}\" for c in columns]))" 2>&1
+
+python -c "from src.database.connection import init_db, get_session; from src.database.account_config_models import AccountCurrencyConfig; from sqlalchemy import select, distinct; init_db(); session = get_session(); db = session.__enter__(); strategies = db.execute(select(distinct(AccountCurrencyConfig.strategy_type))).scalars().all(); print('Current Database Strategies:'); [print(f'  - {s}') for s in strategies if s]; session.__exit__(None, None, None)" 2>&1
+
+find /z/DevelopsHome/TradingMTQ/src -name "*.pyc" -delete && find /z/DevelopsHome/TradingMTQ/src -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; echo "Cache cleared"

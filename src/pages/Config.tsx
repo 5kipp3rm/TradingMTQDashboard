@@ -63,40 +63,24 @@ const Config = () => {
 
       setIsLoading(true);
       try {
-        const response = await accountsApi.getConfig(parseInt(currentAccountId, 10));
+        const response = await accountsApi.getConfig(Number(currentAccountId));
+        const data = response.data as { trading_config?: { risk?: RiskSettings } } | null;
 
-        if (response.data) {
-          const config = response.data as any;
-
-          // Extract risk settings from the trading_config
-          if (config.trading_config?.risk) {
-            const riskConfig = config.trading_config.risk;
-            setSettingsPerAccount((prev) => ({
-              ...prev,
-              [currentAccountId]: {
-                risk_percent: riskConfig.risk_percent || defaultRiskSettings.risk_percent,
-                max_positions: riskConfig.max_positions || defaultRiskSettings.max_positions,
-                max_concurrent_trades: riskConfig.max_concurrent_trades || defaultRiskSettings.max_concurrent_trades,
-                portfolio_risk_percent: riskConfig.portfolio_risk_percent || defaultRiskSettings.portfolio_risk_percent,
-                stop_loss_pips: riskConfig.stop_loss_pips || defaultRiskSettings.stop_loss_pips,
-                take_profit_pips: riskConfig.take_profit_pips || defaultRiskSettings.take_profit_pips,
-              },
-            }));
-          } else {
-            // No risk config found, use defaults
-            setSettingsPerAccount((prev) => ({
-              ...prev,
-              [currentAccountId]: { ...defaultRiskSettings },
-            }));
-          }
-        } else if (response.error) {
-          console.error("Failed to load account config:", response.error);
-          toast({
-            title: "Error",
-            description: `Failed to load configuration: ${response.error}`,
-            variant: "destructive",
-          });
-          // Use defaults on error
+        if (data?.trading_config?.risk) {
+          const risk = data.trading_config.risk;
+          setSettingsPerAccount((prev) => ({
+            ...prev,
+            [currentAccountId]: {
+              risk_percent: risk.risk_percent ?? defaultRiskSettings.risk_percent,
+              max_positions: risk.max_positions ?? defaultRiskSettings.max_positions,
+              max_concurrent_trades: risk.max_concurrent_trades ?? defaultRiskSettings.max_concurrent_trades,
+              portfolio_risk_percent: risk.portfolio_risk_percent ?? defaultRiskSettings.portfolio_risk_percent,
+              stop_loss_pips: risk.stop_loss_pips ?? defaultRiskSettings.stop_loss_pips,
+              take_profit_pips: risk.take_profit_pips ?? defaultRiskSettings.take_profit_pips,
+            },
+          }));
+        } else {
+          // No config yet, use defaults
           setSettingsPerAccount((prev) => ({
             ...prev,
             [currentAccountId]: { ...defaultRiskSettings },
@@ -104,11 +88,6 @@ const Config = () => {
         }
       } catch (error) {
         console.error("Error loading account config:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load account configuration",
-          variant: "destructive",
-        });
         // Use defaults on error
         setSettingsPerAccount((prev) => ({
           ...prev,
@@ -120,7 +99,7 @@ const Config = () => {
     };
 
     loadAccountConfig();
-  }, [currentAccountId, toast]);
+  }, [currentAccountId]);
 
   const updateRiskSetting = (key: keyof RiskSettings, value: number) => {
     setSettingsPerAccount((prev) => ({
@@ -158,19 +137,16 @@ const Config = () => {
         },
       };
 
-      const response = await accountsApi.updateConfig(
-        parseInt(currentAccountId, 10),
-        configUpdate
-      );
+      const response = await accountsApi.updateConfig(Number(currentAccountId), configUpdate);
 
-      if (response.data) {
-        toast({
-          title: "Settings Saved",
-          description: "Your risk management settings have been saved successfully.",
-        });
-      } else if (response.error) {
+      if (response.error) {
         throw new Error(response.error);
       }
+
+      toast({
+        title: "Settings Saved",
+        description: "Risk management settings have been saved successfully.",
+      });
     } catch (error) {
       console.error("Error saving account config:", error);
       toast({

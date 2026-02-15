@@ -1,197 +1,195 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 import { Header } from "@/components/dashboard/Header";
+import { EquityCurveChart } from "@/components/dashboard/EquityCurveChart";
+import { ProfitByCurrencyChart } from "@/components/dashboard/ProfitByCurrencyChart";
+import { WinLossDistributionChart } from "@/components/dashboard/WinLossDistributionChart";
+import { MonthlyPerformanceChart } from "@/components/dashboard/MonthlyPerformanceChart";
+import { ProfitChart } from "@/components/dashboard/ProfitChart";
+import { WinRateChart } from "@/components/dashboard/WinRateChart";
+import { IchimokuChart } from "@/components/dashboard/IchimokuChart";
+import { IchimokuPanel } from "@/components/dashboard/IchimokuPanel";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useIchimoku } from "@/hooks/useIchimoku";
+import { useAccounts } from "@/contexts/AccountsContext";
+import type { DateRange } from "@/types/trading";
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
-const equityData = Array.from({ length: 30 }, (_, i) => ({
-  date: `Dec ${i + 1}`,
-  equity: 10000 + Math.random() * 2000 + i * 50,
-  balance: 10000 + i * 40,
-}));
-
-const pnlByPair = [
-  { symbol: "EURUSD", profit: 1250 },
-  { symbol: "GBPUSD", profit: 890 },
-  { symbol: "USDJPY", profit: -320 },
-  { symbol: "AUDUSD", profit: 450 },
-  { symbol: "XAUUSD", profit: 1100 },
+const TIMEFRAMES = [
+  { value: "M5", label: "5 Min" },
+  { value: "M15", label: "15 Min" },
+  { value: "M30", label: "30 Min" },
+  { value: "H1", label: "1 Hour" },
+  { value: "H4", label: "4 Hours" },
+  { value: "D1", label: "Daily" },
+  { value: "W1", label: "Weekly" },
 ];
 
-const tradeDistribution = [
-  { name: "Wins", value: 65 },
-  { name: "Losses", value: 35 },
+const POPULAR_SYMBOLS = [
+  "EURUSD", "GBPUSD", "USDJPY", "USDCHF",
+  "AUDUSD", "NZDUSD", "USDCAD",
+  "XAUUSD", "XAGUSD", "BTCUSD",
 ];
-
-const COLORS = ["hsl(var(--success))", "hsl(var(--destructive))"];
 
 const Charts = () => {
+  const [period, setPeriod] = useState(30);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const { selectedAccountId } = useAccounts();
+
+  // Ichimoku controls
+  const [ichSymbol, setIchSymbol] = useState("EURUSD");
+  const [ichTimeframe, setIchTimeframe] = useState("H1");
+  const [ichCustomSymbol, setIchCustomSymbol] = useState("");
+
+  const ichimokuParams = selectedAccountId && selectedAccountId !== "all"
+    ? {
+        accountId: selectedAccountId,
+        symbol: ichSymbol,
+        timeframe: ichTimeframe,
+        count: 200,
+        includeRaw: true,
+      }
+    : null;
+
+  const {
+    data: ichimokuData,
+    chartData: ichimokuChartData,
+    isLoading: ichimokuLoading,
+    error: ichimokuError,
+    refresh: refreshIchimoku,
+  } = useIchimoku(ichimokuParams);
+
+  const {
+    profitData,
+    winRateData,
+    equityCurve,
+    profitByCurrency,
+    winLossDistribution,
+    monthlyPerformance,
+    isLoading,
+    refresh,
+  } = useDashboardData(period, selectedAccountId, dateRange);
+
+  const handleCustomSymbol = () => {
+    const s = ichCustomSymbol.trim().toUpperCase();
+    if (s) {
+      setIchSymbol(s);
+      setIchCustomSymbol("");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-5 max-w-[1400px]">
         <Header
-          period={30}
-          onPeriodChange={() => {}}
-          onRefresh={() => {}}
+          period={period}
+          onPeriodChange={setPeriod}
+          onRefresh={refresh}
           onQuickTrade={() => {}}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
         />
 
+        {/* ============================================================ */}
+        {/* Ichimoku Kinko Hyo Section                                    */}
+        {/* ============================================================ */}
+        <div className="mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 className="text-2xl font-bold">Ichimoku Kinko Hyo</h2>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Symbol quick-select */}
+              <Select value={ichSymbol} onValueChange={setIchSymbol}>
+                <SelectTrigger className="w-[130px] h-9 text-xs">
+                  <SelectValue placeholder="Symbol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {POPULAR_SYMBOLS.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Custom symbol input */}
+              <div className="flex gap-1">
+                <Input
+                  className="w-[100px] h-9 text-xs"
+                  placeholder="Custom…"
+                  value={ichCustomSymbol}
+                  onChange={(e) => setIchCustomSymbol(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCustomSymbol()}
+                />
+              </div>
+
+              {/* Timeframe selector */}
+              <Select value={ichTimeframe} onValueChange={setIchTimeframe}>
+                <SelectTrigger className="w-[110px] h-9 text-xs">
+                  <SelectValue placeholder="Timeframe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEFRAMES.map((tf) => (
+                    <SelectItem key={tf.value} value={tf.value}>{tf.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshIchimoku}
+                disabled={ichimokuLoading}
+                className="h-9"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${ichimokuLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+
+          {selectedAccountId === "all" && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-200 mb-4">
+              ⚠️ Select a specific account (not "All") to load Ichimoku data.
+            </div>
+          )}
+
+          {ichimokuError && (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300 mb-4">
+              {ichimokuError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
+            <IchimokuChart
+              data={ichimokuChartData}
+              response={ichimokuData}
+              isLoading={ichimokuLoading}
+            />
+            <IchimokuPanel
+              data={ichimokuData}
+              isLoading={ichimokuLoading}
+            />
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* Existing Performance Charts                                   */}
+        {/* ============================================================ */}
         <h2 className="text-2xl font-bold mb-6">Advanced Charts</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Card className="card-glow">
-            <CardHeader>
-              <CardTitle>Equity Curve</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={equityData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="equity"
-                      stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary) / 0.2)"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="balance"
-                      stroke="hsl(var(--muted-foreground))"
-                      strokeDasharray="5 5"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-glow">
-            <CardHeader>
-              <CardTitle>Profit by Currency Pair</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={pnlByPair} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis dataKey="symbol" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="profit"
-                      fill="hsl(var(--primary))"
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-glow">
-            <CardHeader>
-              <CardTitle>Win/Loss Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={tradeDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}%`}
-                    >
-                      {tradeDistribution.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-glow">
-            <CardHeader>
-              <CardTitle>Monthly Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={[
-                      { month: "Jul", profit: 1200 },
-                      { month: "Aug", profit: -400 },
-                      { month: "Sep", profit: 800 },
-                      { month: "Oct", profit: 1500 },
-                      { month: "Nov", profit: 900 },
-                      { month: "Dec", profit: 2100 },
-                    ]}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
-                      {[1200, -400, 800, 1500, 900, 2100].map((value, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={value >= 0 ? "hsl(var(--success))" : "hsl(var(--destructive))"}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <EquityCurveChart data={equityCurve} isLoading={isLoading} initialBalance={10000} />
+          <ProfitByCurrencyChart data={profitByCurrency} isLoading={isLoading} />
+          <WinLossDistributionChart data={winLossDistribution} isLoading={isLoading} />
+          <MonthlyPerformanceChart data={monthlyPerformance} isLoading={isLoading} />
+          <ProfitChart data={profitData} isLoading={isLoading} />
+          <WinRateChart data={winRateData} isLoading={isLoading} />
         </div>
       </div>
     </div>

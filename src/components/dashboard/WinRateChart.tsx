@@ -24,6 +24,13 @@ export function WinRateChart({ data, isLoading }: WinRateChartProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-[300px] bg-muted animate-pulse rounded" />
+        ) : data.length === 0 ? (
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <p className="text-lg mb-2">No win rate data available</p>
+              <p className="text-sm">Close some positions to see win rate trends</p>
+            </div>
+          </div>
         ) : (
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">

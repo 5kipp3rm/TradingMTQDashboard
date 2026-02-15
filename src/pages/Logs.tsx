@@ -193,7 +193,8 @@ const Logs = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background">
+      <div className="container py-5 max-w-[1400px]">
       <Header
         period={period}
         onPeriodChange={setPeriod}
@@ -400,6 +401,7 @@ const Logs = () => {
             )}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

@@ -1,21 +1,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Header } from "@/components/dashboard/Header";
 import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
 import { AddAccountModal } from "@/components/accounts/AddAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ViewAccountModal } from "@/components/accounts/ViewAccountModal";
-import { Plus, Edit, Trash2, Check, Link, Eye } from "lucide-react";
+import { BulkOperations } from "@/components/accounts/BulkOperations";
+import { Plus, Edit, Trash2, Check, Link, Eye, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAccounts } from "@/contexts/AccountsContext";
-import { accountsApi, accountConnectionsApi, currenciesApi } from "@/lib/api";
-import type { CurrencyPair, Account } from "@/types/trading";
+import { apiClient } from "@/lib/api";
+import { accountsV2Api } from "@/lib/api-v2";
+import type { Account } from "@/types/trading";
 
 const Accounts = () => {
   const { accounts, refreshAccounts, isLoading } = useAccounts();
-  const [currencies, setCurrencies] = useState<CurrencyPair[]>([]);
+  const navigate = useNavigate();
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [editAccountOpen, setEditAccountOpen] = useState(false);
@@ -23,35 +27,18 @@ const Accounts = () => {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      const response = await currenciesApi.getAll();
-      if (response.data) {
-        const formattedCurrencies = (response.data as any).currencies?.map((c: any) => ({
-          symbol: c.symbol,
-          description: c.description || c.symbol,
-          bid: c.bid || 0,
-          ask: c.ask || 0,
-          spread: c.spread || 0,
-          enabled: c.enabled,
-        })) || [];
-        setCurrencies(formattedCurrencies);
-      }
-    };
-    fetchCurrencies();
-  }, []);
-
   const handleAddAccount = async (account: {
     name: string;
     loginNumber: string;
     platform: string;
     server: string;
+    serverCustom?: string;
     password: string;
     broker: string;
     isDemo: boolean;
     isDefault: boolean;
   }) => {
-    const response = await accountsApi.create({
+    const response = await apiClient.post('/v2/accounts', {
       account_name: account.name,
       account_number: parseInt(account.loginNumber, 10),
       broker: account.broker,
@@ -81,8 +68,8 @@ const Accounts = () => {
   };
 
   const handleConnect = async (id: string) => {
-    const response = await accountConnectionsApi.connect(parseInt(id, 10));
-    if (response.data) {
+    const response = await accountsV2Api.connect(parseInt(id, 10));
+    if (response.data?.success) {
       await refreshAccounts();
       toast({
         title: "Connected",
@@ -95,6 +82,10 @@ const Accounts = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleViewDetail = (id: string) => {
+    navigate(`/accounts/${id}`);
   };
 
   const handleViewFull = (id: string) => {
@@ -114,7 +105,7 @@ const Accounts = () => {
   };
 
   const handleSaveEdit = async (id: string, updates: any) => {
-    const response = await accountsApi.update(parseInt(id, 10), updates);
+    const response = await apiClient.put(`/v2/accounts/${id}`, updates);
     if (response.data) {
       await refreshAccounts();
       toast({
@@ -131,8 +122,8 @@ const Accounts = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const response = await accountsApi.delete(parseInt(id, 10));
-    if (!response.error) {
+    const response = await apiClient.delete(`/v2/accounts/${id}`);
+    if (response.data) {
       await refreshAccounts();
       toast({
         title: "Account Deleted",
@@ -142,6 +133,23 @@ const Accounts = () => {
       toast({
         title: "Error",
         description: response.error || "Failed to delete account",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleAutoConnect = async (id: string, currentValue: boolean) => {
+    const response = await accountsV2Api.toggleAutoConnect(parseInt(id, 10), !currentValue);
+    if (response.data?.success) {
+      await refreshAccounts();
+      toast({
+        title: "Auto-Connect Updated",
+        description: `Auto-connect is now ${!currentValue ? "enabled" : "disabled"}.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: response.error || "Failed to update auto-connect setting",
         variant: "destructive",
       });
     }
@@ -172,12 +180,20 @@ const Accounts = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <BulkOperations selectedCount={accounts.length} onSuccess={refreshAccounts} />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
           {accounts.map((account) => (
             <Card key={account.id} className={`card-glow ${account.isActive ? "ring-2 ring-primary" : ""}`}>
               <CardHeader className="flex flex-row items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg">{account.name}</CardTitle>
+                  <CardTitle 
+                    className="text-lg cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleViewDetail(account.id)}
+                    title="Click to view account details"
+                  >
+                    {account.name}
+                  </CardTitle>
                   <p className="text-sm text-muted-foreground">{account.broker}</p>
                 </div>
                 {account.isActive && (
@@ -203,37 +219,53 @@ const Accounts = () => {
                     <span className="text-muted-foreground">Broker</span>
                     <span className="font-mono text-sm">{account.broker}</span>
                   </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                    <span className="text-sm text-muted-foreground">Auto-Connect</span>
+                    <Switch
+                      checked={account.auto_connect}
+                      onCheckedChange={() => handleToggleAutoConnect(account.id, account.auto_connect)}
+                      title={account.auto_connect ? "Disable auto-connect" : "Enable auto-connect"}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
                   <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleConnect(account.id)}
                       title="Connect"
                     >
                       <Link className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleEdit(account.id)}
                       title="Edit"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleViewFull(account.id)}
                       title="View Full"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewDetail(account.id)}
+                      title="View Detail Page"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-destructive hover:text-destructive"
                     onClick={() => handleDelete(account.id)}
                     title="Delete"
@@ -249,7 +281,7 @@ const Accounts = () => {
         <QuickTradeModal
           open={quickTradeOpen}
           onClose={() => setQuickTradeOpen(false)}
-          currencies={currencies}
+          currencies={[]}
           onTrade={handleQuickTrade}
         />
 

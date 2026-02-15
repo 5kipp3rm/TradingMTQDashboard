@@ -1,5 +1,7 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { cn } from "@/lib/utils";
 import { Download } from "lucide-react";
 import type { Trade } from "@/types/trading";
@@ -11,6 +13,20 @@ interface TradesTableProps {
 }
 
 export function TradesTable({ trades, isLoading, onExport }: TradesTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalPages = Math.ceil(trades.length / pageSize);
+  const paginatedTrades = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return trades.slice(startIndex, startIndex + pageSize);
+  }, [trades, currentPage, pageSize]);
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
   return (
     <Card className="card-glow mb-5">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -49,7 +65,7 @@ export function TradesTable({ trades, isLoading, onExport }: TradesTableProps) {
                   </td>
                 </tr>
               ) : (
-                trades.map((trade) => (
+                paginatedTrades.map((trade) => (
                   <tr key={trade.ticket}>
                     <td className="font-mono">{trade.ticket}</td>
                     <td className="font-semibold">{trade.symbol}</td>
@@ -84,6 +100,16 @@ export function TradesTable({ trades, isLoading, onExport }: TradesTableProps) {
             </tbody>
           </table>
         </div>
+        {!isLoading && trades.length > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={trades.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        )}
       </CardContent>
     </Card>
   );

@@ -11,6 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.vite
+
+# Test results
+test-results
+playwright-report
+playwright/.cache
 
 # Editor directories and files
 .vscode/*
