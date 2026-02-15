@@ -6,6 +6,7 @@ import type {
   DailyPerformance,
   ChartDataPoint,
   CurrencyPair,
+  DateRange,
 } from "@/types/trading";
 import { analyticsApi, tradesApi, positionsApi } from "@/lib/api";
 import { currenciesV2Api } from "@/lib/api-v2";
@@ -23,7 +24,7 @@ import {
 import { useWebSocket } from "./useWebSocket";
 import { useIncrementalData } from "./useIncrementalData";
 
-export function useDashboardData(period: number, selectedAccountId?: string) {
+export function useDashboardData(period: number, selectedAccountId?: string, dateRange?: DateRange) {
   const [summary, setSummary] = useState<DashboardSummary>({
     totalTrades: 0,
     netProfit: 0,
@@ -53,26 +54,32 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
 
   // Calculate chart data from closed positions
   const updateChartsFromClosedPositions = useCallback((closedPositions: Position[]) => {
-    const filteredPositions = filterByDateRange(
-      closedPositions.filter(p => p.closeTime) as any,
-      period
-    );
-
     const allClosedWithTime = closedPositions.filter(p => p.closeTime) as any;
+
+    // Apply filtering: custom date range takes priority over period
+    let filteredPositions: any[];
+    if (dateRange) {
+      filteredPositions = allClosedWithTime.filter((p: any) => {
+        const closeDate = new Date(p.closeTime);
+        return closeDate >= dateRange.from && closeDate <= dateRange.to;
+      });
+    } else {
+      filteredPositions = filterByDateRange(allClosedWithTime, period);
+    }
 
     // Update summary
     const calculatedSummary = calculateSummary(filteredPositions);
     setSummary(calculatedSummary);
 
-    // Update charts
+    // Update ALL charts with filtered positions (including equity curve and monthly)
     setProfitData(calculateCumulativeProfit(filteredPositions));
     setWinRateData(calculateWinRateTrend(filteredPositions));
-    setEquityCurve(calculateEquityCurve(allClosedWithTime, 10000));
+    setEquityCurve(calculateEquityCurve(filteredPositions, 10000));
     setProfitByCurrency(calculateProfitByCurrency(filteredPositions));
     setWinLossDistribution(calculateWinLossDistribution(filteredPositions));
-    setMonthlyPerformance(calculateMonthlyPerformance(allClosedWithTime));
+    setMonthlyPerformance(calculateMonthlyPerformance(filteredPositions));
     setDailyPerformance(calculateDailyPerformance(filteredPositions));
-  }, [period]);
+  }, [period, dateRange]);
 
   // WebSocket connection for real-time updates
   const wsUrl = `ws://localhost:8000/api/ws/dashboard${selectedAccountId && selectedAccountId !== "all" ? `?account_id=${selectedAccountId}` : ""}`;
@@ -131,11 +138,21 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
         ? parseInt(selectedAccountId, 10)
         : undefined;
 
+      // Build date params for API calls
+      const dateParams = dateRange
+        ? {
+            start_date: dateRange.from.toISOString().split('T')[0],
+            end_date: dateRange.to.toISOString().split('T')[0],
+          }
+        : {};
+
       // Fetch closed positions incrementally (with caching)
+      // Note: We fetch ALL closed positions (no date filter) since client-side filtering
+      // needs the full dataset. Date filtering is applied after.
       const closedPositions = await getClosedPositionsIncremental(async (params) => {
         const res = await positionsApi.getClosed({
           account_id: accountIdParam,
-          limit: params.limit,
+          limit: 1000,
         });
         return Array.isArray(res.data) ? res.data : [];
       });
@@ -144,9 +161,16 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
 
       // Fetch all other data in parallel
       // Only fetch currencies if we have a valid account_id
+      const overviewParams = dateRange
+        ? { account_id: accountIdParam, ...dateParams }
+        : { days: period, account_id: accountIdParam };
+      const dailyParams = dateRange
+        ? { account_id: accountIdParam, ...dateParams }
+        : { days: period, account_id: accountIdParam };
+
       const fetchPromises = [
-        analyticsApi.getOverview({ days: period, account_id: accountIdParam }),
-        analyticsApi.getDaily({ days: period, account_id: accountIdParam }),
+        analyticsApi.getOverview(overviewParams),
+        analyticsApi.getDaily(dailyParams),
         tradesApi.getAll({ limit: 100, account_id: accountIdParam }),
         positionsApi.getOpen(accountIdParam ? { account_id: accountIdParam } : undefined),
       ];
@@ -160,30 +184,40 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
       const [overviewRes, dailyRes, tradesRes, positionsRes, currenciesRes] = results;
 
       // Get closed positions data for calculations
+      // Note: closedPositions from incremental cache already have Position shape (closeTime),
+      // but raw API data uses close_time/time_close. Handle both.
       const closedPositionsData = closedPositions;
-      console.log("Closed positions from API:", closedPositionsData.length);
+      console.log("Closed positions from cache/API:", closedPositionsData.length);
       
       const closedPositionsWithTime = closedPositionsData
-        .filter((p: any) => p.close_time || p.time_close)
+        .filter((p: any) => p.closeTime || p.close_time || p.time_close)
         .map((p: any) => ({
           ticket: p.ticket,
           symbol: p.symbol,
-          type: p.type?.toLowerCase() as "buy" | "sell",
+          type: (p.type?.toLowerCase?.() || p.type) as "buy" | "sell",
           volume: p.volume,
-          openPrice: p.price_open || p.open_price,
-          currentPrice: p.price_current || p.current_price || p.close_price,
+          openPrice: p.openPrice || p.price_open || p.open_price,
+          currentPrice: p.currentPrice || p.price_current || p.current_price || p.close_price,
           sl: p.sl || null,
           tp: p.tp || null,
           profit: p.profit || 0,
-          openTime: p.open_time || p.time_open,
-          closeTime: p.close_time || p.time_close,
+          openTime: p.openTime || p.open_time || p.time_open,
+          closeTime: p.closeTime || p.close_time || p.time_close,
           account_id: p.account_id,
         }));
 
       console.log("Closed positions with time:", closedPositionsWithTime.length);
 
-      // Filter by date range
-      const filteredClosedPositions = filterByDateRange(closedPositionsWithTime, period);
+      // Filter by date range (custom date range takes priority)
+      let filteredClosedPositions: any[];
+      if (dateRange) {
+        filteredClosedPositions = closedPositionsWithTime.filter((p: any) => {
+          const closeDate = new Date(p.closeTime);
+          return closeDate >= dateRange.from && closeDate <= dateRange.to;
+        });
+      } else {
+        filteredClosedPositions = filterByDateRange(closedPositionsWithTime, period);
+      }
       console.log("Filtered closed positions:", filteredClosedPositions.length, "for period:", period, "days");
 
       // Handle analytics overview - use calculated data as fallback
@@ -236,6 +270,12 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
               value: d.win_rate || 0,
             }))
           );
+
+          // Always update remaining charts from filtered closed positions
+          setEquityCurve(calculateEquityCurve(filteredClosedPositions, 10000));
+          setProfitByCurrency(calculateProfitByCurrency(filteredClosedPositions));
+          setWinLossDistribution(calculateWinLossDistribution(filteredClosedPositions));
+          setMonthlyPerformance(calculateMonthlyPerformance(filteredClosedPositions));
         } else {
           // Fallback: Calculate from closed positions
           console.log("Using calculated daily performance from closed positions");
@@ -248,8 +288,8 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
           const calculatedWinRate = calculateWinRateTrend(filteredClosedPositions);
           setWinRateData(calculatedWinRate);
           
-          // Calculate new chart data (use all closed positions, not just filtered, for better equity curve)
-          const equityCurveData = calculateEquityCurve(closedPositionsWithTime, 10000);
+          // Calculate chart data using filtered positions
+          const equityCurveData = calculateEquityCurve(filteredClosedPositions, 10000);
           setEquityCurve(equityCurveData);
           
           const currencyData = calculateProfitByCurrency(filteredClosedPositions);
@@ -258,7 +298,7 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
           const winLossData = calculateWinLossDistribution(filteredClosedPositions);
           setWinLossDistribution(winLossData);
           
-          const monthlyData = calculateMonthlyPerformance(closedPositionsWithTime);
+          const monthlyData = calculateMonthlyPerformance(filteredClosedPositions);
           setMonthlyPerformance(monthlyData);
         }
       } else {
@@ -273,8 +313,8 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
         const calculatedWinRate = calculateWinRateTrend(filteredClosedPositions);
         setWinRateData(calculatedWinRate);
         
-        // Calculate new chart data (use all closed positions, not just filtered, for better equity curve)
-        const equityCurveData = calculateEquityCurve(closedPositionsWithTime, 10000);
+        // Calculate chart data using filtered positions
+        const equityCurveData = calculateEquityCurve(filteredClosedPositions, 10000);
         setEquityCurve(equityCurveData);
         
         const currencyData = calculateProfitByCurrency(filteredClosedPositions);
@@ -283,7 +323,7 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
         const winLossData = calculateWinLossDistribution(filteredClosedPositions);
         setWinLossDistribution(winLossData);
         
-        const monthlyData = calculateMonthlyPerformance(closedPositionsWithTime);
+        const monthlyData = calculateMonthlyPerformance(filteredClosedPositions);
         setMonthlyPerformance(monthlyData);
       }
 
@@ -363,24 +403,16 @@ export function useDashboardData(period: number, selectedAccountId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [period, selectedAccountId]);
+  }, [period, selectedAccountId, dateRange]);
 
   const refresh = useCallback(() => {
     fetchData();
   }, [fetchData]);
 
-  // Fetch data on mount and when account changes
+  // Fetch data on mount and when account/period/dateRange changes
   useEffect(() => {
     fetchData();
-  }, [selectedAccountId]);
-
-  // When period changes, recalculate from cached closed positions (no API call)
-  useEffect(() => {
-    const cached = getCachedClosedPositions();
-    if (cached.length > 0) {
-      updateChartsFromClosedPositions(cached);
-    }
-  }, [period, updateChartsFromClosedPositions, getCachedClosedPositions]);
+  }, [fetchData]);
 
   return {
     summary,

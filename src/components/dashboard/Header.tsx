@@ -7,14 +7,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, Users, Coins, Settings, LineChart, Bell, FileText, RefreshCw, Zap, Wallet, ScrollText, Brain } from "lucide-react";
+import { BarChart3, Users, Coins, Settings, LineChart, Bell, FileText, RefreshCw, Zap, Wallet, ScrollText, Brain, Shield } from "lucide-react";
 import { useAccounts } from "@/contexts/AccountsContext";
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import type { DateRange } from "@/types/trading";
 
 interface HeaderProps {
   period: number;
   onPeriodChange: (period: number) => void;
   onRefresh: () => void;
   onQuickTrade: () => void;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
 }
 
 const navItems = [
@@ -26,6 +30,7 @@ const navItems = [
   { path: "/alerts", label: "Alerts", icon: Bell },
   { path: "/reports", label: "Reports", icon: FileText },
   { path: "/logs", label: "Logs", icon: ScrollText },
+  { path: "/admin", label: "Admin", icon: Shield },
 ];
 
 export function Header({ 
@@ -33,6 +38,8 @@ export function Header({
   onPeriodChange, 
   onRefresh, 
   onQuickTrade,
+  dateRange,
+  onDateRangeChange,
 }: HeaderProps) {
   const location = useLocation();
   const { accounts, selectedAccountId, setSelectedAccountId } = useAccounts();
@@ -85,7 +92,22 @@ export function Header({
             </SelectContent>
           </Select>
           
-          <Select value={period.toString()} onValueChange={(v) => onPeriodChange(Number(v))}>
+          <Select 
+            value={dateRange ? "custom" : period.toString()} 
+            onValueChange={(v) => {
+              if (v === "custom") {
+                // Initialize custom range with last 30 days
+                const to = new Date();
+                const from = new Date();
+                from.setDate(from.getDate() - 30);
+                onDateRangeChange?.({ from, to });
+                return;
+              }
+              // Switching to a preset period clears any custom date range
+              onDateRangeChange?.(undefined);
+              onPeriodChange(Number(v));
+            }}
+          >
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Period" />
             </SelectTrigger>
@@ -94,8 +116,16 @@ export function Header({
               <SelectItem value="30">Last 30 Days</SelectItem>
               <SelectItem value="90">Last 90 Days</SelectItem>
               <SelectItem value="365">Last Year</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
+
+          {dateRange !== undefined && (
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={(range) => onDateRangeChange?.(range)}
+            />
+          )}
           
           <Button variant="outline" size="icon" onClick={onRefresh}>
             <RefreshCw className="h-4 w-4" />

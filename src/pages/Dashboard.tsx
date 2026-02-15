@@ -15,6 +15,7 @@ import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { ProfitChart } from "@/components/dashboard/ProfitChart";
 import { WinRateChart } from "@/components/dashboard/WinRateChart";
 import { PositionsTable } from "@/components/dashboard/PositionsTable";
+import { PositionsPriceChart } from "@/components/dashboard/PositionsPriceChart";
 import { ClosedPositionsTable } from "@/components/dashboard/ClosedPositionsTable";
 import { TradesTable } from "@/components/dashboard/TradesTable";
 import { DailyPerformanceTable } from "@/components/dashboard/DailyPerformanceTable";
@@ -23,10 +24,11 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAccounts } from "@/contexts/AccountsContext";
 import { useToast } from "@/hooks/use-toast";
 import { positionsApi } from "@/lib/api";
-import type { QuickTradeParams, Position } from "@/types/trading";
+import type { QuickTradeParams, Position, DateRange } from "@/types/trading";
 
 const Dashboard = () => {
   const [period, setPeriod] = useState(30);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [quickTradeOpen, setQuickTradeOpen] = useState(false);
   const [closedPositions, setClosedPositions] = useState<Position[]>([]);
   const [closeAllConfirmOpen, setCloseAllConfirmOpen] = useState(false);
@@ -49,7 +51,7 @@ const Dashboard = () => {
     lastUpdate,
     connectionStatus,
     refresh,
-  } = useDashboardData(period, selectedAccountId);
+  } = useDashboardData(period, selectedAccountId, dateRange);
 
   // Use live positions if available, otherwise use hook positions
   const positions = livePositions || hookPositions;
@@ -313,6 +315,8 @@ const Dashboard = () => {
           onPeriodChange={setPeriod}
           onRefresh={refresh}
           onQuickTrade={() => setQuickTradeOpen(true)}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
         />
         
         <StatusBar status={connectionStatus} lastUpdate={lastUpdate} />
@@ -331,6 +335,11 @@ const Dashboard = () => {
           onRefresh={refresh}
           onClosePosition={(ticket, accountId) => setClosePositionConfirm({ open: true, ticket, accountId: accountId || null })}
           onCloseAll={confirmCloseAll}
+        />
+
+        <PositionsPriceChart
+          positions={positions}
+          isLoading={isLoading}
         />
         
         <ClosedPositionsTable

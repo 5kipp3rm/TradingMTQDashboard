@@ -11,6 +11,7 @@ import { IchimokuPanel } from "@/components/dashboard/IchimokuPanel";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useIchimoku } from "@/hooks/useIchimoku";
 import { useAccounts } from "@/contexts/AccountsContext";
+import type { DateRange } from "@/types/trading";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ const POPULAR_SYMBOLS = [
 
 const Charts = () => {
   const [period, setPeriod] = useState(30);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const { selectedAccountId } = useAccounts();
 
   // Ichimoku controls
@@ -74,7 +76,7 @@ const Charts = () => {
     monthlyPerformance,
     isLoading,
     refresh,
-  } = useDashboardData(period, selectedAccountId);
+  } = useDashboardData(period, selectedAccountId, dateRange);
 
   const handleCustomSymbol = () => {
     const s = ichCustomSymbol.trim().toUpperCase();
@@ -92,6 +94,8 @@ const Charts = () => {
           onPeriodChange={setPeriod}
           onRefresh={refresh}
           onQuickTrade={() => {}}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
         />
 
         {/* ============================================================ */}

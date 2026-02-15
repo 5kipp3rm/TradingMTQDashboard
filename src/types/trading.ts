@@ -50,6 +50,11 @@ export interface ChartDataPoint {
   value: number;
 }
 
+export interface DateRange {
+  from: Date;
+  to: Date;
+}
+
 export interface Account {
   id: string;
   account_number: number;

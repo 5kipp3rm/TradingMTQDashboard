@@ -77,7 +77,7 @@ export const apiClient = new ApiClient(API_BASE_URL);
 
 // Analytics API
 export const analyticsApi = {
-  getOverview: (params?: { days?: number; account_id?: number }) =>
+  getOverview: (params?: { days?: number; account_id?: number; start_date?: string; end_date?: string }) =>
     apiClient.get(withQuery(V1_PATHS.analytics.summary, params)),
   
   getDaily: (params?: { days?: number; account_id?: number; start_date?: string; end_date?: string }) => {
@@ -109,7 +109,7 @@ export const positionsApi = {
   getOpen: (params?: { account_id?: number; symbol?: string }) =>
     apiClient.get(withQuery(V1_PATHS.positions.open, params)),
   
-  getClosed: (params?: { account_id?: number; symbol?: string; limit?: number }) =>
+  getClosed: (params?: { account_id?: number; symbol?: string; limit?: number; start_date?: string; end_date?: string }) =>
     apiClient.get(withQuery(V1_PATHS.positions.closed, params)),
   
   open: (params: {

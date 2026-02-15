@@ -14,6 +14,7 @@ import Charts from "./pages/Charts";
 import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import Logs from "./pages/Logs";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/logs" element={<Logs />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

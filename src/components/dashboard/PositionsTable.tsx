@@ -5,6 +5,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { cn } from "@/lib/utils";
 import { RefreshCw, X } from "lucide-react";
 import type { Position } from "@/types/trading";
+import { calculatePositionMetrics } from "@/utils/positionCalculator";
 
 interface PositionsTableProps {
   positions: Position[];
@@ -77,7 +78,12 @@ export function PositionsTable({
                 <th>Open Price</th>
                 <th>Current Price</th>
                 <th>SL</th>
+                <th>To SL</th>
+                <th>SL Loss</th>
                 <th>TP</th>
+                <th>To TP</th>
+                <th>TP Profit</th>
+                <th>R:R</th>
                 <th>Profit</th>
                 <th>Actions</th>
               </tr>
@@ -85,18 +91,20 @@ export function PositionsTable({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={16} className="text-center py-8 text-muted-foreground">
                     Loading positions...
                   </td>
                 </tr>
               ) : positions.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={16} className="text-center py-8 text-muted-foreground">
                     No open positions
                   </td>
                 </tr>
               ) : (
-                paginatedPositions.map((position) => (
+                paginatedPositions.map((position) => {
+                  const m = calculatePositionMetrics(position);
+                  return (
                   <tr key={position.ticket}>
                     <td className="text-xs text-muted-foreground">{position.account_name || 'N/A'}</td>
                     <td className="font-mono">{position.ticket}</td>
@@ -109,11 +117,26 @@ export function PositionsTable({
                     <td className="font-mono">{position.volume.toFixed(2)}</td>
                     <td className="font-mono">{position.openPrice.toFixed(5)}</td>
                     <td className="font-mono">{position.currentPrice.toFixed(5)}</td>
-                    <td className="font-mono text-muted-foreground">
+                    <td className="font-mono text-red-400">
                       {position.sl?.toFixed(5) || "-"}
                     </td>
-                    <td className="font-mono text-muted-foreground">
+                    <td className="font-mono text-red-400 text-xs">
+                      {m.slPips != null ? `${m.slPips} pips` : "-"}
+                    </td>
+                    <td className="font-mono text-red-400 text-xs">
+                      {m.slPotentialLoss != null ? `$${m.slPotentialLoss.toFixed(2)}` : "-"}
+                    </td>
+                    <td className="font-mono text-emerald-400">
                       {position.tp?.toFixed(5) || "-"}
+                    </td>
+                    <td className="font-mono text-emerald-400 text-xs">
+                      {m.tpPips != null ? `${m.tpPips} pips` : "-"}
+                    </td>
+                    <td className="font-mono text-emerald-400 text-xs">
+                      {m.tpPotentialProfit != null ? `+$${m.tpPotentialProfit.toFixed(2)}` : "-"}
+                    </td>
+                    <td className="font-mono font-semibold text-xs">
+                      {m.riskReward != null ? `1:${m.riskReward}` : "-"}
                     </td>
                     <td className={cn("font-mono font-semibold", position.profit >= 0 ? "text-profit" : "text-loss")}>
                       ${position.profit.toFixed(2)}
@@ -129,7 +152,8 @@ export function PositionsTable({
                       </Button>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
