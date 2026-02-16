@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AccountsProvider } from "@/contexts/AccountsContext";
 import Dashboard from "./pages/Dashboard";
 import Accounts from "./pages/Accounts";
+import CryptoAccounts from "./pages/CryptoAccounts";
+import CryptoTrading from "./pages/CryptoTrading";
 import Currencies from "./pages/Currencies";
 import Config from "./pages/Config";
 import Charts from "./pages/Charts";
@@ -26,6 +28,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/accounts" element={<Accounts />} />
+            <Route path="/crypto-accounts" element={<CryptoAccounts />} />
+            <Route path="/crypto-trading" element={<CryptoTrading />} />
             <Route path="/currencies" element={<Currencies />} />
             <Route path="/config" element={<Config />} />
             <Route path="/charts" element={<Charts />} />
