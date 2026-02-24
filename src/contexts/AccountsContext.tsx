@@ -5,9 +5,17 @@ export interface Account {
   id: string;
   name: string;
   broker: string;
+  server?: string;
+  platform_type?: string;
+  login?: number;
   balance?: number;
   equity?: number;
+  initial_balance?: number;
+  currency?: string;
   isActive: boolean;
+  auto_connect: boolean;
+  is_demo?: boolean;
+  description?: string;
 }
 
 interface AccountsContextType {
@@ -40,9 +48,17 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           id: acc.id.toString(),
           name: acc.account_name || `Account ${acc.account_number}`,
           broker: acc.broker || "Unknown",
+          server: acc.server || "",
+          platform_type: acc.platform_type || "",
+          login: acc.login,
           balance: acc.initial_balance ? parseFloat(acc.initial_balance) : undefined,
+          initial_balance: acc.initial_balance ? parseFloat(acc.initial_balance) : undefined,
+          currency: acc.currency || "USD",
           equity: undefined, // Not available in list endpoint
           isActive: acc.is_active,
+          auto_connect: acc.auto_connect ?? false,
+          is_demo: acc.is_demo ?? false,
+          description: acc.description || "",
         }));
         setAccounts(formattedAccounts);
       }

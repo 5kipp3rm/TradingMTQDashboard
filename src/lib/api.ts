@@ -1,7 +1,8 @@
 // API Configuration for TradingMTQ Backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 import { V1_PATHS, V2_PATHS, buildQueryString, withQuery } from './api-paths';
+import { getAccessToken, authApi, isTokenExpired } from './auth';
 
 export interface ApiResponse<T> {
   data?: T;
@@ -10,20 +11,83 @@ export interface ApiResponse<T> {
 
 class ApiClient {
   private baseUrl: string;
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
   }
 
+  /**
+   * Ensure we have a valid access token, refreshing if needed.
+   */
+  private async ensureToken(): Promise<string | null> {
+    const token = getAccessToken();
+
+    // No token at all — user needs to log in
+    if (!token) return null;
+
+    // Token still valid
+    if (!isTokenExpired(token)) return token;
+
+    // Token expired — attempt refresh (deduplicated)
+    if (!this.isRefreshing) {
+      this.isRefreshing = true;
+      this.refreshPromise = authApi.refresh().then(r => !!r).finally(() => {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      });
+    }
+
+    const success = await this.refreshPromise;
+    return success ? getAccessToken() : null;
+  }
+
   private async request<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
     try {
+      // Get current token
+      const token = await this.ensureToken();
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...options?.headers as Record<string, string>,
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
+        headers,
+        credentials: 'include', // Send cookies for refresh token
       });
+
+      // Handle 401 — try refresh once then retry
+      if (response.status === 401 && token) {
+        const refreshed = await authApi.refresh();
+        if (refreshed) {
+          // Retry with new token
+          headers['Authorization'] = `Bearer ${refreshed.access_token}`;
+          const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, {
+            ...options,
+            headers,
+            credentials: 'include',
+          });
+
+          if (!retryResponse.ok) {
+            const errorText = await retryResponse.text();
+            throw new Error(`HTTP ${retryResponse.status}: ${errorText || retryResponse.statusText}`);
+          }
+
+          if (retryResponse.status === 204) return { data: null as T };
+          return { data: await retryResponse.json() };
+        }
+
+        // Refresh failed — redirect to login
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+        throw new Error('Session expired. Please log in again.');
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

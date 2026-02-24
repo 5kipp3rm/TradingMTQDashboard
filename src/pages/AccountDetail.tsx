@@ -283,7 +283,7 @@ export const AccountDetail = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container py-5 max-w-[1400px]">
+        <div className="w-full py-5 px-4 lg:px-8">
           <Header
             period={period}
             onPeriodChange={setPeriod}
@@ -301,7 +301,7 @@ export const AccountDetail = () => {
   if (!status) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container py-5 max-w-[1400px]">
+        <div className="w-full py-5 px-4 lg:px-8">
           <Header
             period={period}
             onPeriodChange={setPeriod}
@@ -322,7 +322,7 @@ export const AccountDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container py-5 max-w-[1400px]">
+      <div className="w-full py-5 px-4 lg:px-8">
         <Header
           period={period}
           onPeriodChange={setPeriod}

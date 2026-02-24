@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,10 +67,9 @@ export function AddAccountModal({ open, onClose, onAdd }: AddAccountModalProps) 
   const fetchServerOptions = async () => {
     setLoadingServers(true);
     try {
-      const response = await fetch("/api/servers/options");
-      if (response.ok) {
-        const data = await response.json();
-        setServerOptions(data.servers || []);
+      const result = await apiClient.get<{ servers: ServerOption[] }>("/servers/options");
+      if (result.data?.servers) {
+        setServerOptions(result.data.servers);
       }
     } catch (error) {
       console.error("Failed to fetch server options:", error);
