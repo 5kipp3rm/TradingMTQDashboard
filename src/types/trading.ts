@@ -36,6 +36,8 @@ export interface DailyPerformance {
   netProfit: number;
   winRate: number;
   profitFactor: number;
+  grossProfit?: number;
+  grossLoss?: number;
 }
 
 export interface DashboardSummary {

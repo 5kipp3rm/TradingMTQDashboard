@@ -19,6 +19,8 @@ import { PositionsPriceChart } from "@/components/dashboard/PositionsPriceChart"
 import { ClosedPositionsTable } from "@/components/dashboard/ClosedPositionsTable";
 import { TradesTable } from "@/components/dashboard/TradesTable";
 import { DailyPerformanceTable } from "@/components/dashboard/DailyPerformanceTable";
+import { DailyPnLChart } from "@/components/dashboard/DailyPnLChart";
+import { PositionProfitLossChart } from "@/components/dashboard/PositionProfitLossChart";
 import { QuickTradeModal } from "@/components/dashboard/QuickTradeModal";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAccounts } from "@/contexts/AccountsContext";
@@ -327,7 +329,12 @@ const Dashboard = () => {
           <ProfitChart data={profitData} isLoading={isLoading} />
           <WinRateChart data={winRateData} isLoading={isLoading} />
         </section>
-        
+
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <DailyPnLChart data={dailyPerformance} isLoading={isLoading} />
+          <PositionProfitLossChart positions={positions} isLoading={isLoading} />
+        </section>
+
         <PositionsTable
           positions={positions}
           isLoading={isLoading}

@@ -180,6 +180,8 @@ export function calculateDailyPerformance(closedPositions: PositionWithClose[]):
       netProfit: data.netProfit,
       winRate,
       profitFactor,
+      grossProfit,
+      grossLoss,
     };
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }

@@ -253,6 +253,8 @@ export function useDashboardData(period: number, selectedAccountId?: string, dat
               netProfit: d.net_profit || 0,
               winRate: d.win_rate || 0,
               profitFactor: d.profit_factor || 0,
+              grossProfit: d.gross_profit ?? undefined,
+              grossLoss: d.gross_loss != null ? Math.abs(d.gross_loss) : undefined,
             }))
           );
 
